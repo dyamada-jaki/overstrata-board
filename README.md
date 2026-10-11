@@ -17,6 +17,7 @@ TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）�
 
 - Vite + React + TypeScript
 - テストは Vitest、CI は GitHub Actions
+- 開発も本番も Docker コンテナで動かす（OrbStack などの互換ランタイムでもよい）
 - ルール計算は `src/domain/` の純粋関数にまとめる
 - 盤面の描画は、まず CSS Grid で行う
 - サーバーやデータベースは、共有・保存機能が必要になるまで導入しない

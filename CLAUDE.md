@@ -8,9 +8,12 @@ TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）�
 - Vite + React + TypeScript（strict）
 - テスト: Vitest（+ React Testing Library）
 - サーバーなし。ブラウザだけで完結する（複数端末の共有を入れるまで）
+- 実行環境: 開発も本番も Docker コンテナで動かす（→ spec.md 1章「実行環境」）
 
 ## コマンド
 雛形ができたら有効になる。
+- `docker compose up` — コンテナで開発サーバーを起動
+- 下の npm コマンドは、コンテナの中でもホストでも同じように動くこと
 - `npm run dev` — 開発サーバー
 - `npm run test` — テスト
 - `npm run typecheck` — 型チェック
