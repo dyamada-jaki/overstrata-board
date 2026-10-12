@@ -2,8 +2,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// バインドマウント越しにファイル変更が届かない環境では VITE_USE_POLLING=1 にする
-const usePolling = process.env.VITE_USE_POLLING === '1'
+// バインドマウント越しにファイル変更が届かない環境では WATCH_POLLING=1 にする
+// （VITE_ で始まる名前はクライアントに公開される対象になるので使わない）
+const usePolling = process.env.WATCH_POLLING === '1'
 
 export default defineConfig({
   plugins: [react()],
