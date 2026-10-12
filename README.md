@@ -32,6 +32,14 @@ Docker（OrbStack などの互換ランタイムでもよい）があれば、�
 docker compose up            # 開発サーバーを起動 → http://localhost:5173
 ```
 
+同じ LAN のスマホで実機確認するため、開発サーバーはホストの全ネットワークインターフェースに公開します。スマホからは `http://<開発マシンのLAN内IPアドレス>:5173` を開きます（`HOST_PORT` を変えた場合はそのポートを使います）。
+
+コンテナを止めるときは、次を実行します。
+
+```sh
+docker compose down
+```
+
 テスト・型チェック・Lint・ビルドもコンテナの中で実行できます。
 
 ```sh
@@ -43,7 +51,7 @@ docker compose run --rm app npm run build
 ```
 
 - `node_modules` はコンテナ専用のボリュームに入ります。`package-lock.json` が変わると、起動時に自動で `npm ci` し直します
-- ファイルを変えても画面が更新されないときは、`.env` に `VITE_USE_POLLING=1` を書きます
+- ファイルを変えても画面が更新されないときは、`.env` に `WATCH_POLLING=1` を書きます
 
 ### 複数の worktree で同時に起動する
 
