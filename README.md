@@ -30,7 +30,11 @@ Docker（OrbStack などの互換ランタイムでもよい）があれば、�
 
 ```sh
 docker compose up            # 開発サーバーを起動 → http://localhost:5173
+docker compose down          # 止める（コンテナを削除する）
+docker compose down -v       # node_modules のボリュームも消して止める
 ```
+
+`docker compose up` を Ctrl+C で止めた場合も、コンテナを片付けるときは `docker compose down` を実行します。
 
 テスト・型チェック・Lint・ビルドもコンテナの中で実行できます。
 
@@ -43,7 +47,14 @@ docker compose run --rm app npm run build
 ```
 
 - `node_modules` はコンテナ専用のボリュームに入ります。`package-lock.json` が変わると、起動時に自動で `npm ci` し直します
-- ファイルを変えても画面が更新されないときは、`.env` に `VITE_USE_POLLING=1` を書きます
+- ファイルを変えても画面が更新されないときは、`.env` に `WATCH_POLLING=1` を書きます
+
+### スマホ実機から開く
+
+開発サーバーは、同じ LAN の端末からも開けるように公開しています。スマホの実機で画面を確かめるためです（[docs/spec.md](docs/spec.md)「2.4 画面の前提」）。
+
+- スマホをホストと同じ Wi-Fi につなぎ、`http://<ホストの LAN 内の IP アドレス>:5173`（`HOST_PORT` を変えたときはその番号）を開きます
+- 同じ LAN の誰からでも開けます。カフェなど信頼できないネットワークでは起動しないでください
 
 ### 複数の worktree で同時に起動する
 
