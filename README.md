@@ -24,4 +24,64 @@ TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）�
 
 ## 開発
 
-雛形の作成時に、開発・テスト・ビルドのコマンドをここへ追記します。
+### コンテナで動かす（おすすめ）
+
+Docker（OrbStack などの互換ランタイムでもよい）があれば、ホストに Node は要りません。
+
+```sh
+docker compose up            # 開発サーバーを起動 → http://localhost:5173
+```
+
+テスト・型チェック・Lint・ビルドもコンテナの中で実行できます。
+
+```sh
+docker compose run --rm app npm run test
+docker compose run --rm app npm run typecheck
+docker compose run --rm app npm run lint
+docker compose run --rm app npm run build
+# 開発サーバーを起動中なら exec でもよい: docker compose exec app npm run test
+```
+
+- `node_modules` はコンテナ専用のボリュームに入ります。`package-lock.json` が変わると、起動時に自動で `npm ci` し直します
+- ファイルを変えても画面が更新されないときは、`.env` に `VITE_USE_POLLING=1` を書きます
+
+### 複数の worktree で同時に起動する
+
+worktree ごとに `.env.example` を `.env` にコピーし、ポートとプロジェクト名を変えます（`.env` はコミットしません）。
+
+```sh
+# 例: 2つ目の worktree の .env
+HOST_PORT=5174
+COMPOSE_PROJECT_NAME=overstrata-board-issue-2
+```
+
+`HOST_PORT` を変えると、ホスト側のポートがぶつかりません。`COMPOSE_PROJECT_NAME` を変えると、コンテナとボリュームが worktree ごとに分かれます（既定ではディレクトリ名から決まります）。
+
+### ホストで動かす
+
+Node 24 が必要です（`.nvmrc`）。
+
+```sh
+npm ci
+npm run dev        # 開発サーバー
+npm run test       # テスト（Vitest）
+npm run typecheck  # 型チェック
+npm run lint       # Lint（ESLint）
+npm run build      # ビルド（dist/ に出力）
+```
+
+### 本番用イメージ
+
+ビルド済みのファイルを nginx で配信するイメージです。
+
+```sh
+docker build --target prod -t overstrata-board .
+docker run --rm -p 8080:80 overstrata-board   # → http://localhost:8080
+```
+
+### CI
+
+PR を作ったときと main への push のときに、GitHub Actions（`.github/workflows/ci.yml`）が次の2つを実行します。
+
+- テスト・型チェック・Lint・ビルド
+- 本番用イメージのビルド
