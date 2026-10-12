@@ -1,0 +1,17 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    ports:
+      # worktree ごとにポートを変えたいときは .env に HOST_PORT を書く
+      - "${HOST_PORT:-5173}:5173"
+    environment:
+      - VITE_USE_POLLING=${VITE_USE_POLLING:-0}
+    volumes:
+      - .:/app
+      # node_modules はコンテナ専用にする（ホストの macOS 用バイナリと混ぜない）
+      - node_modules:/app/node_modules
+
+volumes:
+  node_modules:
