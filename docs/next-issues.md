@@ -10,9 +10,9 @@
 | 項目 | 状態 |
 |---|---|
 | workflow の準備1〜4 | 完了（設計の席・spec.md 初版・エージェント向けファイル・main へコミット） |
-| 次の一手 | Orca で `/implement-issue 1` を実行する（ステップ3）。#1 をマージしてふりかえったあと、下の Issue B を登録する |
-| 登録済み Issue | [#1 開発の土台を作る（雛形・コンテナ・CI）](https://github.com/dyamada-jaki/overstrata-board/issues/1)（元の下書き Issue A） |
-| 実装 | まだ何も書いていない（`src/` は空。雛形は #1 で作る） |
+| 次の一手 | Orca で `/implement-issue 4` を実行する（ステップ3）。下の Issue B は #4 と並行してもよい（触るファイルがほぼ重ならない） |
+| 登録済み Issue | [#1 開発の土台を作る（雛形・コンテナ・CI）](https://github.com/dyamada-jaki/overstrata-board/issues/1) — 完了（PR #2 を採用、PR #3 は不採用）<br>[#4 開発環境の小さな改善（CI の権限・公開範囲・型の版）](https://github.com/dyamada-jaki/overstrata-board/issues/4) — 未着手 |
+| 実装 | 雛形・コンテナ・CI ができた（#1）。盤面・キャラはまだ |
 
 Issue は一度に最大3本まで。#1・B のあとは、盤面の表示 → キャラの表示と移動、の順で切る予定（→ [spec.md 4章](spec.md)）。
 
