@@ -14,7 +14,8 @@ argument-hint: <Issue番号>
 - `orca` コマンドは Orca のターミナルの中で使う。最初に `orca skills get orchestration` を読み、そこに書かれた安全のルール（完了の証拠がないワーカーを止めない・二重に起動しない、など）に従う
 - **マージ（⑦）はしない。** 人間が判断する
 - 人間に聞く場面は2回だけ: 手順4（計画承認）と手順7（最終報告）。それ以外は止まらずに進める
-- 待つときは `orca orchestration check --wait --timeout-ms 540000` を繰り返す（コマンドの実行時間の上限より短くする）。時間切れは失敗ではない。待ち続ける
+- 待つときは `orca orchestration check --wait --timeout-ms 540000` を繰り返す。時間切れは失敗ではない。待ち続ける
+  - Claude Code では、Bash ツールの `timeout` を `600000` にして実行する（既定の2分では途中で切れる）
 
 ## 1. 事前確認
 - `gh issue view N --comments` で目的・受け入れ条件・スコープ外を読む
@@ -39,6 +40,8 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
   --name issue-N-codex --agent codex --json
 ```
 
+それぞれの `worker-start --json` の結果から、dispatch ID と worktree の絶対パス（`path`）を控えておく（手順6で使う）。見つからなければ `orca worktree list --json` で `issue-N-claude` / `issue-N-codex` を探す。
+
 `worker-start` が 0 以外で終わったら、起動し直さない。結果の `failedStage` と `recovery` を読み、`orca skills get orchestration --reference references/recovery-and-cleanup.md` に従う。
 
 ### 実装用の指示（`--spec` に入れる。<…> は埋める）
@@ -46,7 +49,7 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
 対象: GitHub Issue #N（dyamada-jaki/overstrata-board）。この worktree の中だけで作業する。
 やること: .claude/skills/implement-issue/SKILL.md の5手順に従って Issue #N を実装し、PR を作る。ただし次の点だけ手順を置き換える。
 - 最初に、worktree の直下に .env を作る（コミットしない）: HOST_PORT=<ポート> と COMPOSE_PROJECT_NAME=issue-N-<claude|codex>
-- 手順3の計画は、人間に直接聞かず、指示文の先頭に付いている ask コマンド（orca orchestration ask）で、計画の全文を質問として送る。返事が来るまで実装を始めない。返事に修正の指示があれば従う
+- 手順3の計画は、人間に直接聞かず、指示文の先頭に付いている ask コマンド（orca orchestration ask）で、計画の全文を質問として送る。返事が来るまで実装を始めない。返事に修正の指示があれば従う。ask が時間切れになったら、同じ message ID で --resume して待ち続ける（勝手に進めない）
 - 手順5の PR のタイトルの先頭に「[<Claude Code|Codex>]」を付ける。PR 本文の先頭に「作成: <Claude Code|Codex>」と書く
 守ること: CLAUDE.md（AGENTS.md）の「守ること」。Issue のスコープ外はやらない。main に直接 push しない。
 完了の条件: PR ができていて、npm run test / typecheck / lint / build がすべて通っている。worker_done の要約に PR の URL を書く。
@@ -55,7 +58,7 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
 
 ## 4. 計画を人間に見せて承認をもらう（④ 関所）
 - `check --wait --types question,worker_done,escalation` で、2つのワーカーから計画（question）が届くのを待つ
-- **2つとも届いてから**、人間に並べて見せる。見せ方:
+- **2つとも届いてから**、人間に並べて見せる。片方が計画を出す前に failed / escalation で終わったら、届いた1つだけを見せて、その旨を書く。見せ方:
   - それぞれの計画の要約（受け入れ条件ごとの満たし方・作る/変えるファイル・テスト）
   - 2つの計画の主な違い
   - 各ワーカーの「確認したいこと」
@@ -67,7 +70,7 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
 - 2つの `worker_done` が届くまで待つ。途中で質問が来たら、自分で答えられる実装上の選択なら答える。仕様を決めることになる質問なら人間に聞く（workflow.md「迷ったときの判断基準」）
 - `worker_done` の `outcome` が `failed` なら、相互レビューには進まず、手順7で状況を報告する
 - 完了したワーカーは `orca orchestration worker-release --dispatch <dispatch_id> --json` で片付ける
-- `gh pr list --search "N in:body"` などで、2つの PR の番号を確かめる
+- 2つの PR の番号は、`worker_done` の要約にある URL から取る。なければ `gh pr list --json number,headRefName,title` で、ブランチ名（issue-N-claude / issue-N-codex を含む）かタイトルの「[Claude Code]」「[Codex]」で見分ける
 
 ## 6. 相互レビューのワーカーを起動する
 **相手の** worktree に、レビュー用のワーカーを起動する。Claude Code が Codex の PR を、Codex が Claude Code の PR をレビューする。
@@ -89,7 +92,7 @@ orca orchestration worker-start --spec "<下のレビュー用の指示>" --task
 - バグ、壊れやすい作り、スコープ外の変更、不要な依存の追加
 - PR 本文の「確認したいこと」が正直に書かれているか
 必要なら npm run test などを実行して確かめてよい（.env はすでにある。docker compose を使うなら、すでに動いているコンテナを止めない）。
-出力: レビュー結果を gh pr comment <番号> --body-file <ファイル> で PR にコメントする。先頭に「レビュー: <Claude Code|Codex>」と書く。中身は次の形:
+出力: レビュー結果を gh pr comment <番号> --body-file <ファイル> で PR にコメントする。ファイルは worktree の外（/tmp など）に書く。先頭に「レビュー: <Claude Code|Codex>」と書く。中身は次の形:
 - 受け入れ条件ごとの判定（満たす / 満たさない / 確かめられない）と根拠
 - 指摘の一覧。1件ごとに: 重さ（必須 / 推奨 / 好み）、ファイル:行、何が問題か、どう直すか
 - 総評（2〜3行）
