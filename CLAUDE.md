@@ -43,7 +43,7 @@ docs/
 9. Overstrata の設定資料にある秘匿情報（GM 向けの裏設定など）を、コード・Issue・PR・ドキュメントに書かない
 
 ## Issue の実装手順
-`.claude/skills/implement-issue/SKILL.md` に従う（Claude Code では `/implement-issue 番号`）。
+`.claude/skills/implement-issue/SKILL.md`（Codex 用は `.agents/skills/implement-issue/SKILL.md`。中身は同じ）に従う。Claude Code では `/implement-issue 番号`、Codex では「implement-issue スキルで Issue 番号」。
 
 ## 完了の定義
 - Issue の受け入れ条件をすべて満たす

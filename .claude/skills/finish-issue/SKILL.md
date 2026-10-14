@@ -15,6 +15,7 @@ argument-hint: <採用するPR番号>
 - `gh pr view P --json number,title,state,mergeable,mergeStateStatus,headRefName,body,url` で、PR が OPEN でマージできる状態か見る
 - `gh pr checks P` で CI がすべて成功しているか見る。失敗・実行中なら止めて人間に伝える
 - PR 本文の `Closes #番号` から Issue 番号 `N` を取る
+- 画面を含む Issue（本文に「レビュー時の実機確認」がある）なら、人間の実機確認の結果が PR のコメントかレビューに残っているか見る。無ければ手順3で「実機確認の記録がない」と伝える（マージを止めるかは人間が決める）
 - 同じ Issue を扱う、採らない PR を探す: `gh pr list --state open --json number,title,headRefName,body` から、本文に `#N` があるもの、またはブランチ名に `issue-N-` を含むもの
 
 ## 2. 片付ける対象を洗い出す
@@ -28,6 +29,7 @@ argument-hint: <採用するPR番号>
 ## 3. 人間に確認する（1回だけ）
 次を一覧で見せて、実行してよいか聞く。
 - マージする PR（番号・タイトル・方式は squash）と、閉じる Issue
+- 画面を含む Issue なら、実機確認の記録の有無
 - 閉じる PR と、コメントに書く理由（人間が理由を渡していなければ、dual-implement の報告や PR のレビューから一行で案を出す）
 - 消す worktree・ローカルブランチ・Docker のコンテナとボリューム・ワーカーのターミナル
 - 消さずに残すもの（採らない PR のリモートブランチ、未コミットの変更が見つかったもの、など）
