@@ -29,11 +29,12 @@ src/
 docs/
   spec.md      仕様（正）
   workflow.md  開発の進め方
+  testing.md   テストとレビューの方針
 ```
 
 ## 守ること
 1. **ルール計算は `src/domain/` の純粋関数に書く**。UI の中に計算を書かない
-2. **`src/domain/` の関数には必ずテストを書く**
+2. **`src/domain/` の関数には必ずテストを書く**。計画・実装・レビューでは [docs/testing.md](docs/testing.md) に従う（期待結果を仕様から決める、細かな TDD は任意、モックは必要な境界だけ）
 3. **スマホ縦画面（幅 375px）を基準**に作る。PC でも崩れなければよい
 4. 画面の文言は日本語
 5. 依存パッケージを増やすときは、PR 本文に理由を書く。版は実行環境（`.nvmrc` の Node）に合わせる
@@ -48,6 +49,7 @@ docs/
 ## 完了の定義
 - Issue の受け入れ条件をすべて満たす
 - `npm run test` / `npm run typecheck` / `npm run lint` / `npm run build` がすべて通る
+- E2E 導入後は対象となる E2E も通る。未導入時の扱いとレビューの分担は [docs/testing.md](docs/testing.md) を参照する
 - PR 本文に「何をしたか」「どう確認したか」「確認したいこと」を書く
 
 ## 用語

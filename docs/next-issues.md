@@ -14,8 +14,9 @@
 | 次の一手 | #8・#9 のタップ操作と、1始まりの `(横, 縦)` による座標表示は2026-10-15に利用者と確定し、spec.md 2.1〜2.3 と両 Issue に反映済み。#8（盤面表示）は着手可能で、その完了・main への取り込み後に #9（キャラ表示・移動）へ進む。#12（座標・盤面・装備の型の整理）も着手可能な独立した改善。実装は1本ずつ進める |
 | 登録済み Issue | [#1 開発の土台を作る（雛形・コンテナ・CI）](https://github.com/dyamada-jaki/overstrata-board/issues/1) — 完了（PR #2 を採用、PR #3 は不採用）<br>[#4 開発環境の小さな改善（CI の権限・公開範囲・型の版）](https://github.com/dyamada-jaki/overstrata-board/issues/4) — 完了（[PR #5](https://github.com/dyamada-jaki/overstrata-board/pull/5) を採用、[PR #6](https://github.com/dyamada-jaki/overstrata-board/pull/6) は不採用）<br>[#7 距離と移動範囲を計算する](https://github.com/dyamada-jaki/overstrata-board/issues/7) — 完了（[PR #11](https://github.com/dyamada-jaki/overstrata-board/pull/11) を採用、[PR #10](https://github.com/dyamada-jaki/overstrata-board/pull/10) は不採用）<br>[#8 10×10の盤面を表示し、マスを選べるようにする](https://github.com/dyamada-jaki/overstrata-board/issues/8) — OPEN・着手可能（2026-10-15に操作仕様を確定）<br>[#9 サンプルキャラ4体を表示し、移動範囲を確認して動かせるようにする](https://github.com/dyamada-jaki/overstrata-board/issues/9) — OPEN・#8 の完了・main への取り込み待ち（操作仕様は確定済み）<br>[#12 座標・盤面・装備の型を整理する](https://github.com/dyamada-jaki/overstrata-board/issues/12) — OPEN・着手可能（#7 の相互レビューから分離した改善。2026-10-15に登録） |
 | 実装 | 雛形・コンテナ・CI ができた（#1）。開発環境の改善も完了（#4）。距離・装備別の移動力・移動範囲の計算も完了（#7）。盤面・キャラはまだ |
+| テスト・レビュー | [testing.md](testing.md) に共通方針を整理。細かな TDD は任意、モックは必要な境界だけ。#8・#9 は相互レビューに加えて独立した品質レビューを試す。Playwright の環境・CI は未導入で、別 Issue の候補。現時点で #8・#9 の着手条件には追加しない |
 | 対応レポート | [Issue #7 のレポート](issue-reports/issue-7.md)に計画・承認・検証・採用判断・後片付けと改善の反映先を保存。以後は [保存方法](issue-reports/README.md)に従い、1 Issue につき1ファイルを残す |
 
 区切り1の残る機能は #8・#9 の2本で追う。#12 は型の整理を行う独立した改善で、ゲームのルールや画面の仕様を増やさない。サンプル4体の名前・装備・初期配置は spec.md 2.2で確定済み。Issue の登録完了と区切りの達成は別。残る2本の実装・エージェントによる幅375pxのブラウザ等での確認・人間によるレビュー時のスマホ実機での一連の操作確認が済んだら区切り1を達成とする。後の区切りは仕様のロードマップに置く。
 
-未登録の下書きはなし。各 Issue の本文は GitHub で管理する。
+未登録の下書きはなし。各 Issue の本文は GitHub で管理する。後続候補として、Playwright の実行環境・CI と最小の起動確認を導入する Issue を切る。導入時点で完成している機能の主要操作を E2E 化する作業と、以後の UI Issue で追加する範囲を決める（[方針と候補の操作](testing.md)）。

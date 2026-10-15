@@ -10,6 +10,7 @@ TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）�
 
 - [docs/spec.md](docs/spec.md) — 仕様（何を・なぜ・どこまで）
 - [docs/workflow.md](docs/workflow.md) — 開発の進め方（Spec × Issue × Orca）
+- [docs/testing.md](docs/testing.md) — テストの分担・TDD・モック・PR レビューの方針
 - [docs/next-issues.md](docs/next-issues.md) — 現在地と、次に切る Issue の下書き
 - [docs/issue-reports/](docs/issue-reports/README.md) — Issue ごとの計画・実装・レビュー・採用判断と改善の記録
 - [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) — AI エージェント向けガイド
