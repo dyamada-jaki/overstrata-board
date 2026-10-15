@@ -12,6 +12,7 @@ export default defineConfig({
     watch: usePolling ? { usePolling: true, interval: 300 } : undefined,
   },
   test: {
+    include: ['src/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],

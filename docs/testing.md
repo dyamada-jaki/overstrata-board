@@ -33,11 +33,13 @@
 
 ## 4. Playwright の導入と対象
 
-**2026-10-15時点では未導入。** [#13（Playwright の E2E 実行環境と CI）](https://github.com/dyamada-jaki/overstrata-board/issues/13)に登録済み。環境・実行コマンド・CI と最小の起動確認を #13 で整え、main へ取り込んでから #8 → #9 の順で進める。各機能の操作 E2E は機能と同じ Issue・PR に含める。#8・#9 に環境の初期導入を混ぜない。
+[#13](https://github.com/dyamada-jaki/overstrata-board/issues/13)で Playwright を導入。現在の最小テストは、Docker で配信した実際のアプリを Chromium の375×667px・1280×720pxで開き、見出しと未処理の JavaScript 例外がないことを確認する。main へ取り込んでから #8 → #9 の順で進め、操作 E2E は各機能と同じ Issue・PR に含める。
 
-#13 で `npm run test:e2e` を用意し、実行方法を README とこの節に反映する。導入が完了するまでは、既存の必須コマンドは `test` / `typecheck` / `lint` / `build` の4つのまま。#13 自体と、その完了を着手条件にした #8・#9 では、E2E の成功も受け入れ条件とする。Issue を登録しただけで導入済みとはしない。
+[README の E2E 手順](../README.md#e2eplaywright)に従い、Docker のみなら `sh scripts/e2e.sh --docker`、ホストに Node 24 と Chromium を準備した場合は `npm run test:e2e` で実行する。どちらも現在の checkout の本番アプリコンテナを新規作成し、準備完了を待って検証し、終了時にその実行の資源だけ片付ける。Docker runner 内でも同じ npm コマンドを使うが、コンテナの再帰起動は行わない。
 
-導入後、UI を変更する Issue では、次のような重要な流れを追加・更新する。環境がまだ無く、Issue で E2E を要求していない場合は RTL とブラウザで確認し、E2E 化は未実施として後続作業に残す。#8・#9 のように E2E を必須とする Issue では、環境の導入が着手条件になる。
+既存の `test` / `typecheck` / `lint` / `build` に加え、#13 自体と対象となる UI 変更では E2E の成功も必須とする。Vitest は `src/`、Playwright は `e2e/` を収集し、後者も型チェック・Lint の対象とする。結果は実行ごとの `e2e-artifacts/run-*/` に残し、失敗時の HTML report・trace・スクリーンショット・アプリログを調べる。CI は同じ Docker 手順を実行し、成功・失敗にかかわらず artifact を保存する。再試行は0回とし、一度の失敗を失敗として扱う。
+
+UI を変更する Issue では、次のような重要な流れを追加・更新する。環境がまだ無く、Issue で E2E を要求していない場合は RTL とブラウザで確認し、E2E 化は未実施として後続作業に残す。#8・#9 のように E2E を必須とする Issue では、環境の導入が着手条件になる。
 
 - #8 の流れ：盤面を開く → マスを選ぶ → 別のマスへ切り替える → 同じマスで解除する。幅375pxで横スクロールが出ないことも確認する。
 - #9 の流れ：キャラを選ぶ → 範囲が出る → 空きマスへ移動する → 選択と範囲が消える。別キャラのタップでは移動せず選択が切り替わること、範囲外の空きマスにも移動できることを含める。

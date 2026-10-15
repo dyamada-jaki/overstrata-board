@@ -1,0 +1,30 @@
+# 開発用 compose.yaml と分離し、scripts/e2e.sh が実行ごとに project を割り当てる。
+services:
+  app:
+    build:
+      context: .
+      target: prod
+    ports:
+      - "127.0.0.1::80"
+    networks:
+      default:
+        aliases: [app.test]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  e2e:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.e2e
+    init: true
+    shm_size: 1gb
+    environment:
+      E2E_IN_CONTAINER: "1"
+      # Chromium は裸の app を HSTS 対象とするため、予約済み .test 名を使う。
+      E2E_BASE_URL: http://app.test
+      E2E_ARTIFACT_DIR: /artifacts
+    volumes:
+      - ${E2E_ARTIFACT_DIR:?scripts/e2e.sh から実行してください}:/artifacts

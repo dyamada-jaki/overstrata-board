@@ -15,7 +15,8 @@ TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）�
 - `docker compose up` — コンテナで開発サーバーを起動
 - 下の npm コマンドは、コンテナの中でもホストでも同じように動くこと
 - `npm run dev` — 開発サーバー
-- `npm run test` — テスト
+- `npm run test` — テスト（Vitest）
+- `npm run test:e2e` — Chromium E2E（初回準備・Docker 実行は README を参照）
 - `npm run typecheck` — 型チェック
 - `npm run lint` — Lint
 - `npm run build` — ビルド

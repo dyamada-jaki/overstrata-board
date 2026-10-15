@@ -1,0 +1,8 @@
+# ブラウザは Alpine でなく、Playwright 対応の Debian 12 で動かす。
+FROM node:24-bookworm
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund \
+ && npx playwright install --with-deps chromium
+COPY . .
+CMD ["npm", "run", "test:e2e"]
