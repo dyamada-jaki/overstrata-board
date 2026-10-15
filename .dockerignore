@@ -3,5 +3,6 @@ dist
 .git
 .github
 .env
+e2e-results
 *.log
 *.tsbuildinfo

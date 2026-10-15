@@ -15,5 +15,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // Playwright の E2E（e2e/）は収集しない。E2E は npm run test:e2e で実行する
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 })

@@ -23,3 +23,15 @@ RUN npm run build
 FROM nginx:1.29-alpine AS prod
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
+
+# ---- E2E: Playwright（Chromium）でテストを実行する ----
+# Alpine は Playwright の対応 OS ではないので、Debian 系の Node 24 を使う。
+# ブラウザの版は package-lock.json の @playwright/test の版から決まる
+FROM node:24-bookworm-slim AS e2e
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund \
+ && npx playwright install --with-deps --only-shell chromium \
+ && rm -rf /var/lib/apt/lists/*
+COPY . .
+CMD ["npm", "run", "test:e2e"]

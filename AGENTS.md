@@ -19,6 +19,9 @@ TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）�
 - `npm run typecheck` — 型チェック
 - `npm run lint` — Lint
 - `npm run build` — ビルド
+- `npm run test:e2e` — E2E（Playwright・Chromium）。ホストで実行する（Node 24 と Docker が必要。初回は `npx playwright install --only-shell chromium`）
+- `./scripts/e2e-docker.sh` — E2E を Docker だけで実行する（中で `npm run test:e2e` を実行。Alpine の `app` コンテナでは E2E は動かない）
+- E2E の準備・結果の見方・後片付け・worktree ごとの使い分けは README の「E2E テスト（Playwright）」を参照
 
 ## ディレクトリ構成
 ```
@@ -26,6 +29,8 @@ src/
   domain/      ルール計算（純粋関数のみ。React を import しない）
   components/  画面部品
   data/        サンプルデータ・定数
+e2e/           Playwright の E2E テスト（設定は playwright.config.ts）
+scripts/       E2E を Docker で動かすスクリプト
 docs/
   spec.md      仕様（正）
   workflow.md  開発の進め方
@@ -49,7 +54,7 @@ docs/
 ## 完了の定義
 - Issue の受け入れ条件をすべて満たす
 - `npm run test` / `npm run typecheck` / `npm run lint` / `npm run build` がすべて通る
-- E2E 導入後は対象となる E2E も通る。未導入時の扱いとレビューの分担は [docs/testing.md](docs/testing.md) を参照する
+- E2E が対象となる変更では `npm run test:e2e` も通る。対象の決め方とレビューの分担は [docs/testing.md](docs/testing.md) を参照する
 - PR 本文に「何をしたか」「どう確認したか」「確認したいこと」を書く
 
 ## 用語

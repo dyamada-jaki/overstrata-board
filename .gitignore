@@ -2,5 +2,6 @@ node_modules
 dist
 *.tsbuildinfo
 .env
+e2e-results
 .DS_Store
 *.log

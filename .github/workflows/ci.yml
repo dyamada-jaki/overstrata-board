@@ -36,3 +36,19 @@ jobs:
           target: prod
           push: false
           tags: overstrata-board:ci
+
+  e2e:
+    name: E2E（Playwright・Chromium）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ローカルの Docker と同じ手順で、この commit から本番用イメージと E2E 用イメージをビルドして実行する
+      - run: ./scripts/e2e-docker.sh
+      # 成功・失敗にかかわらず、レポートと失敗時の trace・スクリーンショット・動画を残す
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-results
+          path: e2e-results/
+          retention-days: 14
+          if-no-files-found: warn
