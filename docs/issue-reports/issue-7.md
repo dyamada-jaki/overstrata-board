@@ -121,13 +121,15 @@ Claude Code は、他キャラの位置を `Position[]` で受け取ること、
 | 一覧を返す計算で、小さい例の期待一覧・境界・入力の非破壊を検討する | [implement-issue スキル](../../.agents/skills/implement-issue/SKILL.md)のテスト計画。Claude Code 用も同期 | 参考観点として反映済み。必要な観点は関数の性質に合わせて選ぶ |
 | 計画や採用理由を会話だけに残さず、1 Issue につき1ファイルで保存する | [保存方法](README.md)、[workflow.md](../workflow.md)、dual-implement・finish-issue の記録手順 | 反映済み。以後は同じ Issue のレポートを更新する |
 | 装備型の明示、座標・盤面型の共用 | [Issue #12](https://github.com/dyamada-jaki/overstrata-board/issues/12) | 登録済み・未実装。ゲームのルールと計算結果を変えない |
-| マス選択とキャラ選択の切り替え・再タップなどの未決仕様 | [spec.md 5章](../spec.md)、[#8](https://github.com/dyamada-jaki/overstrata-board/issues/8)、[#9](https://github.com/dyamada-jaki/overstrata-board/issues/9) | 利用者との確定待ち。決定後に spec.md 2.1・2.3 と両 Issue に反映する |
+| マス選択とキャラ選択の切り替え・再タップなどの未決仕様 | [作成時の spec.md 5章](https://github.com/dyamada-jaki/overstrata-board/blob/3e1fa6be6a81c760ea4825bbe2a5305be3cb118a/docs/spec.md)、[#8](https://github.com/dyamada-jaki/overstrata-board/issues/8)、[#9](https://github.com/dyamada-jaki/overstrata-board/issues/9) | 利用者との確定待ち。決定後に spec.md 2.1・2.3 と両 Issue に反映する |
 
 今回観察した違いは、Claude Code が型と計算を分けた構成、Codex が期待一覧と境界を具体的に確認するテストを選んだこと。1回の結果をモデル全般の性質とせず、今後の実装計画・レビューで使える具体例として残す。
 
 運用上は、`gh issue view N --comments` だけでは本文が出ない場面があったため、本文とコメントを JSON で取得する手順を implement-issue・dual-implement に反映した。また `orca` の入口のリンクが使えず、当セッションではアプリ内の CLI を直接呼び出して進めた。システム側のリンクは変更していない。
 
 次に着手できる改善は #12。区切り1の残る機能は #8・#9 の2本で、タップ仕様を確定してから #8、続いて #9 を進める。過去の #1・#4 の対応レポートは今回作成していない。
+
+追記（2026-10-15）: 利用者がマス・キャラの選択、再タップでの解除、別キャラへの選択切り替え、枠と移動範囲の表示、余白タップの挙動を承認した。[spec.md 2.1・2.3](../spec.md) と #8・#9 の受け入れ条件に反映し、上表のタップ仕様の未決事項は解消した。#8 は着手可能、#9 は #8 の完了・main への取り込み待ちとなった。アプリの実装はこれから行う。
 
 ## 9. レポート・手順更新の確認
 
