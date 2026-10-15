@@ -56,5 +56,5 @@ docs/
 | キャラ | `Character` |
 | 味方 / 敵 | `side: 'ally' \| 'enemy'` |
 | 装備の重さ（軽装/中装/重装） | `armor: 'light' \| 'medium' \| 'heavy'` |
-| マス座標 | `Position { x, y }`（左上が 0,0。ラベルでは A1） |
+| マス座標 | `Position { x, y }`（内部は0始まりで左上が `{ x: 0, y: 0 }`。表示は1始まりの `(横, 縦)` で左上が `(1, 1)`） |
 | 移動力 | `movement` |
