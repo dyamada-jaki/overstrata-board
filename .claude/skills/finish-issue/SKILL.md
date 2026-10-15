@@ -25,6 +25,7 @@ argument-hint: <採用するPR番号>
 - **Docker**: worktree の `.env` にある `COMPOSE_PROJECT_NAME`（なければ worktree のフォルダ名）を控える。`docker ps -a` と `docker volume ls` で、そのプロジェクト名のコンテナとボリュームを確かめる
 - **Orca のワーカー**: dual-implement の Run が残っていれば、`orca orchestration worker-list --run <run_id> --terminal-state reclaimable --json` で、片付けていないワーカーのターミナルを確かめる
 - **リモートのブランチ**: 採用した PR のブランチはマージ時に消す。**採らない PR のブランチは残す**（あとでコードを見返せるように）
+- **レポートの材料**: `docs/issue-reports/README.md` を読み、`docs/issue-reports/issue-N.md` に計画・承認・実装・検証・レビューの記録を集める。既存レポートは引き継ぎ、なければ下書きを作る。worktree を消す前に必要な証拠を残し、分からない内容は「記録なし」「未確認」とする
 
 ## 3. 人間に確認する（1回だけ）
 次を一覧で見せて、実行してよいか聞く。
@@ -33,6 +34,7 @@ argument-hint: <採用するPR番号>
 - 閉じる PR と、コメントに書く理由（人間が理由を渡していなければ、dual-implement の報告や PR のレビューから一行で案を出す）
 - 消す worktree・ローカルブランチ・Docker のコンテナとボリューム・ワーカーのターミナル
 - 消さずに残すもの（採らない PR のリモートブランチ、未コミットの変更が見つかったもの、など）
+- 更新して main にコミット・push する記録（next-issues.md と Issue レポート）
 
 ## 4. マージする
 - `gh pr merge P --squash --delete-branch`
@@ -52,9 +54,12 @@ worktree ごとに、次の順で行う。
 
 ## 7. 記録を更新する
 - `docs/next-issues.md` の「現在地」で、この Issue を完了にする（採用した PR と、採らなかった PR を書く）。「次の一手」も実態に合わせる
-- main にコミットして push する。コミットメッセージは `docs: record #N done in next-issues`
+- `docs/issue-reports/issue-N.md` に、採用・不採用の理由、マージ結果、削除・保管した資源、未完了事項と改善候補を追記する。受け入れ条件の判定と PR・CI・レビューへのリンクを確かめ、レポートの状態を実態に合わせる。`docs/issue-reports/README.md` の一覧にもリンクを追加する
+- レポートは完了処理とふりかえりの材料を記録するもの。改善候補は対応状態と戻す先を記し、未実装のものを完了としない
+- 変更した記録をまとめて main にコミットして push する。コミットメッセージは `docs: record #N completion`
 
 ## 8. 人間に報告する
+- 保存した Issue レポートへのリンク
 - やったこと: マージした PR、閉じた Issue と PR、消したもの、残したもの
 - できなかったこと（あれば）と、その理由
 - ふりかえり（⑧）の材料: dual-implement の報告や PR のレビューで出た、仕様の発見・エージェントの傾向・別 Issue にする候補を箇条書きで。どこに戻すか（spec.md / CLAUDE.md・スキル / 新しい Issue）の案も添える
