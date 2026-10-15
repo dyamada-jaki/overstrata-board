@@ -119,14 +119,18 @@ npm run test:e2e -- --project=chromium-mobile
 
 実行ごとに一意な Compose project と `e2e-artifacts/run-*/` を作ります。ホスト向けポートは Docker が空いている番号を loopback に割り当て、コンテナの実際のポートから接続先を取得します。`.env` の開発用 `HOST_PORT` / `COMPOSE_PROJECT_NAME` や起動済みサーバーは再利用しません。同じ worktree 内で並行実行しても出力を上書きしません。
 
-成功・失敗・通常の中断（Ctrl+C）では、その実行のコンテナ・ネットワーク・イメージを削除します。Docker のビルドキャッシュと調査材料は残します。強制終了や Docker 停止により後片付けに失敗した場合だけ、表示された結果ディレクトリを指定して再実行してください。他の worktree の project に対する操作や全体の prune は不要です。
+成功・失敗・通常の中断（Ctrl+C）では、その実行のコンテナ・ネットワーク・イメージを削除します。runner は実行固有の名前で管理し、起動処理と停止・削除の完了を待ってからネットワークとイメージを片付けます。既知の資源の残存や検査の失敗は非ゼロ終了と復旧コマンドで知らせます。Docker のビルドキャッシュと調査材料は残します。強制終了や Docker 停止により後片付けに失敗した場合だけ、表示された結果ディレクトリを指定して再実行してください。他の worktree の project に対する操作や全体の prune は不要です。
 
 ```sh
 # run-XXXXXXXX は実行時に表示されたディレクトリ名に置き換える
 export E2E_ARTIFACT_DIR="$PWD/e2e-artifacts/run-XXXXXXXX"
-docker compose -p "$(cat "$E2E_ARTIFACT_DIR/project.txt")" -f compose.e2e.yaml down --volumes --rmi local
+project=$(cat "$E2E_ARTIFACT_DIR/project.txt")
+docker rm -f "$project-runner" # 存在しない場合は続行
+docker compose -p "$project" -f compose.e2e.yaml down --volumes --rmi local
 unset E2E_ARTIFACT_DIR
 ```
+
+後片付けの回帰テストは `npm run test` に含まれます。Docker CLI の境界を fake に置き換え、起動中の中断、終了コードの伝播、削除・照会の失敗、`down` が成功扱いでも残る資源の検出を確認します。実際の Docker と Chromium の確認は上記 E2E で行います。
 
 #### 結果・失敗の調べ方
 
