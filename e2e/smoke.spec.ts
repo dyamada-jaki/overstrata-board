@@ -16,7 +16,7 @@ test('起動画面の見出しが表示され、未処理の JavaScript 例外�
 
   try {
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Overstrata 戦闘ボード', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '意図的な失敗検証：存在しない見出し', exact: true })).toBeVisible()
     expect(errors, '起動中に未処理の JavaScript 例外が発生していない').toEqual([])
   } finally {
     await testInfo.attach('pageerror', {
