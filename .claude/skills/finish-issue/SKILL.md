@@ -1,13 +1,19 @@
 ---
 name: finish-issue
-description: 採用する PR が決まったあと、マージ・採らない PR を閉じる・worktree や Docker の後片付けまでを行う（workflow.md の⑦）。Claude Code では「/finish-issue 5」、Codex では「finish-issue スキルで PR 5」のように、採用する PR の番号を渡して使う。dual-implement のあとにコーディネーターへ指示する想定。
+description: 採用する PR が決まったあと、マージ・採らない PR を閉じる・worktree や Docker の後片付けまでを行う（workflow.md の⑦）。Claude Code では「/finish-issue 5」、Codex では「$finish-issue 5」のように、採用する PR の番号を渡して使う。dual-implement のあとにコーディネーターへ指示する想定。
 argument-hint: <採用するPR番号>
+disable-model-invocation: true
+model: sonnet
+effort: medium
+allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *)
 ---
 
 # 採用した PR をマージして、後片付けをする
 
 - 以下の `P` は、人間が渡した**採用する PR の番号**（Claude Code では $ARGUMENTS）。渡されていなければ聞く。採らない PR の閉じる理由を人間が添えていれば、それを使う
-- このファイルは Claude Code 用（`.claude/skills/finish-issue/`）と Codex 用（`.agents/skills/finish-issue/`）に同じ内容で置いてある。直すときは両方を直す
+- このスキルの本体は `.claude/skills/finish-issue/`。Codex 用の `.agents/skills/finish-issue` はこのフォルダへのシンボリックリンクなので、直すのはここだけでよい
+- 人間が呼んだときだけ使う（Claude Code は `disable-model-invocation`、Codex は `agents/openai.yaml` で自動の呼び出しを止めている）。Claude Code ではこのスキルのターンは Sonnet で動く。Codex にはスキルごとのモデル指定がないので、コーディネーターのモデルのまま動く
+- 機械的な操作は `bash .claude/skills/finish-issue/scripts/finish.sh <サブコマンド>` で行う（リポジトリのルートで実行）。判断と確認はこのスキルの手順で済ませてから呼ぶ。スクリプトが止まったら、無理に手で続けず人間に伝える
 - 消すものは、必ず中身を見てから消す。手順3で人間の確認を1回だけ取り、そのあとは止まらずに進める
 - ふりかえり（⑧）はしない。最後に、ふりかえりの材料を人間に渡して終わる
 
@@ -41,20 +47,20 @@ argument-hint: <採用するPR番号>
 
 ## 4. マージする
 - マージ直前に head が手順1から変わっていないことと CI を再確認する。変わっていれば手順1のレビュー確認へ戻り、古い証拠のままマージしない
-- `gh pr merge P --squash --delete-branch --match-head-commit <確認済みの SHA>`。head の不一致で拒否された場合は SHA の制約を外さず、再確認する
+- `bash .claude/skills/finish-issue/scripts/finish.sh merge P <確認済みの SHA>`（squash・ブランチ削除・head の SHA の一致を条件にマージ）。head の不一致で拒否された場合は SHA の制約を外さず、再確認する
 - `gh issue view N --json state` で Issue が閉じたことを確かめる。閉じていなければ、`gh issue close N --comment "PR #P でマージ"` で閉じる
 
 ## 5. 採らない PR を閉じる
-- `gh pr close <番号> --comment "<理由>（今回は PR #P を採用）"`。`--delete-branch` は付けない
+- `bash .claude/skills/finish-issue/scripts/finish.sh close-pr <番号> "<理由>（今回は PR #P を採用）"`。リモートのブランチは残る
 
 ## 6. 後片付け
 worktree ごとに、次の順で行う。
-1. Docker を止めて消す: worktree の中で `docker compose -p <プロジェクト名> down -v --remove-orphans`。worktree がすでに無ければ `docker rm` / `docker volume rm` で、手順2で控えた名前のものを消す。Docker を使わなかったレビュー専用 worktree ではこの操作は不要
+1. Docker を止めて消す: `bash .claude/skills/finish-issue/scripts/finish.sh docker-down <プロジェクト名>`（そのプロジェクトのコンテナ・ボリューム・ネットワークを消す。worktree が無くても動く）。Docker を使わなかったレビュー専用 worktree ではこの操作は不要
 2. Orca のワーカーのターミナルを片付ける: 手順2で見つかったものを `orca orchestration worker-release --dispatch <dispatch_id> --json` で片付ける。ワーカーではない、人間が開いたターミナルは閉じない
-3. worktree を消す: `orca worktree rm --worktree path:<path> --json`（Orca と git の両方から消える）。消えるまで少しかかることがあるので、`git worktree list` で消えたことを確かめる
-4. ローカルブランチ: Orca が一緒に消すことが多い。`git branch` に残っていたら、採用した PR のブランチは `git branch -D`、採らない PR のブランチはリモートに残っていることを確かめてから `git branch -D`。レビュー専用ブランチは手順2の SHA・PR への参照・未保存の変更が無いことを確かめたものだけを消す
+3. worktree を消す: `bash .claude/skills/finish-issue/scripts/finish.sh remove-worktree <絶対パス>`（main の worktree と、未コミットの変更がある worktree は消さずに止まる。消えるまで最大30秒待つ）
+4. ローカルブランチ: Orca が一緒に消すことが多い。残っていたら、採用した PR のブランチは `finish.sh delete-branch <ブランチ>`、採らない PR のブランチは `finish.sh delete-branch <ブランチ> --remote-required`（リモートに残っているときだけ消す）。レビュー専用ブランチは手順2の SHA・PR への参照・未保存の変更が無いことを確かめたものだけを消す
 
-最後に main を最新にする: `git checkout main && git pull`
+最後に main を最新にする: `bash .claude/skills/finish-issue/scripts/finish.sh sync-main`
 
 ## 7. 記録を更新する
 - `docs/next-issues.md` の「現在地」で、この Issue を完了にする（採用した PR と、採らなかった PR を書く）。「次の一手」も実態に合わせる

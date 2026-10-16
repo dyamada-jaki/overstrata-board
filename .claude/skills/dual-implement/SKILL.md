@@ -1,7 +1,8 @@
 ---
 name: dual-implement
-description: GitHub Issue を1本、Claude Code と Codex の両方に実装させ、相互レビューと対象 Issue の独立した品質レビューを経て、結果と一次判断を人間に見せる（workflow.md の③〜⑥）。Claude Code では「/dual-implement 4」、Codex では「dual-implement スキルで Issue 4」のように Issue 番号を渡して使う。Orca のターミナルから実行する。
+description: GitHub Issue を1本、Claude Code と Codex の両方に実装させ、相互レビューと対象 Issue の独立した品質レビューを経て、結果と一次判断を人間に見せる（workflow.md の③〜⑥）。Claude Code では「/dual-implement 4」、Codex では「$dual-implement 4」のように Issue 番号を渡して使う。Orca のターミナルから実行する。
 argument-hint: <Issue番号>
+disable-model-invocation: true
 ---
 
 # Issue を Claude Code と Codex で並行して実装し、相互レビューする
@@ -10,11 +11,18 @@ argument-hint: <Issue番号>
 流れの背景は `docs/workflow.md`（③着手〜⑥レビュー、ステップ6の「2つのエージェントで作らせて比べる」）にある。
 
 - 以下の `N` は、人間が渡した Issue 番号（Claude Code では $ARGUMENTS）。渡されていなければ聞く
-- このファイルは Claude Code 用（`.claude/skills/dual-implement/`）と Codex 用（`.agents/skills/dual-implement/`）に同じ内容で置いてある（Codex はシンボリックリンクを読まないため）。直すときは両方を直す。どちらがコーディネーターでも、実装ワーカーは Claude Code と Codex の1つずつ。レビューは手順6の分担にする
+- このスキルの本体は `.claude/skills/dual-implement/`。Codex 用の `.agents/skills/dual-implement` はこのフォルダへのシンボリックリンクなので、直すのはここだけでよい。どちらがコーディネーターでも、ワーカーは Claude Code と Codex の1つずつ
+- 人間が呼んだときだけ使う（Claude Code は `disable-model-invocation`、Codex は `agents/openai.yaml` で自動の呼び出しを止めている）
 - `orca` コマンドは Orca のターミナルの中で使う。最初に `orca skills get orchestration` を読み、そこに書かれた安全のルール（完了の証拠がないワーカーを止めない・二重に起動しない、など）に従う
 - **マージ（⑦）はしない。** 人間が判断する
 - 人間に聞く場面は2回だけ: 手順4（計画承認）と手順7（最終報告）。それ以外は止まらずに進める
 - 待つときは `orca orchestration check --wait --timeout-ms 60000` を繰り返す。時間切れは失敗ではない。進捗を伝えながら待ち続ける
+
+## モデルの指定
+- **実装ワーカー**: `--model` を付けない。各ツールの既定を使う（Claude Code は既定の Opus 5.5・effort medium、Codex は `~/.codex/config.toml` の `gpt-6.1-sol`・high）。既定はスキルではなく各ツールの設定で管理する
+- **レビュー（相互・品質）**: Claude Code は `--model opus --effort high`、Codex は `--model gpt-6.1-sol --effort high` を付ける（両社とも、ロジックを追うレビューは high を勧めている）
+- 人間が別のモデルや effort を指定したら、それに従う。Codex の `ultra` は使わない（自動で仕事を分けるため、コストが読めない）
+- `worker-start --json` の結果にある `launch.requested` と `launch.effective` を、ワーカーごとに控える。報告とレポートには、実際に使われた `launch.effective` のモデルと effort を書く（要求した値だけで書かない）。両者が違えば報告で知らせる
 
 ## 1. 事前確認
 - `gh issue view N --json title,body,comments` で目的・受け入れ条件・スコープ外を読む
@@ -90,9 +98,9 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
 
 ```
 orca orchestration worker-start --spec "<下のレビュー用の指示>" --task-title "#N レビュー（Claude Code → Codex の PR）" \
-  --worktree path:<issue-N-codex の worktree の絶対パス> --agent claude --json
+  --worktree path:<issue-N-codex の worktree の絶対パス> --agent claude --model opus --effort high --json
 orca orchestration worker-start --spec "<下のレビュー用の指示>" --task-title "#N レビュー（Codex → Claude Code の PR）" \
-  --worktree path:<issue-N-claude の worktree の絶対パス> --agent codex --json
+  --worktree path:<issue-N-claude の worktree の絶対パス> --agent codex --model gpt-6.1-sol --effort high --json
 ```
 
 ### 相互レビュー用の指示（`--spec` に入れる）
@@ -122,7 +130,7 @@ PR ごとに新しいセッションと専用 worktree を作り、空き枠の�
 ```
 orca orchestration worker-start --spec "<下の品質レビュー用の指示>" --task-title "#N 品質レビュー（PR #<P>）" \
   --worktree new-top-level --repo path:<このリポジトリの絶対パス> --base-branch <対象 PR の headRefName> \
-  --name issue-N-quality-pr-P --setup skip --agent <claude|codex> --json
+  --name issue-N-quality-pr-P --setup skip --agent <claude|codex> --model <opus|gpt-6.1-sol> --effort high --json
 ```
 
 - Claude Code の実装 PR は新しい Claude Code セッション、Codex の実装 PR は新しい Codex セッションで品質レビューする。既存の相互レビューは相手側のエージェントが担当する
@@ -154,7 +162,7 @@ orca orchestration worker-start --spec "<下の品質レビュー用の指示>" 
 品質レビューを行った場合は、相互レビューと区別してコメント・対象 SHA・独自に見つかった有効な指摘・誤検出と除外理由・所要時間を残す。同時実行した各担当の時間と、全体の終了までに増えた待ち時間を区別し、測れなかったものは「記録なし」とする。レビュー専用 worktree・ローカルブランチ・Docker 資源の一覧も記録する。
 
 報告の形（日本語）:
-1. **概要**: 2つの PR の番号・URL・CI の結果
+1. **概要**: 2つの PR の番号・URL・CI の結果。各ワーカー（実装・レビュー）が実際に使ったモデルと effort（`launch.effective`）
 2. **受け入れ条件の表**: 行が受け入れ条件、列が2つの PR。○ / × / ？ と一言。画面での確認は「エージェントが Orca のブラウザで確認済み / 未確認（理由）」を分けて書く
 3. **確認できた指摘**: PR ごとに、重さ順。誤りだった指摘は「除外した理由」と一緒に短く
 4. **spec.md との関係**: 仕様の抜けや食い違いが見つかったら、spec.md に戻す候補として書く

@@ -7,7 +7,7 @@ argument-hint: <Issue番号>
 # Issue を実装する
 
 - 以下の `N` は、人間が渡した Issue 番号（Claude Code では $ARGUMENTS）。渡されていなければ聞く
-- このファイルは Claude Code 用（`.claude/skills/implement-issue/`）と Codex 用（`.agents/skills/implement-issue/`）に同じ内容で置いてある。直すときは両方を直す
+- このスキルの本体は `.claude/skills/implement-issue/`。Codex 用の `.agents/skills/implement-issue` はこのフォルダへのシンボリックリンクなので、直すのはここだけでよい
 
 次の5手順を順番に行う。手順3で承認をもらうまで、コードを書かない。
 
