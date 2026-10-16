@@ -12,6 +12,7 @@ allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *)
 
 - 以下の `P` は、人間が渡した**採用する PR の番号**（Claude Code では $ARGUMENTS）。渡されていなければ聞く。採らない PR の閉じる理由を人間が添えていれば、それを使う
 - このスキルの本体は `.claude/skills/finish-issue/`。Codex 用の `.agents/skills/finish-issue` はこのフォルダへのシンボリックリンクなので、直すのはここだけでよい
+- プロジェクト固有の値（リポジトリ・確認コマンド・ポート・画面確認の幅など）は、CLAUDE.md（Codex では AGENTS.md）の「開発設定」から読む。このスキルには直接書かない
 - 人間が呼んだときだけ使う（Claude Code は `disable-model-invocation`、Codex は `agents/openai.yaml` で自動の呼び出しを止めている）。Claude Code ではこのスキルのターンは Sonnet で動く。Codex にはスキルごとのモデル指定がないので、コーディネーターのモデルのまま動く
 - 機械的な操作は `bash .claude/skills/finish-issue/scripts/finish.sh <サブコマンド>` で行う（リポジトリのルートで実行）。判断と確認はこのスキルの手順で済ませてから呼ぶ。スクリプトが止まったら、無理に手で続けず人間に伝える
 - 消すものは、必ず中身を見てから消す。手順3で人間の確認を1回だけ取り、そのあとは止まらずに進める
@@ -38,7 +39,7 @@ allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *)
 
 ## 3. 人間に確認する（1回だけ）
 次を一覧で見せて、実行してよいか聞く。
-- マージする PR（番号・タイトル・方式は squash）と、閉じる Issue
+- マージする PR（番号・タイトル・方式は CLAUDE.md（AGENTS.md）の「開発設定」のマージ方式）と、閉じる Issue
 - 画面を含む Issue なら、実機確認の記録の有無
 - 閉じる PR と、コメントに書く理由（人間が理由を渡していなければ、dual-implement の報告や PR のレビューから一行で案を出す）
 - 消す worktree・ローカルブランチ・Docker のコンテナとボリューム・ワーカーのターミナル

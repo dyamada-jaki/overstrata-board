@@ -12,6 +12,7 @@ disable-model-invocation: true
 
 - 以下の `N` は、人間が渡した Issue 番号（Claude Code では $ARGUMENTS）。渡されていなければ聞く
 - このスキルの本体は `.claude/skills/dual-implement/`。Codex 用の `.agents/skills/dual-implement` はこのフォルダへのシンボリックリンクなので、直すのはここだけでよい。どちらがコーディネーターでも、ワーカーは Claude Code と Codex の1つずつ
+- プロジェクト固有の値（リポジトリ・確認コマンド・ポート・画面確認の幅など）は、CLAUDE.md（Codex では AGENTS.md）の「開発設定」から読む。このスキルには直接書かない
 - 人間が呼んだときだけ使う（Claude Code は `disable-model-invocation`、Codex は `agents/openai.yaml` で自動の呼び出しを止めている）
 - `orca` コマンドは Orca のターミナルの中で使う。最初に `orca skills get orchestration` を読み、そこに書かれた安全のルール（完了の証拠がないワーカーを止めない・二重に起動しない、など）に従う
 - **マージ（⑦）はしない。** 人間が判断する
@@ -56,16 +57,16 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
 
 ### 実装用の指示（`--spec` に入れる。<…> は埋める）
 ```
-対象: GitHub Issue #N（dyamada-jaki/overstrata-board）。この worktree の中だけで作業する。
+対象: GitHub Issue #N（リポジトリは CLAUDE.md（AGENTS.md）の「開発設定」）。この worktree の中だけで作業する。
 やること: <.claude または .agents>/skills/implement-issue/SKILL.md の5手順と docs/testing.md に従って Issue #N を実装し、PR を作る。ただし次の点だけ手順を置き換える。
 - 最初に、worktree の直下に .env を作る（コミットしない）: HOST_PORT=<ポート> と COMPOSE_PROJECT_NAME=issue-N-<claude|codex>
 - 手順3の計画は、人間に直接聞かず、指示文の先頭に付いている ask コマンド（orca orchestration ask）で、計画の全文を質問として送る。返事が来るまで実装を始めない。返事に修正の指示があれば従う。ask が時間切れになったら、同じ message ID で --resume して待ち続ける（勝手に進めない）
 - 手順5の PR のタイトルの先頭に「[<Claude Code|Codex>]」を付ける。PR 本文の先頭に「作成: <Claude Code|Codex>」と書く
 守ること: CLAUDE.md（AGENTS.md）の「守ること」。Issue のスコープ外はやらない。main に直接 push しない。
-画面を含む Issue では、implement-issue の手順4に従って Orca のブラウザで幅375pxと PC 幅の画面を確かめ、手順5の形で PR に書く。開発サーバーは自分の .env のポートで起動し、確認が終わったら止める。スマホ実機での確認はしない（レビュー時に人間が行う）。
-完了の条件: PR ができていて、npm run test / typecheck / lint / build と、導入済みで対象となる E2E がすべて通っている。画面を含む場合は、画面確認の結果（または確かめられなかった理由）が PR にある。worker_done の要約に PR の URL と head の SHA を書く。
+画面を含む Issue では、implement-issue の手順4に従って Orca のブラウザで「開発設定」の画面確認の幅（スマホ幅と PC 幅）を確かめ、手順5の形で PR に書く。開発サーバーは自分の .env のポートで起動し、確認が終わったら止める。スマホ実機での確認はしない（レビュー時に人間が行う）。
+完了の条件: PR ができていて、「開発設定」の確認コマンドと、導入済みで対象となる E2E がすべて通っている。画面を含む場合は、画面確認の結果（または確かめられなかった理由）が PR にある。worker_done の要約に PR の URL と head の SHA を書く。
 ```
-- ポートは Claude Code が `5181`、Codex が `5182` を使う（main の開発サーバーの `5173` とぶつけない）
+- ポートは CLAUDE.md（AGENTS.md）の「開発設定」の「実装（Claude Code）」「実装（Codex）」を使う（main の開発サーバーのポートとぶつけない）
 
 ## 4. 計画を人間に見せて承認をもらう（④ 関所）
 - `check --wait --types question,worker_done,escalation` で、2つのワーカーから計画（question）が届くのを待つ
@@ -105,7 +106,7 @@ orca orchestration worker-start --spec "<下のレビュー用の指示>" --task
 
 ### 相互レビュー用の指示（`--spec` に入れる）
 ```
-対象: PR #<番号>（dyamada-jaki/overstrata-board）。Issue #N、head SHA <SHA>。
+対象: PR #<番号>（リポジトリは CLAUDE.md（AGENTS.md）の「開発設定」）。Issue #N、head SHA <SHA>。
 やること: docs/testing.md の相互レビューを行う。ソース・設定・テストは編集しない・コミットしない・push しない。HEAD が指定 SHA と一致し、未コミットの変更がないことを確認してから始める。他者のレビュー結論を読む前に自分の結果をまとめる。
 見ること:
 - Issue #N の受け入れ条件を1つずつ満たしているか（gh issue view N）
@@ -113,8 +114,8 @@ orca orchestration worker-start --spec "<下のレビュー用の指示>" --task
 - PR の説明・差分に加え、実コードとテスト、関連する呼び出し元・依存先・既存テストを読んで影響を確かめる
 - バグ、壊れやすい作り、スコープ外の変更、不要な依存の追加
 - PR 本文の「確認したいこと」が正直に書かれているか
-- 画面を含む場合: PR に書かれた環境・画面幅・操作・結果が具体的か。implement-issue の手順4に従い、自分でも幅375pxとPCで変更に関係する主要操作を確かめる。DOM テストだけで画面確認済みとしない。ブラウザのタブは自分で開いたものだけを使う
-検証: npm run test / typecheck / lint / build と、導入済みで対象となる E2E を指定 SHA で再実行する。.env はすでにある。既存のコンテナは止めず、自分で起動したものだけを片付ける。環境上できない項目は理由と未確認範囲を記し、CI・実装者の報告・自分の再確認を区別する。
+- 画面を含む場合: PR に書かれた環境・画面幅・操作・結果が具体的か。implement-issue の手順4に従い、自分でも「開発設定」の画面確認の幅（スマホ幅と PC 幅）で変更に関係する主要操作を確かめる。DOM テストだけで画面確認済みとしない。ブラウザのタブは自分で開いたものだけを使う
+検証: 「開発設定」の確認コマンドと、導入済みで対象となる E2E を指定 SHA で再実行する。.env はすでにある。既存のコンテナは止めず、自分で起動したものだけを片付ける。環境上できない項目は理由と未確認範囲を記し、CI・実装者の報告・自分の再確認を区別する。
 出力: レビュー結果を gh pr comment <番号> --body-file <ファイル> で PR にコメントする。ファイルは worktree の外（/tmp など）に書く。先頭に「相互レビュー: <Claude Code|Codex>」と対象 SHA を書く。中身は次の形:
 - 受け入れ条件ごとの判定（満たす / 満たさない / 確かめられない）と根拠
 - 読んだ周辺コードの範囲と検証結果。自分で実行したこと、他者の証拠、未確認の範囲を分ける
@@ -136,11 +137,11 @@ orca orchestration worker-start --spec "<下の品質レビュー用の指示>" 
 - Claude Code の実装 PR は新しい Claude Code セッション、Codex の実装 PR は新しい Codex セッションで品質レビューする。既存の相互レビューは相手側のエージェントが担当する
 - `--base-branch` は手順6.1で対象 SHA と一致を確認した実装ブランチを使う。新しい worktree の HEAD も対象 SHA と照合する。起動後のパスと新しいローカルブランチ名を必ず控える。このブランチは push しない
 - 静的な確認から始めるため、自動セットアップは `--setup skip` で省く。実行環境が必要になった場合だけ、品質担当が自身の作業場所に用意する
-- 品質担当は原則として静的な確認を担う。実行が必要な場合は自分の作業場所だけを使い、Docker が必要なら `.env` に専用のポート（5183 / 5184）と `COMPOSE_PROJECT_NAME=issue-N-quality-pr-P` を指定する。ポートの空きを確認し、使用中なら未使用の番号を選んで記録する
+- 品質担当は原則として静的な確認を担う。実行が必要な場合は自分の作業場所だけを使い、Docker が必要なら `.env` に専用のポート（CLAUDE.md（AGENTS.md）の「開発設定」の「品質レビュー」）と `COMPOSE_PROJECT_NAME=issue-N-quality-pr-P` を指定する。ポートの空きを確認し、使用中なら未使用の番号を選んで記録する
 
 ### 品質レビュー用の指示（`--spec` に入れる）
 ```
-対象: PR #<番号>（dyamada-jaki/overstrata-board）。Issue #N、head SHA <SHA>。この品質レビュー専用 worktree だけを使う。
+対象: PR #<番号>（リポジトリは CLAUDE.md（AGENTS.md）の「開発設定」）。Issue #N、head SHA <SHA>。この品質レビュー専用 worktree だけを使う。
 やること: docs/testing.md の品質レビューを行う。Issue と spec.md を読んでから、差分、実コード・テスト、関連する呼び出し元と依存先を確認する。HEAD が指定 SHA と一致し、未コミットの変更がないことを確認してから始める。実装セッションの結論や他者のレビューには頼らず、他のレビューコメントを読む前に自分の結果をまとめる。
 重点: 責務の分け方、状態の重複・同期、依存の向き、型と境界、過剰な抽象化、変更のしやすさ。テストは実物を組み合わせているか、仕様から期待値が決まり、もっともらしい誤りを検出できるか、モックや snapshot で実際の結合を隠していないかを見る。
 制約: ソース・設定・テストは編集せず、コミット・push しない。相互レビューのコマンド実行を一律に重複させる必要はない。実行が必要なら専用 worktree を使い、Docker は指定された専用のポート <ポート> とプロジェクト名 <プロジェクト名> で起動する（未追跡の .env だけは作ってよい）。他の worktree・コンテナ・ブラウザのタブを操作しない。具体的な影響のない好みや推測上の将来要件を理由に、修正を必須にしない。

@@ -33,6 +33,21 @@ docs/
   testing.md   テストとレビューの方針
 ```
 
+## 開発設定（スキルが参照する値）
+`.claude/skills/` のスキルは、プロジェクト固有の値をここから読む。値を変えるときはここだけを直す。
+
+| 項目 | 値 |
+|---|---|
+| リポジトリ | `dyamada-jaki/overstrata-board`（既定ブランチ `main`） |
+| 確認コマンド | `npm run test` / `npm run typecheck` / `npm run lint` / `npm run build` |
+| E2E | `npm run test:e2e`（導入済みで、対象となる場合） |
+| 開発サーバー | `docker compose up -d`。worktree ごとに `.env` の `HOST_PORT`（ホスト側のポート）と `COMPOSE_PROJECT_NAME` で分ける |
+| ポート | main: `5173` / 実装（Claude Code）: `5181` / 実装（Codex）: `5182` / 品質レビュー: `5183`・`5184` |
+| 画面確認の幅 | スマホ縦 `375px`（Orca のブラウザで端末を指定）と PC 幅 |
+| マージ方式 | squash（`finish-issue/scripts/finish.sh` で固定） |
+| 仕様・方針 | `docs/spec.md` / `docs/testing.md` / `docs/workflow.md` |
+| 記録 | `docs/next-issues.md`（現在地）/ `docs/issue-reports/`（Issue レポート） |
+
 ## 守ること
 1. **ルール計算は `src/domain/` の純粋関数に書く**。UI の中に計算を書かない
 2. **`src/domain/` の関数には必ずテストを書く**。計画・実装・レビューでは [docs/testing.md](docs/testing.md) に従う（期待結果を仕様から決める、細かな TDD は任意、モックは必要な境界だけ）

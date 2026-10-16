@@ -8,6 +8,7 @@ argument-hint: <Issue番号>
 
 - 以下の `N` は、人間が渡した Issue 番号（Claude Code では $ARGUMENTS）。渡されていなければ聞く
 - このスキルの本体は `.claude/skills/implement-issue/`。Codex 用の `.agents/skills/implement-issue` はこのフォルダへのシンボリックリンクなので、直すのはここだけでよい
+- プロジェクト固有の値（リポジトリ・確認コマンド・ポート・画面確認の幅など）は、CLAUDE.md（Codex では AGENTS.md）の「開発設定」から読む。このスキルには直接書かない
 
 次の5手順を順番に行う。手順3で承認をもらうまで、コードを書かない。
 
@@ -18,7 +19,7 @@ argument-hint: <Issue番号>
 
 ## 2. 仕様を読む
 - `docs/spec.md` のうち、Issue がリンクしている箇所を読む。画面を含む Issue では「2.4 画面の前提」も読む
-- `CLAUDE.md`（Codex では `AGENTS.md`）の「守ること」を確認する
+- `CLAUDE.md`（Codex では `AGENTS.md`）の「守ること」と「開発設定」を確認する
 - `docs/testing.md` を読み、テストの分担・TDD・モック・検証の証拠の方針を確認する
 
 ## 3. 実装計画を出して、承認を待つ
@@ -37,12 +38,12 @@ spec.md に書かれていないルールを決めないと進めない場合は
 ## 4. 実装して確かめる
 - 承認された計画どおりに実装する。スコープ外のことはしない
 - 細かな TDD は任意。不具合修正は原則として再現テストの失敗を先に確かめる。期待値の変更には仕様上の根拠を残す（自動化できない場合の扱いも `docs/testing.md` に従う）
-- `npm run test` / `npm run typecheck` / `npm run lint` / `npm run build` がすべて通るまで直す
+- CLAUDE.md（AGENTS.md）の「開発設定」の確認コマンドがすべて通るまで直す
 - E2E が導入済みで変更の対象となる場合は、README にあるコマンドで実行する。未導入なら存在しないコマンドを要求しない。画面を含む変更では、RTL と実際の画面確認の結果、E2E 化の残作業を記録する
 - 画面を含む場合は、テストとは別に、**実際の画面**で表示と操作を確かめる（spec.md 2.4。DOM のテストだけで「画面確認済み」としない）
-  1. 開発サーバーを起動する（`docker compose up -d`。ポートは `.env` の `HOST_PORT`）
+  1. 「開発設定」の開発サーバーを起動する（ポートは `.env` の `HOST_PORT`）
   2. Orca のブラウザで開く: `orca tab create --url http://localhost:<ポート> --json`。操作の仕方は `orca skills get orca-cli --reference references/browser.md` を読む
-  3. スマホ幅にする: `orca set device --name "iPhone SE" --json` などで幅375pxの端末を指定し、`orca eval --expression "window.innerWidth" --json` で幅が375であることを確かめる。375にできなければ、実際の幅を記録する
+  3. スマホ幅にする: 「開発設定」の画面確認の幅に合う端末を `orca set device --name "iPhone SE" --json` などで指定し、`orca eval --expression "window.innerWidth" --json` で幅を確かめる。その幅にできなければ、実際の幅を記録する
   4. Issue の受け入れ条件にある操作（タップ・選択・移動など）を `orca snapshot` と `orca click` で行い、`orca screenshot` で結果を見る。横スクロールが出ないことも確かめる
   5. PC 幅でも崩れないことを確かめる
   6. 確認が終わったら `docker compose down` で止める
