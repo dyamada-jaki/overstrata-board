@@ -24,6 +24,22 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  e2e:
+    name: Chromium E2E（375px・1280px）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/e2e.sh --docker
+      - name: レポート・trace・ログを保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ github.run_id }}-${{ github.run_attempt }}
+          path: e2e-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
   image:
     name: 本番用イメージのビルド
     runs-on: ubuntu-latest
