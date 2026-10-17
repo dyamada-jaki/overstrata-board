@@ -78,7 +78,7 @@ export function checkVersions(installed) {
     errors.push(`vitest は 5 系のはずが ${installed.vitest ?? '未導入'}`)
   }
   if (errors.length > 0) {
-    throw new Error(`互換処理の前提と版が違います。README の「互換処理を外す手順」を確認してください:\n${errors.join('\n')}`)
+    throw new Error(`互換処理の前提と版が違います。README の「Stryker の互換処理と外す手順」を確認してください:\n${errors.join('\n')}`)
   }
 }
 
