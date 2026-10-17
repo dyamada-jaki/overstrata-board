@@ -13,7 +13,8 @@
     "test": "vitest run && node --test scripts/e2e-cleanup.test.mjs scripts/mutation-report.test.mjs scripts/stryker-compat.test.mjs",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
-    "test:e2e": "sh scripts/e2e.sh"
+    "test:e2e": "sh scripts/e2e.sh",
+    "test:mutation": "node scripts/mutation.mjs"
   },
   "dependencies": {
     "react": "^19.3.0",
