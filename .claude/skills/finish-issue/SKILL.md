@@ -5,7 +5,7 @@ argument-hint: <採用するPR番号>
 disable-model-invocation: true
 model: sonnet
 effort: medium
-allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *) Bash(bash .claude/skills/dual-implement/scripts/dev-team.sh *)
+allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *), Bash(bash .claude/skills/dual-implement/scripts/dev-team.sh *)
 ---
 
 # 採用した PR をマージし、ふりかえりを改善へ反映する
