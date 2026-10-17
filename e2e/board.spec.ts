@@ -10,7 +10,25 @@ test('盤面全体を表示し、マスの選択・維持・切替・解除が�
     await expect(axisLabels).toHaveText(labels)
     // マスが収まっていても、ラベルだけが左や上にはみ出す回帰を検出する。
     for (let index = 0; index < labels.length; index += 1) {
-      await expect(axisLabels.nth(index)).toBeInViewport({ ratio: 1 })
+      const label = axisLabels.nth(index)
+      try {
+        await expect(label, `${axis}のラベル「${labels[index]}」が全体表示される`)
+          .toBeInViewport({ ratio: 1 })
+      } catch (error) {
+        // 四辺を独自判定せず、失敗時の実測値だけを診断用に添える。
+        await testInfo.attach(`${axis}のラベル${labels[index]}の表示位置`, {
+          body: JSON.stringify({
+            axis,
+            label: labels[index],
+            ...await label.evaluate((element) => ({
+              rect: element.getBoundingClientRect().toJSON(),
+              viewport: { width: window.innerWidth, height: window.innerHeight },
+            })),
+          }, null, 2),
+          contentType: 'application/json',
+        })
+        throw error
+      }
     }
   }
   await expect(cells.first()).toHaveAccessibleName('マス (1, 1)')
