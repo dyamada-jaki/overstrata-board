@@ -16,6 +16,25 @@ test('盤面全体を表示し、マスの選択・維持・切替・解除が�
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     page.viewportSize()!.width,
   )
+  // 座標ラベル自身も上下左右とも画面内にある（左・上へのはみ出しは横スクロールでは分からない）。
+  const { width: viewportWidth, height: viewportHeight } = page.viewportSize()!
+  for (const axis of ['横の座標', '縦の座標']) {
+    const axisLabels = page.getByRole('group', { name: axis }).locator('span')
+    await expect(axisLabels.first()).toBeInViewport({ ratio: 1 })
+    await expect(axisLabels.last()).toBeInViewport({ ratio: 1 })
+    const boxes = await axisLabels.evaluateAll((elements) => elements.map((element) => {
+      const { left, top, right, bottom } = element.getBoundingClientRect()
+      return { label: element.textContent, left, top, right, bottom }
+    }))
+    expect(boxes).toHaveLength(10)
+    for (const box of boxes) {
+      const message = `${axis} ${box.label}: ${JSON.stringify(box)}`
+      expect(box.left, message).toBeGreaterThanOrEqual(0)
+      expect(box.top, message).toBeGreaterThanOrEqual(0)
+      expect(box.right, message).toBeLessThanOrEqual(viewportWidth)
+      expect(box.bottom, message).toBeLessThanOrEqual(viewportHeight)
+    }
+  }
   const shapes = await cells.evaluateAll((elements) => elements.map((element) => {
     const { width, height } = element.getBoundingClientRect()
     return { width, height }

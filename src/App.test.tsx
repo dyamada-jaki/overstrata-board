@@ -43,6 +43,39 @@ describe('App', () => {
     expect(screen.queryAllByRole('button', { pressed: true })).toHaveLength(0)
   })
 
+  it('同じマスを選択→再タップで解除→もう一度タップで再選択できる', () => {
+    render(<App />)
+    const target = screen.getByRole('button', { name: 'マス (3, 4)' })
+
+    fireEvent.click(target)
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([target])
+    fireEvent.click(target)
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([])
+    fireEvent.click(target)
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([target])
+  })
+
+  it('マス選択中に列ラベル・行ラベル・盤面外の余白を押しても選択は変わらない', () => {
+    render(<App />)
+    const target = screen.getByRole('button', { name: 'マス (3, 4)' })
+    const columns = screen.getByRole('group', { name: '横の座標' })
+    const rows = screen.getByRole('group', { name: '縦の座標' })
+    fireEvent.click(target)
+
+    // 選択中のマスと同じ列・行のラベルも含め、押すたびに直後の選択を確かめる。
+    for (const outside of [
+      within(columns).getByText('3'),
+      within(columns).getByText('1'),
+      within(rows).getByText('4'),
+      within(rows).getByText('1'),
+      screen.getByRole('main'),
+      document.body,
+    ]) {
+      fireEvent.click(outside)
+      expect(screen.queryAllByRole('button', { pressed: true })).toEqual([target])
+    }
+  })
+
   it('3列2行の設定では6マスと対応する座標ラベルを表示する', () => {
     render(<Board size={{ width: 3, height: 2 }} />)
     expect(screen.getAllByRole('button').map((cell) => cell.getAttribute('aria-label')))
