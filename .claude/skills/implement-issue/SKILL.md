@@ -52,7 +52,7 @@ spec.md に書かれていないルールを決めないと進めない場合は
   1. 「開発設定」の開発サーバーを起動する（ポートは `.env` の `HOST_PORT`）
   2. Orca のブラウザで開く: `orca tab create --url http://localhost:<ポート> --json`。操作の仕方は `orca skills get orca-cli --reference references/browser.md` を読む
   3. 「開発設定」のスマホ幅にする。使用中の Orca のヘルプで端末プリセットを確認し、利用できなければ `orca exec --command "set viewport <幅> <高さ>" --json` で幅を指定する。`orca eval --expression "({ width: window.innerWidth, height: window.innerHeight })" --json` で実際の寸法を確かめる。確認対象のタブを維持し、マウス操作・タッチのエミュレーション・実機を区別して記録する。指定幅にできなければ、実際の幅と未確認項目を残す
-  4. Issue の受け入れ条件にある操作（タップ・選択・移動など）を `orca snapshot` と `orca click` で行い、`orca screenshot` で結果を見る。横スクロールが出ないことも確かめる
+  4. Issue の受け入れ条件にある操作（タップ・選択・移動など）を `orca snapshot` と `orca click` で行い、操作直後の表示・選択状態を確認する。成功応答でも画面へ入力が届かない場合があるため、反応が不明なら対象タブとイベントの到達を確かめ、現在のヘルプにある別の入力方法（マウス操作など）を試す。`orca screenshot` で見た目と横スクロールの有無も確かめる
   5. PC 幅でも崩れないことを確かめる
   6. 確認が終わったら `docker compose down` で止める
   - Orca のブラウザが使えないなど、確かめられなかったときは、その理由と未確認の項目を記録して先に進む（手順5で PR に書く）
