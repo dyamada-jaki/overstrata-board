@@ -52,3 +52,29 @@ jobs:
           target: prod
           push: false
           tags: overstrata-board:ci
+
+  mutation:
+    name: ミューテーション（Stryker・Vitest）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run test:mutation
+      - name: 変異レポート・実行記録・失敗ログを保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            mutation-artifacts/**/mutation.html
+            mutation-artifacts/**/mutation.json
+            mutation-artifacts/**/run.log
+            mutation-artifacts/**/run.json
+            mutation-artifacts/**/config.json
+          if-no-files-found: error
+          retention-days: 14

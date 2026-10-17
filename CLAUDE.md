@@ -11,11 +11,12 @@ TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）�
 - 実行環境: 開発も本番も Docker コンテナで動かす（→ spec.md 1章「実行環境」）
 
 ## コマンド
-雛形ができたら有効になる。
+
 - `docker compose up` — コンテナで開発サーバーを起動
 - 下の npm コマンドは、コンテナの中でもホストでも同じように動くこと
 - `npm run dev` — 開発サーバー
 - `npm run test` — テスト（Vitest）
+- `npm run test:mutation` — ミューテーション（対象・互換処理・結果の分類は README / testing.md 7章）
 - `npm run test:e2e` — Chromium E2E（初回準備・Docker 実行は README を参照）
 - `npm run typecheck` — 型チェック
 - `npm run lint` — Lint
@@ -40,6 +41,7 @@ docs/
 |---|---|
 | リポジトリ | `dyamada-jaki/overstrata-board`（既定ブランチ `main`） |
 | 確認コマンド | `npm run test` / `npm run typecheck` / `npm run lint` / `npm run build` |
+| ミューテーション | `npm run test:mutation`（対象コード・テスト・実行設定を変えた場合。通常テスト成功後、初期対象全体を実行して状態別結果を確認） |
 | E2E | `npm run test:e2e`（導入済みで、対象となる場合） |
 | 開発サーバー | `docker compose up -d`。worktree ごとに `.env` の `HOST_PORT`（ホスト側のポート）と `COMPOSE_PROJECT_NAME` で分ける |
 | ポート | main: `5173` / 実装（Claude Code）: `5181` / 実装（Codex）: `5182` / 品質レビュー: `5183`・`5184` |
@@ -66,6 +68,7 @@ docs/
 - Issue の受け入れ条件をすべて満たす
 - `npm run test` / `npm run typecheck` / `npm run lint` / `npm run build` がすべて通る
 - E2E 導入後は対象となる E2E も通る。未導入時の扱いとレビューの分担は [docs/testing.md](docs/testing.md) を参照する
+- 対象変更ではミューテーションも実行し、対象SHA・範囲・状態別結果・未検出の判断と対応先を残す（README / testing.md 7章）
 - PR 本文に「何をしたか」「どう確認したか」「確認したいこと」を書く
 
 ## 用語

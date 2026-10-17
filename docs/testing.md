@@ -109,7 +109,9 @@ E2E は実際のアプリと domain 処理を使う。要素は role や表示�
 
 ## 7. ミューテーションテスト
 
-2026-10-17に採用方針を整理した。**実行基盤は未導入**。[#19](https://github.com/dyamada-jaki/overstrata-board/issues/19)でStrykerJSのVitest連携を導入し、mainへ取り込んでから以下の実行・レビューを運用する。導入前のIssueに存在しないコマンドを要求せず、未実施と導入Issueへの参照を残す。
+[#19](https://github.com/dyamada-jaki/overstrata-board/issues/19)でStrykerJS 10.0.0のVitest連携を導入した。ホストと開発コンテナで `npm run test:mutation` を使う（[README](../README.md#ミューテーションstrykerjs)）。入口は版・SHA256を確認する暫定互換処理、通常テスト、変異前の初期実行、全対象の変異検証、結果ガードを含む。各実行のHTML/JSON・ログ・設定・版・所要時間は `mutation-artifacts/run-*/` に保存する。CIも独立ジョブで同じ入口を使い、失敗時もartifactを保存する。
+
+Vitest 5の名前filter不一致と、`as const`内の実行式が消える上流不具合を限定修正している。版・内容の不一致、空の対象、対象ファイルの欠落、coveredByがあるのに0テストでSurvivedとなる結果は、テスト不足と分類せず非ゼロ終了する。依存更新時にはREADMEの解除条件に従い、実際の変異位置と実行テストを再確認する。設定/依存の導入自体は1章のテスト先行対象外だが、ガードと互換処理には先行テストを置き、実CLIの成功/失敗も確認する。
 
 ### 目的と対象
 

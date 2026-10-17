@@ -172,3 +172,66 @@ PR を作ったときと main への push のときに、GitHub Actions（`.gith
 - テスト・型チェック・Lint・ビルド
 - 本番用イメージのビルド
 - Docker で Chromium E2E（幅375px・1280px）。失敗は CI の失敗となり、Actions の実行ページから `e2e-<run ID>-<attempt>` artifact を取得できます（保存14日）
+
+### ミューテーション（StrykerJS）
+
+既存のVitest・React Testing Libraryが、比較や条件式を誤って変えたコードを検出できるか確認します。アプリの部品・状態・domainを実物で組み合わせるテストを使い、Playwrightは変異ごとには起動しません。
+
+```sh
+# Node 24。初回・lock更新時は npm ci
+npm run test:mutation
+# 開発コンテナでも同じnpm入口（ホストにNode不要）
+docker compose run --rm app npm run test:mutation
+```
+
+入口は互換処理の照合、通常の `npm run test`、Strykerの変異前の初期実行、全対象の変異検証、結果ガードの順で動きます。通常テストや初期実行、ツールのエラーは非ゼロ終了します。対象が空、設定したファイルがレポートから欠落、Pendingが残る、または `coveredBy` があるのに `testsCompleted=0` のSurvivedがあった場合も失敗です。スコアによる合否閾値は設定していません（表の色はStryker既定）。
+
+`stryker.config.mjs` の初期対象は以下の5ファイルです。演算子を一括除外しません。
+
+| 対象 | 確かめる内容 |
+|---|---|
+| `src/domain/movement.ts` | 距離、移動力、移動範囲の境界・現在地と占有の除外 |
+| `src/data/movement.ts` | 基本移動力と装備補正の定数 |
+| `src/domain/board.ts` | 座標の双方向変換、盤面座標の生成 |
+| `src/data/board.ts` | 盤面サイズの共通定数 |
+| `src/components/Board.tsx` | 実際の部品内の選択・切替・解除、座標表示 |
+
+テスト自身、型だけの宣言、CSS、生成物、雛形sample、Appの固定文言・main起動、開発基盤は初期対象外です。定数も対象に含めますが、標準演算子は数値リテラルすべてを任意の値に変えるわけではありません。例えば装備補正の負号は変異し、オブジェクトを空にする変異は型エラーになることがあります。スコアは仕様の全数値を検証した割合ではありません。
+
+#### 結果と分類
+
+実行ごとに一意な `mutation-artifacts/run-*/` を作り、以前の測定を上書きしません。
+
+- `mutation.html` / `mutation.json`: 変異位置・置換・状態・検出テスト（`killedBy`）・カバーしたテスト（`coveredBy`）・実行件数。
+- `run.log`: 通常テスト、互換処理、Stryker、結果ガードの成功・失敗ログ。失敗が早い場合はHTML/JSONがないことがあります。
+- `run.json`: 対象SHA、対象ソースのSHA256、ツール版、環境、開始終了・所要時間、段階別終了コード、互換処理、状態別件数。
+- `config.json`: 出力先を含む通常実行の設定。診断用CLI引数を追加した場合は `run.json` の実コマンドも確認します。
+- `sandbox/`: 失敗時の調査用コピー。成功時にはStrykerが削除します。
+
+ホストでGitが使える場合はHEADを記録します。開発コンテナ等でGitがない場合は `MUTATION_SOURCE_SHA`、次いでCIの `GITHUB_SHA` を使い、どれもなければ未取得と表示して対象ファイルのSHA256を残します。明示したSHAとcheckoutの一致は実行者が確認してください。
+
+```sh
+# コンテナにも対象SHAを渡す例（ホストで実行）
+docker compose run --rm -e MUTATION_SOURCE_SHA="$(git rev-parse HEAD)" app npm run test:mutation
+# HTMLはブラウザで開く。以下はmacOSの例
+open mutation-artifacts/run-XXXXXX/mutation.html
+# 必要なレポートを保存してから、その実行の生成物だけ削除
+rm -rf mutation-artifacts/run-XXXXXX
+```
+
+一時変異はコピー内だけに適用し、追跡ソースは変えません。生成物はGit・Lint・Docker build contextから除外します。複数worktreeはそれぞれのnode_modules・Compose project・出力を使い、共有pruneは不要です。同じworktreeで依存のインストールと測定を同時に行わないでください。Strykerの並列度は1、runner 10はVitestの `maxWorkers=1`・`maxConcurrency=1` を強制します。増分キャッシュ・外部ダッシュボードへの送信は使いません。
+
+Killedはassertion等による検出、Timeoutは別枠です。ループの減算への変異などではhit limitでTimeoutになりますが、負荷による遅延と混同しないよう理由を確認します。CompileError（TypeScript checkerで無効と判定）・RuntimeError・Ignored・Pending等は検出成功に混ぜません。Survived/NoCoverageは、仕様上意味のある不足・等価・対象外・判断待ちに分類し、根拠と対応先をPRに記録します。既存テストの独立した改善はそのIssueへ引き継ぎます。詳しくは [testing.md 7章](docs/testing.md#7-ミューテーションテスト)を参照してください。
+
+CIでは独立した「ミューテーション（Stryker・Vitest）」ジョブがPRとmainで同じ入口を実行し、成功・失敗とも `mutation-<run ID>-<attempt>` artifactを14日保存します。既存の通常チェック・本番イメージ・E2Eも維持します。
+
+#### Vitest 5 / Stryker 10.0.0 の暫定互換処理
+
+宣言上のpeer範囲内でも、未修正runnerではテストを実行せずSurvivedとなる不具合があります。さらにinstrumenterは `as const` の実行式ごと変異を省略します。`scripts/stryker-compat.mjs` は実際のVitest 5とStryker/core・runner・instrumenter 10.0.0、配布JSのSHA256を照合して、実行開始時に次だけを自worktree内のnode_modulesへ適用します。未知の内容・版・worktree外へのsymlinkは拒否します。通常の `npm ci` を変えず、再実行は冪等です。
+
+- [上流 #6210](https://github.com/stryker-mutator/stryker-js/issues/6210): runnerの `dist/src/test-helpers.js` と `dist/src/stryker-setup.js` の `collectTestName` 各1行で、空の階層名を除いて ` > ` で連結。テストID・coverage・filterを一致させます。
+- [上流 #6208](https://github.com/stryker-mutator/stryker-js/issues/6208) / [#6227](https://github.com/stryker-mutator/stryker-js/issues/6227): instrumenterの `dist/src/util/syntax-helpers.js` で、`isTSType()` を除外判定に加え、`TSAsExpression` 全体をskipする指定だけ削除。型側を除外したまま実行式を変異させます。
+
+TypeScript checker 10.0.0も追加し、既存 `tsconfig.app.json` と精度優先モードで、型として成立しない変異をCompileErrorに分けます。既存Vitest/Vite/TypeScriptは下げません。runnerのdebug出力にはVitest設定の循環参照による別の既知障害があるため、保存する通常ログはinfoとstdout/stderrを使います。
+
+上流更新時は、未パッチ版で距離・選択状態・装備定数の代表的な変異が実テストを実行して検出されること、型側が変異していないことを実際の位置・内容で確認し、全対象を再測定してから暫定修正を削除・更新します。変異数の不変は条件にしません。正当な演算子追加もあり得るためです。通常テストが通ることやバージョン範囲だけで解除しないでください。
