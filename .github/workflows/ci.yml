@@ -64,7 +64,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run test:mutation -- --testRunner unknown-runner
+      - run: npm run test:mutation
       - name: 変異レポート・実行記録・失敗ログを保存
         if: always()
         uses: actions/upload-artifact@v4
