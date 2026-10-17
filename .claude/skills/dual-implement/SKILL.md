@@ -15,6 +15,7 @@ disable-model-invocation: true
 - プロジェクト固有の値（リポジトリ・確認コマンド・ポート・画面確認の幅など）は、CLAUDE.md（Codex では AGENTS.md）の「開発設定」から読む。このスキルには直接書かない
 - 人間が呼んだときだけ使う（Claude Code は `disable-model-invocation`、Codex は `agents/openai.yaml` で自動の呼び出しを止めている）
 - `orca` コマンドは Orca のターミナルの中で使う。最初に `orca skills get orchestration` を読み、そこに書かれた安全のルール（完了の証拠がないワーカーを止めない・二重に起動しない、など）に従う
+- 以降の `orca` は、スキルを読むために使えた同じ実行ファイルを使う。PATH 上の同名コマンドが使えるとは仮定しない
 - **マージ（⑦）はしない。** 人間が判断する
 - 人間に聞く場面は2回だけ: 手順4（計画承認）と手順7（最終報告）。それ以外は止まらずに進める
 - 待つときは `orca orchestration check --wait --timeout-ms 60000` を繰り返す。時間切れは失敗ではない。進捗を伝えながら待ち続ける
@@ -23,7 +24,7 @@ disable-model-invocation: true
 - **実装ワーカー**: `--model` を付けない。各ツールの既定を使う（Claude Code は既定の Opus 5.5・effort medium、Codex は `~/.codex/config.toml` の `gpt-6.1-sol`・high）。既定はスキルではなく各ツールの設定で管理する
 - **レビュー（相互・品質）**: Claude Code は `--model opus --effort high`、Codex は `--model gpt-6.1-sol --effort high` を付ける（両社とも、ロジックを追うレビューは high を勧めている）
 - 人間が別のモデルや effort を指定したら、それに従う。Codex の `ultra` は使わない（自動で仕事を分けるため、コストが読めない）
-- `worker-start --json` の結果にある `launch.requested` と `launch.effective` を、ワーカーごとに控える。報告とレポートには、実際に使われた `launch.effective` のモデルと effort を書く（要求した値だけで書かない）。両者が違えば報告で知らせる
+- `worker-start --json` の `launch.requested` と `launch.effective` を、ワーカーごとにそのまま控える。モデルと effort は項目ごとに確認し、effective が `null` や欠落なら「実行値は未確認」と記録する。明示指定せず既定を使った場合は「既定継承」と併記するが、設定値やコミットの署名で実行値を補完しない。別途実行値を観測できた場合は出所とともに区別して残し、エイリアスは具体的なモデル名へ推測で展開しない。明示的な要求と確認できた effective が食い違う場合は知らせる
 
 ## 1. 事前確認
 - `gh issue view N --json title,body,comments` で目的・受け入れ条件・スコープ外を読む
@@ -164,13 +165,13 @@ orca orchestration worker-start --spec "<下の品質レビュー用の指示>" 
 品質レビューを行った場合は、相互レビューと区別してコメント・対象 SHA・独自に見つかった有効な指摘・誤検出と除外理由・所要時間を残す。同時実行した各担当の時間と、全体の終了までに増えた待ち時間を区別し、測れなかったものは「記録なし」とする。レビュー専用 worktree・ローカルブランチ・Docker 資源の一覧も記録する。
 
 報告の形（日本語）:
-1. **概要**: 2つの PR の番号・URL・CI の結果。各ワーカー（実装・レビュー）が実際に使ったモデルと effort（`launch.effective`）
+1. **概要**: 2つの PR の番号・URL・CI の結果。各ワーカー（実装・レビュー）のモデルと effort の起動記録、別途観測できた実行値、未確認の項目を「モデルの指定」の区別で報告する
 2. **受け入れ条件の表**: 行が受け入れ条件、列が2つの PR。○ / × / ？ と一言。画面での確認は「エージェントが Orca のブラウザで確認済み / 未確認（理由）」を分けて書く
 3. **確認できた指摘**: PR ごとに、重さ順。誤りだった指摘は「除外した理由」と一緒に短く
 4. **spec.md との関係**: 仕様の抜けや食い違いが見つかったら、spec.md に戻す候補として書く
 5. **一次判断**: どちらを採るかの推奨と理由。採る PR をマージ前に直すべき点（あれば）。別 Issue にする改善点の候補
 6. **人間にやってほしいこと**:
    - 画面を含む Issue では、Issue の「レビュー時の実機確認」の項目をそのまま並べ、スマホ実機での確かめ方を添える（どの worktree で `docker compose up` し、スマホでどの URL（Mac の LAN の IP とポート）を開くか）。結果は PR にコメントで残すよう頼む
-   - マージは `/finish-issue <採る PR 番号>` で行えること（採らない理由を一言添える）
+   - `/finish-issue <採る PR 番号>` で、マージ・後片付け・ふりかえりの共有・必要な改善の反映まで行えること（採らない理由を一言添える）
 
 最後に `orca orchestration worker-list --run <run_id> --terminal-state reclaimable --json` が空であることを確かめてから終える。
