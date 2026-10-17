@@ -40,6 +40,30 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  mutation:
+    name: ミューテーションテスト（StrykerJS）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # 通常テスト・互換処理・Stryker・結果の検証のどこで失敗してもジョブを失敗にする。
+      # スコアでは不合格にせず、Job Summary とレポートで確認する。
+      - run: npm run test:mutation
+      - name: レポート・ログを保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: mutation-artifacts/
+          # 起動前に失敗した場合も、本来の失敗を上書きしない。
+          if-no-files-found: warn
+          retention-days: 14
+
   image:
     name: 本番用イメージのビルド
     runs-on: ubuntu-latest
