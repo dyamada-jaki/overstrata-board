@@ -43,6 +43,42 @@ describe('App', () => {
     expect(screen.queryAllByRole('button', { pressed: true })).toHaveLength(0)
   })
 
+  it('同じマスを選択→再タップで解除→もう一度タップして再選択する', () => {
+    render(<App />)
+    const cell = screen.getByRole('button', { name: 'マス (3, 4)' })
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([])
+
+    fireEvent.click(cell)
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([cell])
+    fireEvent.click(cell)
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([])
+    fireEvent.click(cell)
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([cell])
+  })
+
+  it('列ラベル・行ラベル・盤面外の余白を押すたびに選択中のマスを維持する', () => {
+    render(<App />)
+    const cell = screen.getByRole('button', { name: 'マス (3, 4)' })
+    const columns = screen.getByRole('group', { name: '横の座標' })
+    const rows = screen.getByRole('group', { name: '縦の座標' })
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([])
+    fireEvent.click(cell)
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([cell])
+
+    fireEvent.click(within(columns).getByText('3'))
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([cell])
+    fireEvent.click(within(columns).getByText('10'))
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([cell])
+    fireEvent.click(within(rows).getByText('4'))
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([cell])
+    fireEvent.click(within(rows).getByText('10'))
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([cell])
+    fireEvent.click(screen.getByRole('main'))
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([cell])
+    fireEvent.click(document.body)
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([cell])
+  })
+
   it('3列2行の設定では6マスと対応する座標ラベルを表示する', () => {
     render(<Board size={{ width: 3, height: 2 }} />)
     expect(screen.getAllByRole('button').map((cell) => cell.getAttribute('aria-label')))
