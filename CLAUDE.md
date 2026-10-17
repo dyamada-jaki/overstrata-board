@@ -17,6 +17,7 @@ TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）�
 - `npm run dev` — 開発サーバー
 - `npm run test` — テスト（Vitest）
 - `npm run test:e2e` — Chromium E2E（初回準備・Docker 実行は README を参照）
+- `npm run test:mutation` — ミューテーションテスト（StrykerJS。通常テストから順に実行。結果の読み方は README・testing.md 7章）
 - `npm run typecheck` — 型チェック
 - `npm run lint` — Lint
 - `npm run build` — ビルド
@@ -41,6 +42,7 @@ docs/
 | リポジトリ | `dyamada-jaki/overstrata-board`（既定ブランチ `main`） |
 | 確認コマンド | `npm run test` / `npm run typecheck` / `npm run lint` / `npm run build` |
 | E2E | `npm run test:e2e`（導入済みで、対象となる場合） |
+| ミューテーション | `npm run test:mutation`（testing.md 7章の対象変更で実行） |
 | 開発サーバー | `docker compose up -d`。worktree ごとに `.env` の `HOST_PORT`（ホスト側のポート）と `COMPOSE_PROJECT_NAME` で分ける |
 | ポート | main: `5173` / 実装（Claude Code）: `5181` / 実装（Codex）: `5182` / 品質レビュー: `5183`・`5184` |
 | 画面確認の幅 | スマホ縦 `375px`（Orca のブラウザで端末を指定）と PC 幅 |
