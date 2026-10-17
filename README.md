@@ -206,7 +206,7 @@ StrykerJS 10.0.0 は Vitest 5 と次の2点で正しく動かないため、`scr
 | [stryker-js#6210](https://github.com/stryker-mutator/stryker-js/issues/6210)（修正 PR [#6214](https://github.com/stryker-mutator/stryker-js/pull/6214)） | 変異ごとの実行でテストが1件も選ばれず、全変異が `Survived` のまま正常終了する | `@stryker-mutator/vitest-runner` の `test-helpers.js`・`stryker-setup.js` のテスト名の区切りを Vitest 5 と同じ `' > '` にする |
 | [stryker-js#6208](https://github.com/stryker-mutator/stryker-js/issues/6208)・[#6227](https://github.com/stryker-mutator/stryker-js/issues/6227) | `{ ... } as const` の中が変異されず、`src/data/movement.ts` がレポートから消える | `@stryker-mutator/instrumenter` の `syntax-helpers.js` で、`as` 式の型の部分だけを飛ばす |
 
-- `@stryker-mutator/vitest-runner`・`@stryker-mutator/instrumenter` が 10.0.0、`vitest` が 5 系で、置き換える前の文字列がそれぞれ1か所だけある場合に適用します。適用済みなら何もしません。版や内容が違えば何も書き換えずに失敗します
+- `@stryker-mutator/vitest-runner`・`@stryker-mutator/instrumenter` が 10.0.0、`vitest` が 5 系で、置き換える前の文字列がそれぞれ1か所だけある場合に適用します。適用済みなら何もしません。版と3ファイルすべての内容を確かめてから書き込むので、版が違うときや、どれか1ファイルでも内容が想定と違うときは、どのファイルも書き換えずに失敗します（書き込みの途中でディスク障害などが起きた場合に、全ファイルがそろって戻ることまでは保証しません）
 - `npm ci` で `node_modules` を入れ直すと元に戻りますが、`npm run test:mutation` が毎回適用するので手順は不要です（ホスト・開発コンテナのボリューム・CI で同じ）
 
 上流の修正版へ更新すると、この版の照合で失敗します。そのときは `scripts/stryker-compat.mjs` の該当する書き換えを外して `npm run test:mutation` を実行し、次を確かめてから削除します。変異の件数が以前と同じことは求めません。

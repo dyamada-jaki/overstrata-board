@@ -100,12 +100,14 @@ export async function applyCompat(root) {
     }
   }
 
-  const results = []
+  // 全ファイルの置換を確かめてから書き込む。どれかの内容が違えば、どのファイルも書き換えずに止める。
+  const planned = []
   for (const { issue, pkg, file, edits } of compatPatches) {
     const target = path.join(root, 'node_modules', pkg, file)
-    const { text, state } = applyEdits(await readFile(target, 'utf8'), edits)
-    if (state === 'applied') await writeFile(target, text)
-    results.push({ issue, file: `${pkg}/${file}`, state })
+    planned.push({ issue, target, file: `${pkg}/${file}`, ...applyEdits(await readFile(target, 'utf8'), edits) })
   }
-  return results
+  for (const { target, text, state } of planned) {
+    if (state === 'applied') await writeFile(target, text)
+  }
+  return planned.map(({ issue, file, state }) => ({ issue, file, state }))
 }
