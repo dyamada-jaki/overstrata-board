@@ -176,6 +176,6 @@ orca orchestration worker-start --spec "<下の品質レビュー用の指示>" 
 5. **一次判断**: どちらを採るかの推奨と理由。採る PR をマージ前に直すべき点（あれば）。別 Issue にする改善点の候補
 6. **人間にやってほしいこと**:
    - 画面を含む Issue では、Issue の「レビュー時の実機確認」の項目をそのまま並べ、スマホ実機での確かめ方を添える（どの worktree で `docker compose up` し、スマホでどの URL（Mac の LAN の IP とポート）を開くか）。結果は PR にコメントで残すよう頼む
-   - `/finish-issue <採る PR 番号>` で、マージ・後片付け・ふりかえりの共有・必要な改善の反映まで行えること（採らない理由を一言添える）
+   - `/finish-issue <採る PR 番号>` で、マージ・後片付け・ふりかえりの結果と改善案の共有、人間が承認した改善の反映まで行えること（採らない理由を一言添える）
 
 最後に `orca orchestration worker-list --run <run_id> --terminal-state reclaimable --json` が空であることを確かめてから終える。
