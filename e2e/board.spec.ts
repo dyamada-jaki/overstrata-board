@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('盤面全体を表示し、マスの選択・維持・切替・解除ができる', async ({ page }) => {
+test('盤面全体を表示し、マスの選択・維持・切替・解除ができる', async ({ page }, testInfo) => {
   await page.goto('/')
   const cells = page.getByRole('button', { name: /^マス / })
   await expect(cells).toHaveCount(100)
@@ -31,6 +31,10 @@ test('盤面全体を表示し、マスの選択・維持・切替・解除が�
   await first.click()
   await expect(first).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { pressed: true })).toHaveCount(1)
+  await testInfo.attach('盤面の選択表示', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  })
   await page.getByRole('main').click({ position: { x: 4, y: 4 } })
   await expect(first).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { pressed: true })).toHaveCount(1)

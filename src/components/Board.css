@@ -1,0 +1,58 @@
+.board {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  grid-template-rows: 1.5rem auto;
+  width: 100%;
+}
+
+.board-columns,
+.board-rows {
+  display: grid;
+  color: #475569;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.board-columns {
+  grid-column: 2;
+  padding-inline: 1px;
+  column-gap: 1px;
+  align-items: center;
+}
+
+.board-rows {
+  grid-row: 2;
+  padding-block: 1px;
+  row-gap: 1px;
+  align-items: center;
+}
+
+.board-cells {
+  display: grid;
+  grid-column: 2;
+  grid-row: 2;
+  gap: 1px;
+  padding: 1px;
+  background: #94a3b8;
+}
+
+.board-cell {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.board-cell[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 3px #1d4ed8;
+}
+
+.board-cell:focus-visible {
+  outline: 2px dashed #9a3412;
+  outline-offset: -5px;
+}
