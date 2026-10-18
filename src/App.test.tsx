@@ -43,6 +43,20 @@ describe('App', () => {
     expect(screen.queryAllByRole('button', { pressed: true })).toHaveLength(0)
   })
 
+  it('同じ列の別の空きマス (3, 4) → (3, 5) へ選択を切り替える', () => {
+    render(<App />)
+    const first = screen.getByRole('button', { name: 'マス (3, 4)' })
+    const next = screen.getByRole('button', { name: 'マス (3, 5)' })
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([])
+
+    fireEvent.click(first)
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([first])
+
+    fireEvent.click(next)
+    expect(first).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryAllByRole('button', { pressed: true })).toEqual([next])
+  })
+
   it('同じマスを選択→再タップで解除→もう一度タップして再選択する', () => {
     render(<App />)
     const cell = screen.getByRole('button', { name: 'マス (3, 4)' })
