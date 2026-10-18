@@ -23,7 +23,7 @@ test('キャラ選択・別キャラ切替・範囲内外への移動・全解�
   await expect(selected).toHaveCount(1)
   await expect(character('敵1')).toHaveAttribute('aria-pressed', 'true')
   await expect(cell(4, 7)).toHaveAccessibleDescription('移動範囲')
-  await expect(cell(3, 7)).not.toHaveAccessibleDescription('移動範囲')
+  await expect(cell(3, 9)).not.toHaveAccessibleDescription('移動範囲')
   await cell(4, 7).click()
   await expect(character('敵1')).toHaveAccessibleName('マス (4, 7) 敵1 敵 中装 移動力4')
   await expect(selected).toHaveCount(0)

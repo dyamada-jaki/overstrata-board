@@ -75,11 +75,11 @@ describe('サンプルキャラの操作（spec.md 2.1–2.3）', () => {
     render(<App />)
     const before = placements()
     fireEvent.click(character('味方1'))
-    expect(cell(3, 8 - 1)).toHaveAccessibleDescription('移動範囲')
+    expect(cell(3, 9)).toHaveAccessibleDescription('移動範囲')
     fireEvent.click(character('敵1'))
     expect(placements()).toEqual(before)
     expect(screen.getAllByRole('button', { pressed: true })).toEqual([character('敵1')])
-    expect(cell(3, 7)).not.toHaveAccessibleDescription('移動範囲')
+    expect(cell(3, 9)).not.toHaveAccessibleDescription('移動範囲')
     expect(cell(4, 1)).toHaveAccessibleDescription('移動範囲')
   })
 
