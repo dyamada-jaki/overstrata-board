@@ -1,7 +1,7 @@
 # 番号. 題名（何をどう決めたかが分かる短い文）
 
 - 状態: 採用
-- 日付: YYYY-MM-DD（JST）
+- 日時: YYYY-MM-DD HH:MM JST（人間が採用した日時）
 - 関連: Issue #N / 採用 PR #P / [Issue レポート](../issue-reports/issue-N.md)
 
 ## 背景
