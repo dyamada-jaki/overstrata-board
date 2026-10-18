@@ -56,3 +56,41 @@
   outline: 2px dashed #9a3412;
   outline-offset: -5px;
 }
+
+.board-cell[aria-description='移動範囲'] {
+  background: #dbeafe;
+}
+
+.token {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72%;
+  height: 72%;
+  margin: auto;
+  border-radius: 50%;
+  color: #fff;
+  font-size: clamp(0.75rem, 3.2vw, 1rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.token-ally {
+  background: #1d4ed8;
+}
+
+.token-enemy {
+  background: #b91c1c;
+}
+
+.legend-ally {
+  color: #1d4ed8;
+}
+
+.legend-enemy {
+  color: #b91c1c;
+}
+
+.board-legend {
+  font-size: 0.75rem;
+}

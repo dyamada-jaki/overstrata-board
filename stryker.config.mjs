@@ -8,7 +8,12 @@ export default {
     'src/data/movement.ts', // 移動力の基本値と装備補正
     'src/domain/board.ts', // 内部座標と表示座標の変換、盤面の座標一覧（spec.md 2.1）
     'src/data/board.ts', // 盤面サイズ
-    'src/components/Board.tsx', // マスの単一選択・切り替え・解除、座標ラベル（spec.md 2.1）
+    'src/components/Board.tsx', // 選択枠・範囲・キャラと座標ラベルの表示の対応
+    // #9: 選択状態をBoardから移管したため、移管先とキャラ配置の定数を追加する（testing.md 7章）。
+    'src/domain/battle.ts', // マス/キャラ選択・切替・解除と移動後の全解除
+    'src/components/BattleBoard.tsx', // 実物の状態と範囲計算、表示部品の接続
+    'src/data/characters.ts', // spec.md 2.2の固定4体の配置・装備・陣営
+    // src/domain/character.tsは型だけの宣言なので対象外。既存の対象は減らさない。
   ],
   // 対象外: テスト（*.test.*・src/test/）、CSS、型だけの宣言、生成物、雛形 src/domain/sample.ts、
   // 文言と受け渡しだけの src/App.tsx、起動処理の src/main.tsx、開発基盤（scripts/・e2e/・docker/）。

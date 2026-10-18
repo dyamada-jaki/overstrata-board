@@ -10,8 +10,8 @@ const samples = [
   { name: '敵2', side: '敵', armor: '軽装', movement: 5, x: 6, y: 1 },
 ]
 const character = (name: string) => screen.getByRole('button', { name: new RegExp(` ${name} `) })
-const cell = (x: number, y: number) => screen.getByRole('button', { name: `マス (${x}, ${y})`, exact: true })
-const range = () => screen.queryAllByRole('button', { description: '移動範囲' })
+const cell = (x: number, y: number) => screen.getByRole('button', { name: `マス (${x}, ${y})` })
+const range = () => screen.getAllByRole('button').filter((button) => button.getAttribute('aria-description') === '移動範囲')
 const placements = () => samples.map(({ name }) => character(name).getAttribute('aria-label'))
 const expectCleared = () => {
   expect(screen.queryAllByRole('button', { pressed: true })).toEqual([])

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
-import { Board } from './components/Board.tsx'
+import { BattleBoard } from './components/BattleBoard.tsx'
 
 describe('App', () => {
   it('タイトル「Overstrata 戦闘ボード」を表示する', () => {
@@ -108,7 +108,7 @@ describe('App', () => {
   })
 
   it('3列2行の設定では6マスと対応する座標ラベルを表示する', () => {
-    render(<Board size={{ width: 3, height: 2 }} />)
+    render(<BattleBoard size={{ width: 3, height: 2 }} initialCharacters={[]} />)
     expect(screen.getAllByRole('button').map((cell) => cell.getAttribute('aria-label')))
       .toEqual(['マス (1, 1)', 'マス (2, 1)', 'マス (3, 1)',
         'マス (1, 2)', 'マス (2, 2)', 'マス (3, 2)'])

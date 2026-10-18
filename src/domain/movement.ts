@@ -56,14 +56,13 @@ export function getMovementRange(
   return range
 }
 
-/** 移動先可否の実装前の枠。 */
+/** 盤面内の空きマスなら距離にかかわらず移動可（spec.md 2.3）。整数のマス座標を受け取る。 */
 export function canMoveTo(
   destination: Position,
   otherPositions: readonly Position[],
   boardSize: BoardSize,
 ): boolean {
-  void destination
-  void otherPositions
-  void boardSize
-  return false
+  return destination.x >= 0 && destination.x < boardSize.width
+    && destination.y >= 0 && destination.y < boardSize.height
+    && !otherPositions.some((position) => position.x === destination.x && position.y === destination.y)
 }
