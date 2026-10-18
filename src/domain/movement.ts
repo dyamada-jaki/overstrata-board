@@ -55,3 +55,15 @@ export function getMovementRange(
 
   return range
 }
+
+/** 移動先可否の実装前の枠。 */
+export function canMoveTo(
+  destination: Position,
+  otherPositions: readonly Position[],
+  boardSize: BoardSize,
+): boolean {
+  void destination
+  void otherPositions
+  void boardSize
+  return false
+}

@@ -1,4 +1,4 @@
-import { getDistance, getMovement, getMovementRange } from './movement.ts'
+import { canMoveTo, getDistance, getMovement, getMovementRange } from './movement.ts'
 
 describe('getDistance', () => {
   const examples = [
@@ -141,5 +141,38 @@ describe('getMovementRange', () => {
     expect(origin).toEqual({ x: 0, y: 0 })
     expect(others).toEqual([{ x: 1, y: 0 }])
     expect(board).toEqual({ width: 3, height: 2 })
+  })
+})
+
+
+describe('canMoveTo（範囲表示と独立した移動可否）', () => {
+  const size = Object.freeze({ width: 10, height: 10 })
+  const others = Object.freeze([Object.freeze({ x: 3, y: 2 }), Object.freeze({ x: 5, y: 8 })])
+
+  it.each([{ x: 3, y: 7 }, { x: 9, y: 0 }, { x: 0, y: 0 }, { x: 9, y: 9 },
+    { x: 3, y: 1 }, { x: 2, y: 2 }])('盤面内の空き $x,$y は距離によらず許可する', (destination) => {
+    expect(canMoveTo(destination, others, size)).toBe(true)
+  })
+  it.each(others)('他キャラのいる $x,$y には移動できない', (destination) => {
+    expect(canMoveTo(destination, others, size)).toBe(false)
+  })
+  it.each([{ x: -1, y: 0 }, { x: 0, y: -1 }, { x: 10, y: 0 }, { x: 0, y: 10 }])(
+    '盤面外の $x,$y には移動できない', (destination) => {
+      expect(canMoveTo(destination, others, size)).toBe(false)
+    },
+  )
+  it('長方形の幅と高さの境界を別々に扱う', () => {
+    const rectangle = { width: 3, height: 2 }
+    expect(canMoveTo({ x: 2, y: 1 }, [], rectangle)).toBe(true)
+    expect(canMoveTo({ x: 3, y: 1 }, [], rectangle)).toBe(false)
+    expect(canMoveTo({ x: 1, y: 2 }, [], rectangle)).toBe(false)
+  })
+  it('入力を変更せず、同じ入力には同じ結果を返す', () => {
+    const destination = Object.freeze({ x: 9, y: 0 })
+    expect(canMoveTo(destination, others, size)).toBe(true)
+    expect(canMoveTo(destination, others, size)).toBe(true)
+    expect(destination).toEqual({ x: 9, y: 0 })
+    expect(others).toEqual([{ x: 3, y: 2 }, { x: 5, y: 8 }])
+    expect(size).toEqual({ width: 10, height: 10 })
   })
 })
