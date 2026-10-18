@@ -30,7 +30,7 @@
 - PO → 開発チーム: `orca orchestration send --to run:<Run ID> --type handoff` で判定を返す
 - 差し戻しは2回まで。3回目は人間に判断を仰ぐ
 - ふりかえりで出た spec.md と Issue の案、next-issues.md の「現在地」に載せる内容: 開発チームが Issue レポートの「PO への申し送り」に書き、Issue にコメントして PO に一言送る。PO が next-issues.md・spec.md・Issue に反映する
-- 2026-10-18 に Claude Code の端末どうしで動作を確認した。Codex の PO 端末で `gh`・`.git` への書き込み・`orca` が使えることも確かめた。開発チームから Codex の PO へ `$accept-review` を送る受け渡しと、開発チームを Codex にした場合は未確認
+- 2026-10-18 に Claude Code の端末どうしで動作を確認した。Codex の PO 端末でも、`gh`・`.git` への書き込み・`orca` が使えること、`$accept-review` を `orca terminal send` で送るとスキルとして受け取られること、`run:` への返事が `check --types handoff` で届くことを確かめた（試験の指示で、PR の判定そのものは行っていない）。開発チームを Codex にした場合は未確認
 
 ### PO を開く
 - 新しい worktree は作らない。Orca で main の worktree（リポジトリの元のフォルダ）を選び、ターミナルを開く
