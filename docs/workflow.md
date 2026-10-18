@@ -13,11 +13,14 @@
 
 | 席 | 場所 | 寿命 | やること | 書いてよいもの |
 |---|---|---|---|---|
-| **PO**（プロダクトオーナー） | Orca の main の worktree の端末（Claude Code。vault も参照先に追加） | 長く使う。状態はファイルに置き、いつ開き直してもよい | 人間と議論する、spec.md を書く、Issue を切って順番を決め「開発可」を付ける、開発チームの推薦を受け入れ一次判断する（`accept-review`） | spec.md、Issue とラベル、next-issues.md の「次の一手」と順番、PR への受け入れコメント |
-| **開発チーム**（コーディネーター） | Orca の main の worktree の端末。起動係か人間が Issue ごとに開く | Issue 1本（着手からふりかえりまで）。終わったら閉じる | `dual-implement` で開発者に実装・レビューさせて一次判断し、PO の確認を経て人間に報告する。`finish-issue` でマージ・後片付け・ふりかえり | Issue レポート、next-issues.md のその Issue の行と「PO への申し送り」、スキル・CLAUDE.md（承認された改善だけ。他の開発チームが動いていないとき） |
+| **PO**（プロダクトオーナー） | Orca の main の worktree の端末（Claude Code か Codex。vault も参照先に追加） | 長く使う。状態はファイルに置き、いつ開き直してもよい | 人間と議論する、spec.md を書く、Issue を切って順番を決め「開発可」を付ける、開発チームの推薦を受け入れ一次判断する（`accept-review`） | spec.md、Issue とラベル、next-issues.md（PO だけが書く）、PR への受け入れコメント |
+| **開発チーム**（コーディネーター） | Orca の main の worktree の端末。起動係か人間が Issue ごとに開く | Issue 1本（着手からふりかえりまで）。終わったら閉じる | `dual-implement` で開発者に実装・レビューさせて一次判断し、PO の確認を経て人間に報告する。`finish-issue` でマージ・後片付け・ふりかえり | Issue レポート（「PO への申し送り」を含む）、Issue への申し送りのコメント、スキル・CLAUDE.md など（承認された改善だけ。他の開発チームが動いておらず、PO の書きかけが無いとき） |
 | **開発者** | dual-implement が作る worktree（Claude Code と Codex） | 実装からマージまで | 実装・PR・レビュー | 自分の worktree のコード |
 
-ファイルの置き場所は GitHub のリポジトリ1つ。PO と開発チームは同じ main の worktree で動くので、コミットは直したファイルをパスで指定し、push の前に `git pull --rebase` する。
+ファイルの置き場所は GitHub のリポジトリ1つ。PO と開発チームは同じ main の worktree で動くので、同じファイルを同時に書かないよう、書くファイルを席ごとに分ける。
+- next-issues.md・spec.md は PO だけが書く。開発チームは Issue レポートとコメントで申し送る
+- 開発チームがそれ以外の共有のファイルを直すときは、先に `git status --porcelain -- <ファイル>` で PO の書きかけが無いことを確かめる。PO は書きかけを長く残さず、区切りごとにコミットする
+- コミットは直したファイルをパスで指定し、push の前に `git pull --rebase --autostash` する
 
 人間の関所は3つ: ④計画承認（開発チームが聞く）、⑥採用の判断（PO の受け入れ確認のあと）、⑧改善の採否。
 
@@ -26,12 +29,19 @@
 - 開発チーム → PO: `orca terminal send` で PO の端末に `/accept-review <PR番号> <Run ID>` を送る。PO の端末は `dev-team.sh po-find` で探す
 - PO → 開発チーム: `orca orchestration send --to run:<Run ID> --type handoff` で判定を返す
 - 差し戻しは2回まで。3回目は人間に判断を仰ぐ
-- ふりかえりで出た spec.md と Issue の案: 開発チームが next-issues.md の「PO への申し送り」に書き、PO に一言送る
-- 2026-10-18 に Claude Code の端末どうしで動作を確認した。PO や開発チームを Codex にした場合は未確認
+- ふりかえりで出た spec.md と Issue の案、next-issues.md の「現在地」に載せる内容: 開発チームが Issue レポートの「PO への申し送り」に書き、Issue にコメントして PO に一言送る。PO が next-issues.md・spec.md・Issue に反映する
+- 2026-10-18 に Claude Code の端末どうしで動作を確認した。Codex の PO 端末で `gh`・`.git` への書き込み・`orca` が使えることも確かめた。開発チームから Codex の PO へ `$accept-review` を送る受け渡しと、開発チームを Codex にした場合は未確認
 
 ### PO を開く
-- main の worktree に Orca の端末を開き、`claude --model opus --effort high` で起動する
-- 最初に `bash .claude/skills/dual-implement/scripts/dev-team.sh po-register` を実行させる（この端末を PO として登録する。開発チームはこれで PO を見つける）。開き直したら、そのたびに登録し直す
+- 新しい worktree は作らない。Orca で main の worktree（リポジトリの元のフォルダ）を選び、ターミナルを開く
+- Claude Code なら `claude --model opus --effort high` で起動する。Codex なら Orca からエージェントとして起動する（素の `codex` は `.git` への書き込みとネットワークが制限され、PO の登録や `gh` が失敗する）
+- 最初に次を実行させ、3つとも通ることを確かめる。2つ目は、この端末を PO として登録する（開発チームはこれで PO を見つける）。開き直したら、そのたびに登録し直す
+  ```
+  gh api user -q .login
+  bash .claude/skills/dual-implement/scripts/dev-team.sh po-register
+  /Applications/Orca.app/Contents/Resources/bin/orca terminal show --terminal "$ORCA_TERMINAL_HANDLE" --json
+  ```
+- PO の席は会話の記憶を引き継がない。経緯は spec.md・next-issues.md・Issue に書いておき、開き直したら最初に読ませる
 
 ### 開発チームを開く（起動係）
 - PO か人間が、着手条件のそろった Issue に「開発可」を付ける
@@ -115,9 +125,9 @@ Issueごとのサイクルに加えて、spec.md 4章の区切りでは、複数
 | 人間による実機確認 | 確認待ち／確認済み／問題あり／対象外。対象コミット、端末・環境、操作、結果をPRまたはIssueレポートに残す |
 | 区切りの達成 | spec.mdの「達成の確認」にある一連の操作が期待どおり動き、その区切りに必要な持ち越し確認も合格した証拠。未達／確認待ち／達成を記録する |
 
-人間の判断で実機未確認のままマージしても、実機確認済み・区切り達成とはしない。コーディネーターは未確認項目・担当・次に確認する時点・記録先を `docs/next-issues.md` に引き継ぐ。詳細の正本は元のIssue／レポートとし、次のIssueへリンクする。対象の挙動に影響する変更が入った場合は再確認する。
+人間の判断で実機未確認のままマージしても、実機確認済み・区切り達成とはしない。開発チームは未確認項目・担当・次に確認する時点・記録先を PO へ申し送り、PO が `docs/next-issues.md` に引き継ぐ。詳細の正本は元のIssue／レポートとし、次のIssueへリンクする。対象の挙動に影響する変更が入った場合は再確認する。
 
-区切り1では、#8の盤面・ラベル・指での操作の確認を持ち越している。#9のキャラ表示・移動まで実装した時点で、利用者がスマホで範囲内外への移動・選択切り替え・解除まで通して確認し、コーディネーターが#9のレポートと現在地に達成／未達・残件を記録する。確認結果から次の仕様や優先順位を見直し、実施前のチェック項目を完了扱いにしない。
+区切り1では、#8の盤面・ラベル・指での操作の確認を持ち越している。#9のキャラ表示・移動まで実装した時点で、利用者がスマホで範囲内外への移動・選択切り替え・解除まで通して確認し、開発チームが#9のレポートに達成／未達・残件を記録して PO へ申し送り、PO が現在地に反映する。確認結果から次の仕様や優先順位を見直し、実施前のチェック項目を完了扱いにしない。
 
 ### ステップ1：議論する【PO】
 - **入力**：前回のふりかえりで出た気づき、または新しくやりたいこと
@@ -219,7 +229,7 @@ Orcaで差分を見る。エージェントのコードレビューでは、Issu
 - [ ] PRをmainにマージする（`Closes #12` の効果でIssueが自動で閉じる）
 - [ ] 採用判断に使うレビューと CI が現在の PR の head に対応し、必須指摘が解消されている。古いレビューの後で修正された場合は再確認する
 - ⑦〜⑧を回すスキルがある：コーディネーターに `/finish-issue 採用するPR番号`（Codexなら `$finish-issue 番号`）。マージ・不採用PRのクローズ・後片付けに続けて、ふりかえりの結果と改善案を共有する。スキル・文書の修正や後続Issueの登録・更新は具体案への承認後に行う。同じ内容が既に具体的に承認されていれば再確認せず進めるが、マージ・後片付けの承認を新たな改善への包括的な承認とは扱わない
-- [ ] [保存方法](issue-reports/README.md)に従って `docs/issue-reports/issue-番号.md` にマージ・後片付けの結果を記録し、ステップ8へ引き継ぐ。計画や検証の記録は worktree を消す前に集め、ふりかえり後に関連する改善と next-issues.md をまとめて保存する。finish-issue を使う場合は同スキルが担当する
+- [ ] [保存方法](issue-reports/README.md)に従って `docs/issue-reports/issue-番号.md` にマージ・後片付けの結果を記録し、ステップ8へ引き継ぐ。計画や検証の記録は worktree を消す前に集め、ふりかえり後に関連する改善をまとめて保存する。next-issues.md に載せる内容は PO へ申し送る。finish-issue を使う場合は同スキルが担当する
 - [ ] 他のIssueを並行して進めている場合は、そちらの作業場所をmainの最新に合わせる
 
 ### ステップ8：ふりかえりと還流【開発チーム（finish-issue）／PO】★ここがサイクルの要

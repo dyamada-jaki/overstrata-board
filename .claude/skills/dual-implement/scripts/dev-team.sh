@@ -18,6 +18,8 @@
 #   DEV_TEAM_LABEL_READY / DEV_TEAM_LABEL_BUSY  ラベル名
 #   DEV_TEAM_COMMAND                           端末で起動するコマンド
 #   DEV_TEAM_PROMPT                            起動後に送る指示（{N} を Issue 番号に置き換える）
+#   DEV_TEAM_STATE_DIR                         登録のファイルを置く場所（既定は .git）
+# 試験は dev-team.test.sh（orca と gh を偽物に差し替えて、起動の失敗と生存確認の扱いを確かめる）
 set -euo pipefail
 
 die() { echo "エラー: $*" >&2; exit 1; }
@@ -29,9 +31,9 @@ if [ -n "${ORCA_CLI_BIN_DIR:-}" ]; then orca_bin="${ORCA_CLI_BIN_DIR}/orca"
 elif [ -x /Applications/Orca.app/Contents/Resources/bin/orca ]; then orca_bin=/Applications/Orca.app/Contents/Resources/bin/orca
 else orca_bin=orca; fi
 main_worktree=$(git worktree list --porcelain | awk 'NR==1 && $1=="worktree" {print $2}')
-git_dir=$(git rev-parse --path-format=absolute --git-common-dir)
-team_file="${git_dir}/dev-team.lock"   # 中身: <Issue番号> <handle>
-po_file="${git_dir}/po.handle"         # 中身: <handle>
+state_dir=${DEV_TEAM_STATE_DIR:-$(git rev-parse --path-format=absolute --git-common-dir)}
+team_file="${state_dir}/dev-team.lock"   # 中身: <Issue番号> <handle>（端末を開く前は handle の代わりに launching）
+po_file="${state_dir}/po.handle"         # 中身: <handle>
 
 # ラベルの付いた開いている Issue の番号（小さい順）。gh issue list は検索を使い反映が遅れるので、REST で引く。
 # それでも付け替えの直後は古い結果を返すことがあるので、二重起動は team_file でも防ぐ
@@ -42,24 +44,33 @@ numbers() {
 count() { numbers "$1" | wc -l | tr -d ' '; }
 
 # 端末が開いていれば、エージェントの種類（claude / codex。不明なら unknown）を出して 0 で終わる。
-# 閉じていれば 1、確かめられなければ（orca が動かないなど）2 で終わる
+# 閉じていると確かめられたとき（端末が無い・つながっていない）だけ 1、
+# それ以外のエラー（orca が動かない、別の理由で照会に失敗したなど）は 2 で終わる
 alive() {
-  "$orca_bin" terminal show --terminal "$1" --json 2>/dev/null | python3 -c '
+  local out
+  out=$("$orca_bin" terminal show --terminal "$1" --json 2>/dev/null) || true
+  printf '%s' "$out" | python3 -c '
 import json, sys
 try:
     d = json.load(sys.stdin)
 except ValueError:
     sys.exit(2)
-t = ((d.get("result") or {}).get("terminal") or {})
+if d.get("ok") is False:
+    sys.exit(1 if (d.get("error") or {}).get("code") == "terminal_handle_stale" else 2)
+t = (d.get("result") or {}).get("terminal")
+if not t:
+    sys.exit(2)
 if not t.get("connected"):
     sys.exit(1)
 print(t.get("agentIdentity") or "unknown")'
 }
-# 確かめられないときは、二重起動を避けるため「動いている」とみなす
+# 閉じていると確かめられたときだけ 0。確かめられないとき・起動の途中で止まったときは、二重起動を避けるため「動いている」とみなす
 teams() {
   [ -f "$team_file" ] || { echo 0; return; }
-  local status=0
-  alive "$(awk '{print $2}' "$team_file")" >/dev/null || status=$?
+  local handle status=0
+  handle=$(awk '{print $2}' "$team_file")
+  [ "$handle" = launching ] && { echo 1; return; }
+  alive "$handle" >/dev/null || status=$?
   if [ "$status" -eq 1 ]; then echo 0; else echo 1; fi
 }
 own_handle() { [ -n "${ORCA_TERMINAL_HANDLE:-}" ] || die "Orca の端末の中で実行する（ORCA_TERMINAL_HANDLE が無い）"; echo "$ORCA_TERMINAL_HANDLE"; }
@@ -93,19 +104,21 @@ case "$cmd" in
     gh issue view "$n" --json labels -q '.labels[].name' | grep -qx "$label_ready" \
       || die "Issue #${n} に「${label_ready}」が付いていない（一覧が古い）"
 
-    # 先にラベルを替えて、次の定期実行で二重に起動しないようにする
-    gh issue edit "$n" --remove-label "$label_ready" --add-label "$label_busy" >/dev/null
+    # 先に登録とラベルを替えて、次の定期実行で二重に起動しないようにする
+    echo "$n launching" > "$team_file"
+    gh issue edit "$n" --remove-label "$label_ready" --add-label "$label_busy" >/dev/null \
+      || { rm -f "$team_file"; die "Issue #${n} のラベルを替えられなかった（起動していない）"; }
     echo "Issue #${n} を「${label_busy}」にしました"
 
-    revert() {
-      gh issue edit "$n" --remove-label "$label_busy" --add-label "$label_ready" >/dev/null || true
-      rm -f "$team_file"
-      die "$1（Issue #${n} のラベルを「${label_ready}」に戻しました）"
+    # ここから先の失敗では、端末が開いて指示が届いている場合があるので、登録とラベルを戻さずに止める
+    hold() {
+      die "$1。二重に起動しないよう、Issue #${n} は「${label_busy}」のまま、登録（${team_file}）も残した。
+人間が端末の様子を確かめ、やり直すなら端末を閉じてから dev-team.sh release ${n} を実行し、「${label_ready}」を付け直す"
     }
 
     handle=$("$orca_bin" terminal create --worktree "path:${main_worktree}" --title "開発チーム #${n}" \
       --command "$command" --json | python3 -c 'import json,sys;print(json.load(sys.stdin)["result"]["terminal"]["handle"])') \
-      || revert "端末を開けなかった"
+      || hold "端末を開けたか確かめられなかった"
     echo "$n $handle" > "$team_file"
 
     # エージェントが入力を受け付けるまで待つ（シェルの段階で送ると、指示がシェルに渡ってしまう）
@@ -114,11 +127,11 @@ case "$cmd" in
       sleep 2
     done
     "$orca_bin" terminal wait --terminal "$handle" --for tui-idle --timeout-ms 120000 --json >/dev/null \
-      || revert "エージェントが起動しなかった（端末 ${handle} は残っている）"
+      || hold "エージェントが起動したか確かめられなかった（端末 ${handle}）"
 
     prompt=${prompt_template//\{N\}/$n}
     "$orca_bin" terminal send --terminal "$handle" --text "$prompt" --enter --wait-submit 15 --json >/dev/null \
-      || revert "指示を送れなかった（端末 ${handle} は残っている）"
+      || hold "指示が届いたか確かめられなかった（端末 ${handle}）"
     echo "開発チームを起動しました: Issue #${n} / 端末 ${handle} / 指示「${prompt}」"
     ;;
 

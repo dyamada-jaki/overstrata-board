@@ -48,8 +48,8 @@ docs/
 | 画面確認の幅 | スマホ縦 `375px`（Orca のブラウザで端末を指定）と PC 幅 |
 | マージ方式 | squash（`finish-issue/scripts/finish.sh` で固定） |
 | 仕様・方針 | `docs/spec.md` / `docs/testing.md` / `docs/workflow.md` |
-| 記録 | `docs/next-issues.md`（現在地）/ `docs/issue-reports/`（Issue レポート） |
-| 席 | PO（開いたら `dev-team.sh po-register` で登録）/ 開発チーム（Issue ごとに開いて閉じる。`dev-team.sh claim` で登録）/ 開発者（dual-implement のワーカー）。役割は workflow.md「3つの席」 |
+| 記録 | `docs/next-issues.md`（現在地。PO だけが書く）/ `docs/issue-reports/`（Issue レポート。開発チームから PO への申し送りもここに書く） |
+| 席 | PO（Claude Code か Codex。開いたら `dev-team.sh po-register` で登録）/ 開発チーム（Issue ごとに開いて閉じる。`dev-team.sh claim` で登録）/ 開発者（dual-implement のワーカー）。役割は workflow.md「3つの席」 |
 | 着手のラベル | `開発可`（着手してよい。付けるのは PO か人間だけ）/ `着手中`（開発チームが動いている。同時に1つまで） |
 | 起動係 | Orca の定期実行 `開発チーム起動`。`.claude/skills/dual-implement/scripts/dev-team.sh` で確認と起動を行う |
 | PO の差し戻し | 2回まで。3回目は人間に判断を仰ぐ |
@@ -63,7 +63,7 @@ docs/
 6. **1つの PR は1つの Issue だけを扱う**。PR 本文に `Closes #番号` を書く
 7. Issue の「スコープ外」に書かれたことはやらない。必要だと思ったら PR 本文で提案する
 8. spec.md や Issue に書かれていないルールを推測で実装しない。不明点は計画の段階で質問するか、PR 本文に「確認したいこと」として書く
-9. Overstrata の設定資料にある秘匿情報（GM 向けの裏設定など）を、コード・Issue・PR・ドキュメントに書かない
+9. Overstrata の設定資料にある秘匿情報（GM 向けの裏設定など）を、コード・Issue・PR・ドキュメントに書かない。設定資料の vault は読むだけで書き換えない。vault の `20_gm_secret/` と `layer: GM` のファイルは GM 専用なので読まず、内容をこのリポジトリに書かない（→ spec.md 3.0）
 
 ## Issue の実装手順
 `.claude/skills/implement-issue/SKILL.md`（Codex 用の `.agents/skills/implement-issue` は、このフォルダへのシンボリックリンク）に従う。Claude Code では `/implement-issue 番号`、Codex では「implement-issue スキルで Issue 番号」。
