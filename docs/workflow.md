@@ -14,7 +14,7 @@
 | 席 | 場所 | 寿命 | やること | 書いてよいもの |
 |---|---|---|---|---|
 | **PO**（プロダクトオーナー） | Orca の main の worktree の端末（Claude Code か Codex。vault も参照先に追加） | 長く使う。状態はファイルに置き、いつ開き直してもよい | 人間と議論する、spec.md を書く、Issue を切って順番を決め「開発可」を付ける、開発チームの推薦を受け入れ一次判断する（`accept-review`） | spec.md、Issue とラベル、next-issues.md（PO だけが書く）、PR への受け入れコメント |
-| **開発チーム**（コーディネーター） | Orca の main の worktree の端末。起動係か人間が Issue ごとに開く | Issue 1本（着手からふりかえりまで）。終わったら閉じる | `dual-implement` で開発者に実装・レビューさせて一次判断し、PO の確認を経て人間に報告する。`finish-issue` でマージ・後片付け・ふりかえり | Issue レポート（「PO への申し送り」を含む）、Issue への申し送りのコメント、スキル・CLAUDE.md など（承認された改善だけ。他の開発チームが動いておらず、PO の書きかけが無いとき） |
+| **開発チーム**（コーディネーター） | Orca の main の worktree の端末。起動係か人間が Issue ごとに開く | Issue 1本（着手からふりかえりまで）。finish-issue の最後に自分で端末を閉じる（人間に聞くことが残っていれば、答えを受けてから） | `dual-implement` で開発者に実装・レビューさせて一次判断し、PO の確認を経て人間に報告する。`finish-issue` でマージ・後片付け・ふりかえり | Issue レポート（「PO への申し送り」を含む）、Issue への申し送りのコメント、スキル・CLAUDE.md など（承認された改善だけ。他の開発チームが動いておらず、PO の書きかけが無いとき） |
 | **開発者** | dual-implement が作る worktree（Claude Code と Codex） | 実装からマージまで | 実装・PR・レビュー | 自分の worktree のコード |
 
 ファイルの置き場所は GitHub のリポジトリ1つ。PO と開発チームは同じ main の worktree で動くので、同じファイルを同時に書かないよう、書くファイルを席ごとに分ける。
@@ -48,7 +48,7 @@
 - Orca の定期実行「開発チーム起動」が15分おきに `dev-team.sh precheck` で確かめる。「開発可」の Issue があり、「着手中」の Issue も動いている開発チームも無いときだけ、起動係のエージェントが `dev-team.sh launch` を実行する。条件に合わないときはエージェントを起動しないので、費用はかからない
 - launch は、番号のいちばん小さい「開発可」の Issue を「着手中」に替え、main の worktree に開発チームの端末（`claude --model opus --effort high`）を開いて `/dual-implement N` を送る。定期実行のセッションは応答のあと Orca が自動で閉じるが、開発チームは別の端末なので残る
 - 手で始めるときは、main の worktree の端末で `/dual-implement N` を打つ。dual-implement の最初に `dev-team.sh claim N` で登録される
-- 開発チームは同時に1つまで（なるべく並行しない）。finish-issue の最後の `dev-team.sh release N` で登録が外れ、次の「開発可」が拾われる
+- 開発チームは同時に1つまで（なるべく並行しない）。finish-issue の最後の `dev-team.sh release N` で登録が外れ、次の「開発可」が拾われる。そのあと `dev-team.sh close-self` で開発チームが自分の端末を閉じる。結果は Issue レポートと Issue のコメントに残るので、端末が消えても読める
 
 定期実行は Orca の設定で Git に残らないので、作り方をここに控える。
 ```

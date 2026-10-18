@@ -8,6 +8,7 @@
 #                                           main の worktree に開発チームの端末を開いて dual-implement を送る（起動係が使う）
 #   dev-team.sh claim <Issue番号>           この端末を Issue の開発チームとして登録する（dual-implement の最初に呼ぶ）
 #   dev-team.sh release <Issue番号>         開発チームを終える（「着手中」を外し、登録を消す）
+#   dev-team.sh close-self                  この端末を閉じる（finish-issue の最後の操作。release の後でないと断る）
 #   dev-team.sh po-register                 この端末を PO として登録する（PO を開いたときに呼ぶ）
 #   dev-team.sh po-find                     PO の端末の handle とエージェントの種類を出す。PO がいなければ 1 で終わる
 #
@@ -151,7 +152,18 @@ case "$cmd" in
     n=${1:?Issue番号}
     gh issue edit "$n" --remove-label "$label_busy" >/dev/null 2>&1 || true
     if [ -f "$team_file" ] && [ "$(awk '{print $1}' "$team_file")" = "$n" ]; then rm -f "$team_file"; fi
-    echo "開発チームを終えました: Issue #${n}（「${label_busy}」を外し、登録を消しました。端末は人間が閉じる）"
+    echo "開発チームを終えました: Issue #${n}（「${label_busy}」を外し、登録を消しました）"
+    ;;
+
+  close-self)
+    handle=$(own_handle)
+    if [ -f "$team_file" ] && [ "$(awk '{print $2}' "$team_file")" = "$handle" ]; then
+      die "この端末はまだ開発チームとして登録されている。先に dev-team.sh release <Issue番号> を実行する"
+    fi
+    [ -f "$po_file" ] && [ "$(cat "$po_file")" = "$handle" ] && die "この端末は PO として登録されているので閉じない"
+    echo "この端末を閉じます: ${handle}"
+    # 閉じるとこのスクリプトを動かしているエージェントも止まるので、これが最後の出力になる
+    "$orca_bin" terminal close --terminal "$handle" --json >/dev/null
     ;;
 
   po-register)

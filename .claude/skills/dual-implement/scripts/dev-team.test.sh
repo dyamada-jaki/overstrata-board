@@ -46,6 +46,7 @@ case "$1 $2" in
     if [ -f "$f" ]; then cat "$f"; [ -n "${FAKE_SHOW_RC:-}" ] && exit "$FAKE_SHOW_RC"; exit 0; fi
     echo '{"ok":false,"error":{"code":"terminal_handle_stale"}}'; exit 1 ;;
   "terminal wait") exit "${FAKE_WAIT_RC:-0}" ;;
+  "terminal close") echo "$4" >> "$FAKE/closed" ;;
   "terminal send")
     [ -n "${FAKE_SEND_FAIL:-}" ] && exit 1
     for a in "$@"; do prev=${cur:-}; cur=$a; [ "$prev" = --text ] && echo "$a" >> "$FAKE/sent"; done
@@ -139,6 +140,19 @@ reset 6 ""
 echo "5 term_old" > "$FAKE/state/dev-team.lock"   # show の返事が無い = 端末が無い
 run precheck; rc=$?
 check "端末が無ければ（terminal_handle_stale）: 閉じたとみなして起動できる" test "$rc" -eq 0
+
+reset "" 5
+echo "5 term_me" > "$FAKE/state/dev-team.lock"
+ORCA_TERMINAL_HANDLE=term_me run close-self; rc=$?
+check "release 前の close-self は断る" test "$rc-$(cat "$FAKE/closed" 2>/dev/null)" = "1-"
+run release 5
+ORCA_TERMINAL_HANDLE=term_me run close-self; rc=$?
+check "release 後の close-self は自分の端末を閉じる" test "$rc-$(cat "$FAKE/closed" 2>/dev/null)" = "0-term_me"
+
+reset "" ""
+echo "term_po" > "$FAKE/state/po.handle"
+ORCA_TERMINAL_HANDLE=term_po run close-self; rc=$?
+check "PO の端末では close-self を断る" test "$rc-$(cat "$FAKE/closed" 2>/dev/null)" = "1-"
 
 echo
 [ "$fails" -eq 0 ] && echo "すべて成功" || { echo "失敗: ${fails} 件"; exit 1; }
