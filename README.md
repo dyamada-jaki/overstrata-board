@@ -66,9 +66,11 @@ flowchart TD
   s7 --> g8{{"⑧ ふりかえりを聞き、改善の採否を決める"}}
   g8 --> close["開発チームが端末を閉じる → 次の「開発可」へ"]
   g8 -.->|"仕様・Issue の案を申し送る"| s1
+  g8 -.->|"技術判断を残す"| adr[("ADR<br/>docs/decisions")]
+  adr -.->|"次の計画で読む"| plan
 ```
 
-人間がすることは、PO との議論と、④⑥⑧の3つの判断です。記録は GitHub（Issue・PR・コメント）と、`docs/issue-reports/` の Issue レポートに残ります。
+人間がすることは、PO との議論と、④⑥⑧の3つの判断です。記録は GitHub（Issue・PR・コメント）と、`docs/issue-reports/` の Issue レポートに残ります。Issue を越えて効く技術の判断は、⑧で人間が採用したものだけを `docs/decisions/` に ADR として残し、次の Issue の計画で読みます。
 
 ## ドキュメント
 
@@ -77,6 +79,7 @@ flowchart TD
 - [docs/testing.md](docs/testing.md) — テストの分担・TDD・モック・PR レビューの方針
 - [docs/next-issues.md](docs/next-issues.md) — 現在地と、次に切る Issue の下書き
 - [docs/issue-reports/](docs/issue-reports/README.md) — Issue ごとの計画・実装・レビュー・採用判断と改善の記録
+- [docs/decisions/](docs/decisions/README.md) — Issue を越えて効く技術判断の記録（ADR）
 - [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) — AI エージェント向けガイド
 
 ## 技術方針
