@@ -55,3 +55,11 @@ export function getMovementRange(
 
   return range
 }
+
+export function canMoveTo(
+  _target: Position,
+  _occupiedPositions: readonly Position[],
+  _boardSize: BoardSize,
+): boolean {
+  throw new Error('未実装')
+}

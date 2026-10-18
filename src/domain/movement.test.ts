@@ -1,4 +1,4 @@
-import { getDistance, getMovement, getMovementRange } from './movement.ts'
+import { canMoveTo, getDistance, getMovement, getMovementRange } from './movement.ts'
 
 describe('getDistance', () => {
   const examples = [
@@ -141,5 +141,37 @@ describe('getMovementRange', () => {
     expect(origin).toEqual({ x: 0, y: 0 })
     expect(others).toEqual([{ x: 1, y: 0 }])
     expect(board).toEqual({ width: 3, height: 2 })
+  })
+})
+
+describe('canMoveTo（spec.md 2.3 移動先の可否）', () => {
+  // 味方1 (3, 8) と 敵1 (4, 3) がいる 10×10 の盤面。
+  const occupied = [{ x: 2, y: 7 }, { x: 3, y: 2 }]
+  const size = { width: 10, height: 10 }
+
+  it.each([
+    { label: '移動範囲内の空きマス (3, 4)', target: { x: 2, y: 3 } },
+    { label: '移動範囲外の空きマス (10, 1)', target: { x: 9, y: 0 } },
+    { label: '盤面の左上 (1, 1)', target: { x: 0, y: 0 } },
+    { label: '盤面の右下 (10, 10)', target: { x: 9, y: 9 } },
+  ])('$label へは移動できる', ({ target }) => {
+    expect(canMoveTo(target, occupied, size)).toBe(true)
+  })
+
+  it.each([
+    { label: '他キャラのマス (4, 3)', target: { x: 3, y: 2 } },
+    { label: '自分のいるマス (3, 8)', target: { x: 2, y: 7 } },
+    { label: '盤面の左の外', target: { x: -1, y: 0 } },
+    { label: '盤面の右の外', target: { x: 10, y: 0 } },
+    { label: '盤面の上の外', target: { x: 0, y: -1 } },
+    { label: '盤面の下の外', target: { x: 0, y: 10 } },
+  ])('$label へは移動できない', ({ target }) => {
+    expect(canMoveTo(target, occupied, size)).toBe(false)
+  })
+
+  it('横と縦の大きさを取り違えない（4列2行の盤面）', () => {
+    const wide = { width: 4, height: 2 }
+    expect(canMoveTo({ x: 3, y: 1 }, [], wide)).toBe(true)
+    expect(canMoveTo({ x: 1, y: 3 }, [], wide)).toBe(false)
   })
 })
