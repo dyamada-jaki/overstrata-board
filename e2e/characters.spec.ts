@@ -7,6 +7,12 @@ test('キャラ選択・別キャラ切替・範囲内外への移動・全解�
   const range = page.locator('button[aria-description="移動範囲"]')
   const selected = page.getByRole('button', { pressed: true })
   const characters = page.getByRole('button', { name: / (味方|敵)[12] / })
+  for (const [name, number] of [['味方1', '1'], ['味方2', '2'], ['敵1', '1'], ['敵2', '2']]) {
+    await expect(character(name)).toHaveText(number)
+    await expect(character(name).locator('span')).toHaveCSS('color', 'rgb(255, 255, 255)')
+    await expect(character(name).locator('span')).toHaveCSS('background-color',
+      name.startsWith('味方') ? 'rgb(29, 78, 216)' : 'rgb(185, 28, 28)')
+  }
   const initial = await characters.allTextContents()
   const placements = await characters.evaluateAll((elements) => elements.map((element) => element.getAttribute('aria-label')))
   await cell(1, 1).click()

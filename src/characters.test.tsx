@@ -25,7 +25,7 @@ describe('サンプルキャラの操作（spec.md 2.1–2.3）', () => {
     for (const sample of samples) {
       const token = character(sample.name)
       expect(token).toHaveAccessibleName(`マス ${formatPosition(sample)} ${sample.name} ${sample.side} ${sample.armor} 移動力${sample.movement}`)
-      expect(token).toHaveTextContent(sample.name.endsWith('1') ? '1' : '2')
+      expect(token.textContent).toBe(sample.name.endsWith('1') ? '1' : '2')
     }
     expectCleared()
   })
