@@ -32,6 +32,10 @@ test('キャラを選択→範囲表示→別キャラで切替→範囲内外�
   await expect(ally1).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { name: 'マス (3, 3) 移動範囲', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'マス (3, 2)', exact: true })).toBeVisible()
+  // 範囲は薄い色で塗り、範囲外のマスと見分けられる。
+  const backgroundOf = (name: string) => page.getByRole('button', { name, exact: true })
+    .evaluate((element) => getComputedStyle(element).backgroundColor)
+  expect(await backgroundOf('マス (3, 3) 移動範囲')).not.toBe(await backgroundOf('マス (3, 2)'))
   await expect(enemy1).toHaveAccessibleName('マス (4, 3) 敵1（敵・中装）')
   await testInfo.attach('味方1の移動範囲', { body: await page.screenshot(), contentType: 'image/png' })
 

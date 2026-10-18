@@ -152,6 +152,8 @@ describe('canMoveTo（spec.md 2.3 移動先の可否）', () => {
   it.each([
     { label: '移動範囲内の空きマス (3, 4)', target: { x: 2, y: 3 } },
     { label: '移動範囲外の空きマス (10, 1)', target: { x: 9, y: 0 } },
+    { label: '味方1と同じ縦8・別の列の空きマス (1, 8)', target: { x: 0, y: 7 } },
+    { label: '味方1と同じ横3・別の行の空きマス (3, 1)', target: { x: 2, y: 0 } },
     { label: '盤面の左上 (1, 1)', target: { x: 0, y: 0 } },
     { label: '盤面の右下 (10, 10)', target: { x: 9, y: 9 } },
   ])('$label へは移動できる', ({ target }) => {
