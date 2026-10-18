@@ -106,7 +106,7 @@ allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *), Bash(
 ## 9. 記録を更新・保存する
 - `docs/issue-reports/issue-N.md` に、採用・不採用の理由、マージ結果、削除・保管した資源、ふりかえりと改善の反映結果を追記する。受け入れ条件の判定と PR・CI・レビューへのリンクを確かめる。`docs/issue-reports/README.md` の一覧にもリンクを追加する
 - 改善ごとに人間の判断・承認内容、反映先のファイルや Issue のリンクと、「反映済み」「登録済み・未実装」「判断待ち」「見送り（理由）」などの状態を残す。残作業と理由を明記し、実施していない改善を完了としない
-- 今回変更した関連ファイルだけを、`git commit -- <ファイル>` のようにパスを指定して main にコミットし、push の前に `git pull --rebase --autostash` する（PO も同じ main で作業しているため。PO の書きかけは一時的に退避され、元に戻る）。記録のみなら `docs: record #N completion`、スクリプト等も変えた場合は内容に合うメッセージを付ける。他の作業の変更を混ぜない
+- 今回変更した関連ファイルだけを、`git commit -- <ファイル>` のようにパスを指定して main にコミットし（新しいファイルは先に `git add <ファイル>` する。ADR など）、push の前に `git pull --rebase --autostash` する（PO も同じ main で作業しているため。PO の書きかけは一時的に退避され、元に戻る）。記録のみなら `docs: record #N completion`、スクリプト等も変えた場合は内容に合うメッセージを付ける。他の作業の変更を混ぜない
 
 ## 10. 人間に結果を報告する
 この端末は手順11で閉じるので、会話での報告に加えて、要点（下のうち、やったこと・ふりかえりの要点・判断待ち・申し送り）とレポートへのリンクを `gh issue comment N` で Issue に残す。報告に含めるもの:
