@@ -5,7 +5,7 @@
 | 項目 | 内容 |
 |---|---|
 | Issue | [#9 サンプルキャラ4体を表示し、移動範囲を確認して動かせるようにする](https://github.com/dyamada-jaki/overstrata-board/issues/9) |
-| 期間 | 2026-10-18 21:02 JST〜2026-10-19（マージ・後片付け完了。ふりかえりの改善案は判断待ち） |
+| 期間 | 2026-10-18 21:02 JST〜23:55 JST（マージ・後片付け完了。ふりかえりの改善案は判断待ち） |
 | PR | [#35 Claude Code](https://github.com/dyamada-jaki/overstrata-board/pull/35) / [#36 Codex](https://github.com/dyamada-jaki/overstrata-board/pull/36) |
 | 状態 | **PR #35 を採用してマージ済み**（squash、main `d9b6e94`）。PR #36 は不採用でクローズ。Issue #9 は CLOSED。人間の実機確認は一部記録あり（9章）。ふりかえりの改善案は判断待ち（10章） |
 | 仕様 | spec.md 2.1〜2.4・3.1・3.2・4章、testing.md 2・4・5・7章 |
@@ -159,9 +159,9 @@ PR #36 も採用できる実装。#36 の良い点のうち、コマを番号で
 
 ## 8. 完了処理
 
-- **PR #35 を採用**: 2026-10-19 JST、squash でマージ（head `3e2c07f`、main `d9b6e94`）。マージ直前に head と CI（4ジョブ成功）を再確認し、PO の受け入れ（head `3e2c07f`）と一致した。Issue #9 は CLOSED
+- **PR #35 を採用**: 2026-10-18 23:55 JST ごろ、squash でマージ（head `3e2c07f`、main `d9b6e94`）。マージ直前に head と CI（4ジョブ成功）を再確認し、PO の受け入れ（head `3e2c07f`）と一致した。Issue #9 は CLOSED
 - **PR #36 を不採用**: クローズ。理由は「範囲の計算を domain に置く構成で、選択枠を味方のコマと区別できる橙にしたため」。リモートブランチ `dyamada-jaki/issue-9-codex`（`3bdd017`）は残した
-- **利用者の承認**: SHA の表記の扱い・マージ・後片付けの内容を、2026-10-19 JST に利用者が承認した
+- **利用者の承認**: SHA の表記の扱い・マージ・後片付けの内容を、2026-10-18 23:55 JST ごろ に利用者が承認した
 - **消したもの**: worktree 4つ（`issue-9-claude` は Orca がマージ時に消済み、`issue-9-codex`・`issue-9-quality-pr-35`・`issue-9-quality-pr-36` は `finish.sh remove-worktree`）。ローカルブランチ（品質 #36 は HEAD `3bdd017` が `origin/dyamada-jaki/issue-9-codex` に含まれることを確かめて削除）。Docker ボリューム `issue-9-claude_node_modules`・`issue-9-codex_node_modules`（コンテナ・ネットワークは0）。ワーカーのターミナルは reclaimable 0
 - **残したもの**: main の worktree、不採用 PR #36 のリモートブランチ、PR・CI・レビューコメント・本レポート
 - 削除後に Git・Orca の一覧、実パス、Docker のコンテナ・ボリューム・ネットワーク、ワーカーの残存を再確認した（残存なし）
@@ -233,7 +233,7 @@ PR #36 も採用できる実装。#36 の良い点のうち、コマを番号で
 
 ## 11. PO への申し送り
 
-- **next-issues.md「現在地」に載せる内容**（2026-10-19 JST、根拠: 8・9章）
+- **next-issues.md「現在地」に載せる内容**（2026-10-18 23:55 JST ごろ、根拠: 8・9章）
   - #9: PR #35 を採用し、main `d9b6e94` へ取り込み済み。PR #36 は不採用でクローズ、リモートは保持。Issue は CLOSED。実装・自動検証は完了
   - 人間の実機確認: iPhone / Safari で「キャラの選択・範囲内外の移動・解除」が OK（両 PR のコメント。SHA の表記は逆だが、利用者が書き間違いと確認）。見分け・切り替え・余白・タップのしやすさは記録なし
   - 区切り1: 未達として扱う。実機確認の残りの記録が出た時点で、達成を判断する（担当: 利用者、記録先: PR #35 のコメントまたは本レポート）
