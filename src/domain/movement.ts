@@ -55,3 +55,17 @@ export function getMovementRange(
 
   return range
 }
+
+/**
+ * 実際の移動先の可否（spec.md 2.3）。盤面内の空きマスなら移動範囲の外でもよい。
+ * occupiedPositions には移動するキャラ自身を含む全キャラの位置を渡す。
+ */
+export function canMoveTo(
+  target: Position,
+  occupiedPositions: readonly Position[],
+  boardSize: BoardSize,
+): boolean {
+  const inside = target.x >= 0 && target.x < boardSize.width
+    && target.y >= 0 && target.y < boardSize.height
+  return inside && !occupiedPositions.some((position) => position.x === target.x && position.y === target.y)
+}
