@@ -224,7 +224,7 @@ Orcaで差分を見る。エージェントのコードレビューでは、Issu
 - コーディネーターが両レビューの指摘を裏付け、重複と誤検出を整理する。試行の有効な独自指摘・誤検出・所要時間を Issue レポートに残し、継続するかは #8・#9 の結果から判断する。他の Issue への追加は明示的に指定する
 - ③〜⑥をまとめて回すスキルがある：Orcaのターミナル（mainのworktree）で `/dual-implement 番号`（Codexなら `$dual-implement 番号`。自動では呼ばれないので、名前を付けて呼ぶ）。途中で止まるのは④の計画承認と、最後の報告の2回だけ。マージ（⑦）は人間がする
   - 推薦する PR が決まると、開発チームが PO に受け入れの一次判断を頼む（`accept-review`）。PO はコードではなく、受け入れ条件・仕様・スコープ・使う人から見た振る舞いを見て、PR にコメントする。差し戻しなら開発チームが直して再確認し、受け入れか人間の判断が必要になった時点で人間に報告が来る
-  - コーディネーターのモデル：Claude Code は `claude --model opus --effort high` で起動する。Codex は既定（`~/.codex/config.toml` の `gpt-6.1-sol`・high）のまま起動する。ワーカーのモデルは dual-implement の「モデルの指定」に従う
+  - コーディネーターのモデル：Claude Code は `claude --model opus --effort high` で起動する。Codex は既定（`~/.codex/config.toml` のモデル。2026-10-20 時点は `gpt-6-astra`・high）のまま起動する。ワーカーのモデルは dual-implement の「モデルの指定」に従う
 
 ### ステップ7：マージ【開発チーム】
 - [ ] PRをmainにマージする（`Closes #12` の効果でIssueが自動で閉じる）

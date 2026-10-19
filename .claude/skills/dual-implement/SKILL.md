@@ -22,7 +22,7 @@ disable-model-invocation: true
 - 待つときは `orca orchestration check --wait --timeout-ms 60000` を繰り返す。時間切れは失敗ではない。進捗を伝えながら待ち続ける
 
 ## モデルの指定
-- **実装ワーカー**: `--model` を付けない。各ツールの既定を使う（Claude Code は既定の Opus 5.5・effort medium、Codex は `~/.codex/config.toml` の `gpt-6.1-sol`・high）。既定はスキルではなく各ツールの設定で管理する
+- **実装ワーカー**: Claude Code は `--model` を付けず、既定（Opus 5.5・effort medium）を使う。Codex は `--model gpt-6.1-sol --effort xhigh` を付ける（`~/.codex/config.toml` は Codex アプリや PO と共通で、既定が `gpt-6-astra` になっていたため。2026-10-20 に利用者が決定）
 - **レビュー（相互・品質）**: Claude Code は `--model opus --effort high`、Codex は `--model gpt-6.1-sol --effort high` を付ける（両社とも、ロジックを追うレビューは high を勧めている）
 - 人間が別のモデルや effort を指定したら、それに従う。Codex の `ultra` は使わない（自動で仕事を分けるため、コストが読めない）
 - `worker-start --json` の `launch.requested` と `launch.effective` を、ワーカーごとにそのまま控える。モデルと effort は項目ごとに確認し、effective が `null` や欠落なら「実行値は未確認」と記録する。明示指定せず既定を使った場合は「既定継承」と併記するが、設定値やコミットの署名で実行値を補完しない。別途実行値を観測できた場合は出所とともに区別して残し、エイリアスは具体的なモデル名へ推測で展開しない。明示的な要求と確認できた effective が食い違う場合は知らせる
@@ -54,7 +54,7 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
   --name issue-N-claude --agent claude --json
 orca orchestration worker-start --spec "<下の実装用の指示>" --task-title "#N 実装（Codex）" \
   --worktree new-top-level --repo path:<このリポジトリの絶対パス> --base-branch main \
-  --name issue-N-codex --agent codex --json
+  --name issue-N-codex --agent codex --model gpt-6.1-sol --effort xhigh --json
 ```
 
 それぞれの `worker-start --json` の結果から、dispatch ID と worktree の絶対パス（`path`）を控えておく（手順6で使う）。見つからなければ `orca worktree list --json` で `issue-N-claude` / `issue-N-codex` を探す。
@@ -196,7 +196,7 @@ orca orchestration worker-start --spec "<下の品質レビュー用の指示>" 
    - **受け入れ**: 手順9へ
    - **人間の判断が必要**: 手順9へ。PO が挙げた判断事項を、そのまま人間に見せる
    - **差し戻し**: 指摘ごとに、差分・仕様・Issue で裏を取る
-     - 直すべき指摘は、PR の作者と同じエージェントで修正ワーカーを、その PR の worktree に起動して直させる（`worker-start --worktree path:<その PR の worktree> --agent <claude|codex>`。モデルは「モデルの指定」の実装ワーカーと同じ）。指示には、直す点と根拠、振る舞いを変える修正はテストを先に書くこと、同じブランチに push すること、worker_done に新しい head SHA を書くことを含める
+     - 直すべき指摘は、PR の作者と同じエージェントで修正ワーカーを、その PR の worktree に起動して直させる（`worker-start --worktree path:<その PR の worktree> --agent <claude|codex>`。モデルは「モデルの指定」の実装ワーカーと同じで、Codex には `--model gpt-6.1-sol --effort xhigh` を付ける）。指示には、直す点と根拠、振る舞いを変える修正はテストを先に書くこと、同じブランチに push すること、worker_done に新しい head SHA を書くことを含める
      - 修正後は、手順6.2の相互レビューの担当で、新しい SHA の更新差分と影響範囲を再確認させる。推薦コメントを新しい SHA で更新し、2. に戻って PO に再確認を送る
      - 開発チームとして同意できない指摘は直さない。両者の見解を並べ、手順9で人間に判断を仰ぐ
      - 差し戻しは2回まで（「開発設定」の「PO の差し戻し」）。3回目の差し戻しになったら、直さずに手順9で人間に判断を仰ぐ
