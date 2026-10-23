@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { formatPosition, getBoardPositions } from '../domain/board.ts'
 import type { Side } from '../domain/character.ts'
 import type { BoardSize, Position } from '../domain/movement.ts'
@@ -7,15 +8,19 @@ import './Board.css'
 const sideLabels: Record<Side, string> = { ally: '味方', enemy: '敵' }
 const keyOf = (position: Position) => `${position.x},${position.y}`
 
-export function Board({ size, state, onTap }: {
+export function Board({ size, state, onTap, movementControl }: {
   size: BoardSize
   state: BoardState
   onTap: (position: Position) => void
+  movementControl?: ReactNode
 }) {
   const { selection } = state
   const occupants = new Map(state.characters.flatMap((character) => character.position === null
     ? [] : [[keyOf(character.position), character] as const]))
   const range = new Set(getSelectedMovementRange(state, size).map(keyOf))
+  const selectedId = selection.kind === 'character' ? selection.id : null
+  const selected = state.characters.find((character) => character.id === selectedId)
+  const anchor = selected?.position
   const columns = { gridTemplateColumns: `repeat(${size.width}, minmax(0, 1fr))` }
 
   return (
@@ -48,6 +53,16 @@ export function Board({ size, state, onTap }: {
             </button>
           )
         })}
+        {movementControl && anchor && (
+          <div className="board-movement-control" style={{
+            left: `clamp(0px, calc(${(anchor.x + 0.5) / size.width * 100}% - 5.5rem), calc(100% - 11rem))`,
+            ...(anchor.y < size.height / 2
+              ? { top: `${(anchor.y + 1) / size.height * 100}%` }
+              : { bottom: `${(size.height - anchor.y) / size.height * 100}%` }),
+          }}>
+            {movementControl}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -130,3 +130,5 @@ button, input { font: inherit; }
 }
 .reset-dialog::backdrop { background: rgb(15 23 42 / 0.5); }
 .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; }
+
+.unplaced-item { display: grid; justify-items: center; align-content: start; gap: 0.25rem; }

@@ -102,7 +102,7 @@ describe('数の指定（承認された入力仕様）', () => {
   it.each([['0', '1', '敵1'], ['1', '0', '味方1']])('片側だけ（味方%s/敵%s）でも用意する', (ally, enemy, name) => {
     render(<App />)
     prepare(ally, enemy)
-    expect(within(unplaced()).getAllByRole('button')).toEqual([token(name)])
+    expect(within(unplaced()).getAllByRole('button', { name: /^未配置 / })).toEqual([token(name)])
     expect(occupants()).toEqual([])
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '確定' })).toBeDisabled()
@@ -111,7 +111,7 @@ describe('数の指定（承認された入力仕様）', () => {
   it('先頭0と前後空白を許し、指定数の駒を用意する', () => {
     render(<App />)
     prepare('05', ' 3 ')
-    expect(within(unplaced()).getAllByRole('button')).toHaveLength(8)
+    expect(within(unplaced()).getAllByRole('button', { name: /^未配置 / })).toHaveLength(8)
     expect(token('味方5')).toBeVisible()
     expect(token('敵3')).toBeVisible()
   })
@@ -119,7 +119,7 @@ describe('数の指定（承認された入力仕様）', () => {
   it('双方10体の20体を色と番号で見分け、10を0と省略しない', () => {
     render(<App />)
     prepare('10', '10')
-    expect(within(unplaced()).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(
+    expect(within(unplaced()).getAllByRole('button', { name: /^未配置 / }).map((button) => button.getAttribute('aria-label'))).toEqual(
       ['味方', '敵'].flatMap((side) => Array.from({ length: 10 }, (_, i) => `未配置 ${side}${i + 1}（${side}・移動力5）`)),
     )
     for (const side of ['味方', '敵']) {
@@ -149,17 +149,17 @@ describe('未配置から配置・確定・移動まで', () => {
     fireEvent.click(token('味方1'))
     fireEvent.click(token('敵1'))
     expect(pressed()).toEqual([token('敵1')])
-    expect(within(unplaced()).getAllByRole('button')).toHaveLength(3)
+    expect(within(unplaced()).getAllByRole('button', { name: /^未配置 / })).toHaveLength(3)
     fireEvent.click(cell(4, 4))
     expect(occupants()).toEqual(['マス (4, 4) 敵1（敵・移動力5）'])
-    expect(within(unplaced()).getAllByRole('button')).toHaveLength(2)
+    expect(within(unplaced()).getAllByRole('button', { name: /^未配置 / })).toHaveLength(2)
     expect(pressed()).toEqual([])
     expect(range()).toEqual([])
     fireEvent.click(token('味方1'))
     fireEvent.click(cell(4, 4)) // 未配置→配置済み: 配置せず選択だけ切替
     expect(pressed()).toEqual([cell(4, 4)])
     expect(occupants()).toHaveLength(1)
-    expect(within(unplaced()).getAllByRole('button')).toHaveLength(2)
+    expect(within(unplaced()).getAllByRole('button', { name: /^未配置 / })).toHaveLength(2)
     fireEvent.click(token('味方2')) // 配置済み→未配置: 移動しない
     expect(pressed()).toEqual([token('味方2')])
     expect(range()).toEqual([])
@@ -280,7 +280,7 @@ describe('確認付きの全体やり直し', () => {
     prepare()
     place('味方1', 3, 4)
     fireEvent.click(selected === '未配置' ? token('敵1') : selected === '配置済み' ? cell(3, 4) : cell(1, 1))
-    const before = { occupied: occupants(), selected: pressed(), range: range(), unplaced: within(unplaced()).getAllByRole('button') }
+    const before = { occupied: occupants(), selected: pressed(), range: range(), unplaced: within(unplaced()).getAllByRole('button', { name: /^未配置 / }) }
     const opener = screen.getByRole('button', { name: '準備をやり直す' })
     opener.focus()
     fireEvent.click(opener)
@@ -293,7 +293,7 @@ describe('確認付きの全体やり直し', () => {
     expect(occupants()).toEqual(before.occupied)
     expect(pressed()).toEqual(before.selected)
     expect(range()).toEqual(before.range)
-    expect(within(unplaced()).getAllByRole('button')).toEqual(before.unplaced)
+    expect(within(unplaced()).getAllByRole('button', { name: /^未配置 / })).toEqual(before.unplaced)
     expect(screen.getByRole('button', { name: '確定' })).toBeDisabled()
     click('準備をやり直す')
     click('やり直す')

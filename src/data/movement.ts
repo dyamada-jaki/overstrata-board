@@ -7,3 +7,6 @@ export const movementRules = {
     heavy: -2,
   },
 } as const
+
+// #32以降の準備用。装備の補正は使わず、駒ごとの値を設定する（spec.md 2.2）。
+export const preparationMovement = { initial: 5, min: 0, max: 9 } as const

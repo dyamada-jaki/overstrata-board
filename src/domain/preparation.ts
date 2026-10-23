@@ -1,3 +1,4 @@
+import { preparationMovement } from '../data/movement.ts'
 import type { Character, Side } from './character.ts'
 import type { BoardState } from './selection.ts'
 
@@ -40,7 +41,7 @@ export function prepareBattle(allyInput: string, enemyInput: string): BattleStat
       name: `${side === 'ally' ? '味方' : '敵'}${number}`,
       side,
       number,
-      movement: 5,
+      movement: preparationMovement.initial,
       position: null,
     }
   })
@@ -60,7 +61,21 @@ export function confirmBattle(state: BattleState): BattleState {
   return canConfirmBattle(state) ? { ...state, phase: 'active', selection: { kind: 'none' } } : state
 }
 
-/** 駒の移動力を±で変更する入口。テスト先行のための枠。 */
-export function changeMovement(state: BattleState, _id: string, _delta: -1 | 1): BattleState {
-  return state
+/** ±後の移動力。範囲を超える操作はできない（spec.md 2.2）。 */
+export function stepMovement(movement: number, delta: -1 | 1): number | null {
+  const next = movement + delta
+  return next < preparationMovement.min || next > preparationMovement.max ? null : next
+}
+
+/** 準備中だけ、対象の駒の移動力を更新する。選択・配置と他の駒は保つ。 */
+export function changeMovement(state: BattleState, id: string, delta: -1 | 1): BattleState {
+  if (state.phase !== 'preparing') return state
+  const character = state.characters.find((candidate) => candidate.id === id)
+  if (!character) return state
+  const movement = stepMovement(character.movement, delta)
+  if (movement === null) return state
+  return {
+    ...state,
+    characters: state.characters.map((candidate) => candidate.id === id ? { ...candidate, movement } : candidate),
+  }
 }

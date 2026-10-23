@@ -1,0 +1,35 @@
+.movement-control {
+  width: 11rem;
+  max-width: 100%;
+  border: 2px solid #1d4ed8;
+  border-radius: 0.5rem;
+  padding: 0.375rem;
+  background: #fff;
+  box-shadow: 0 3px 10px rgb(15 23 42 / 0.2);
+  color: #1e293b;
+  font-size: 0.8rem;
+}
+.movement-control-enemy { border-color: #b91c1c; }
+.movement-heading { display: flex; align-items: center; justify-content: space-between; font-weight: 700; }
+.movement-control button {
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.25rem;
+  border: 1px solid #64748b;
+  border-radius: 0.35rem;
+  background: #f1f5f9;
+  color: #1e293b;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.movement-control button:disabled {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #64748b;
+  cursor: default;
+}
+.movement-control button:focus-visible { outline: 3px solid #f59e0b; outline-offset: 1px; }
+.movement-control .movement-close { border-color: transparent; background: #fff; font-size: 1.25rem; }
+.movement-steps { display: flex; align-items: center; justify-content: space-between; gap: 0.25rem; }
+.movement-steps output { text-align: center; font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }

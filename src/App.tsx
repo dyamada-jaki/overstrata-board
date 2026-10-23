@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { MovementControl } from './components/MovementControl.tsx'
+import { preparationMovement } from './data/movement.ts'
 import { Board } from './components/Board.tsx'
 import { boardSize } from './data/board.ts'
-import { areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle } from './domain/preparation.ts'
+import { changeMovement, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle } from './domain/preparation.ts'
 import { tapCharacter, tapPosition } from './domain/selection.ts'
 import './App.css'
 
@@ -31,15 +33,24 @@ function App() {
   const [battle, setBattle] = useState(createInitialBattle)
   const [allyCount, setAllyCount] = useState('0')
   const [enemyCount, setEnemyCount] = useState('0')
+  const [movementEditorOpen, setMovementEditorOpen] = useState(true)
   const [resetOpen, setResetOpen] = useState(false)
   const [focusCounts, setFocusCounts] = useState(false)
   const prepared = prepareBattle(allyCount, enemyCount)
   const unplaced = battle.characters.filter((character) => character.position === null)
+  const selectedId = battle.selection.kind === 'character' ? battle.selection.id : null
+  const selected = battle.characters.find((character) => character.id === selectedId)
+  const movementControl = battle.phase === 'preparing' && movementEditorOpen && selected ? (
+    <MovementControl character={selected}
+      onStep={(delta) => setBattle((current) => changeMovement(current, selected.id, delta))}
+      onClose={() => setMovementEditorOpen(false)} />
+  ) : null
   const reset = () => {
     setBattle(createInitialBattle())
     setAllyCount('0')
     setEnemyCount('0')
     setResetOpen(false)
+    setMovementEditorOpen(true)
     setFocusCounts(true)
   }
 
@@ -49,9 +60,12 @@ function App() {
       <p className="board-help">駒を選んで空きマスを押すと配置・移動。同じ駒で選択解除。薄い色は移動範囲の目安です。</p>
       <div className="battle-layout">
         <div>
-          <Board size={boardSize} state={battle}
-            onTap={(position) => setBattle((current) => ({ ...current, ...tapPosition(current, position, boardSize) }))} />
-          <p className="legend"><span className="ally-label">● 味方</span> <span className="enemy-label">● 敵</span> 移動力は全駒5マス</p>
+          <Board size={boardSize} state={battle} movementControl={movementControl}
+            onTap={(position) => {
+              setMovementEditorOpen(true)
+              setBattle((current) => ({ ...current, ...tapPosition(current, position, boardSize) }))
+            }} />
+          <p className="legend"><span className="ally-label">● 味方</span> <span className="enemy-label">● 敵</span> 移動力の初期値は{preparationMovement.initial}マス（準備中に{preparationMovement.min}〜{preparationMovement.max}マスで設定）</p>
         </div>
         {battle.phase === 'counts' ? (
           <section aria-label="駒の数の指定" className="preparation-panel">
@@ -71,7 +85,7 @@ function App() {
             <h2>{battle.phase === 'preparing' ? '駒を配置' : '準備完了'}</h2>
             {battle.phase === 'preparing' ? (
               <>
-                <p>一覧から駒を選び、盤面の空きマスに置いてください。確定するまで位置を修正できます。</p>
+                <p>一覧から駒を選び、盤面の空きマスに置いてください。確定するまで位置と移動力を修正できます。駒を選ぶと移動力の設定が開きます。×で設定だけを閉じて、隠れているマスへも動かせます。</p>
                 <div role="group" aria-label="未配置の駒">
                   <h3>未配置：{unplaced.length}体</h3>
                   {unplaced.length === 0 ? <p>全駒を配置しました。「確定」で準備を完了します。</p> : (
@@ -79,13 +93,19 @@ function App() {
                       {(['ally', 'enemy'] as const).map((side) => (
                         <div className="unplaced-side" key={side}>
                           {unplaced.filter((character) => character.side === side).map((character) => (
-                            <button key={character.id} type="button" className="unplaced-token"
-                              aria-label={`未配置 ${character.name}（${character.side === 'ally' ? '味方' : '敵'}・移動力${character.movement}）`}
-                              aria-pressed={battle.selection.kind === 'character' && battle.selection.id === character.id}
-                              onClick={() => setBattle((current) => ({ ...current, ...tapCharacter(current, character.id) }))}>
-                              <span className={`board-token board-token-${character.side}`} aria-hidden="true">{character.number}</span>
-                              <span>{character.name}</span>
-                            </button>
+                            <div key={character.id} className="unplaced-item">
+                              <button type="button" className="unplaced-token"
+                                aria-label={`未配置 ${character.name}（${character.side === 'ally' ? '味方' : '敵'}・移動力${character.movement}）`}
+                                aria-pressed={battle.selection.kind === 'character' && battle.selection.id === character.id}
+                                onClick={() => {
+                                  setMovementEditorOpen(true)
+                                  setBattle((current) => ({ ...current, ...tapCharacter(current, character.id) }))
+                                }}>
+                                <span className={`board-token board-token-${character.side}`} aria-hidden="true">{character.number}</span>
+                                <span>{character.name}</span>
+                              </button>
+                              {selectedId === character.id && movementControl}
+                            </div>
                           ))}
                         </div>
                       ))}
