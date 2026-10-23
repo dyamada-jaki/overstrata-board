@@ -1,4 +1,4 @@
-import { areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle } from './preparation.ts'
+import { changeMovement, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle } from './preparation.ts'
 import { getSelectedMovementRange, tapPosition } from './selection.ts'
 
 const size = { width: 10, height: 10 }
@@ -77,5 +77,52 @@ describe('数の操作と双方0体の案内', () => {
     ['10', '10', false], ['', '0', false], ['0', '11', false],
   ])('味方%s/敵%sの双方0体案内は%s', (ally, enemy, expected) => {
     expect(areBothCountsZero(ally, enemy)).toBe(expected)
+  })
+})
+
+describe('駒の移動力の変更', () => {
+  it.each([
+    [0, -1, 0], [0, 1, 1], [1, -1, 0], [5, -1, 4], [5, 1, 6],
+    [8, 1, 9], [9, -1, 8], [9, 1, 9],
+  ] as const)('移動力%dを%dすると%dになり、選択・配置・他の駒・入力は変えない', (movement, delta, expected) => {
+    const prepared = prepareBattle('2', '1')!
+    const state = {
+      ...prepared,
+      selection: { kind: 'character' as const, id: 'ally-1' },
+      characters: prepared.characters.map((character, index) => Object.freeze({
+        ...character, movement: index === 0 ? movement : 5,
+        position: index === 0 ? { x: 2, y: 3 } : null,
+      })),
+    }
+    Object.freeze(state.characters)
+    Object.freeze(state)
+    const before = structuredClone(state)
+    expect(changeMovement(state, 'ally-1', delta)).toEqual({
+      ...state, characters: state.characters.map((character, index) => index === 0 ? { ...character, movement: expected } : character),
+    })
+    expect(state).toEqual(before)
+  })
+
+  it('未配置の敵の移動力も変更できる', () => {
+    const state = prepareBattle('1', '1')!
+    expect(changeMovement(state, 'enemy-1', 1)).toEqual({
+      ...state, characters: [state.characters[0], { ...state.characters[1], movement: 6 }],
+    })
+  })
+
+  it.each(['counts', 'active'] as const)('%sでは変更せず、知らない駒も増やさない', (phase) => {
+    const state = { ...prepareBattle('1', '1')!, phase }
+    expect(changeMovement(state, 'ally-1', 1)).toEqual(state)
+    expect(changeMovement(state, 'missing', -1)).toEqual(state)
+  })
+
+  it('準備中でも知らない駒は変更せず、確定には変更した値を引き継ぐ', () => {
+    const state = prepareBattle('1', '0')!
+    expect(changeMovement(state, 'missing', -1)).toEqual(state)
+    const edited = changeMovement(state, 'ally-1', -1)
+    const placed = { ...edited, ...tapPosition({ ...edited, selection: { kind: 'character' as const, id: 'ally-1' } }, { x: 0, y: 0 }, size) }
+    const active = confirmBattle(placed)
+    expect(active.characters[0]).toMatchObject({ movement: 4, position: { x: 0, y: 0 } })
+    expect(changeMovement(active, 'ally-1', 1)).toEqual(active)
   })
 })

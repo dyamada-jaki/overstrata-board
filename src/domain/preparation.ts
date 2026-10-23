@@ -59,3 +59,8 @@ export function canConfirmBattle(state: BattleState): boolean {
 export function confirmBattle(state: BattleState): BattleState {
   return canConfirmBattle(state) ? { ...state, phase: 'active', selection: { kind: 'none' } } : state
 }
+
+/** 駒の移動力を±で変更する入口。テスト先行のための枠。 */
+export function changeMovement(state: BattleState, _id: string, _delta: -1 | 1): BattleState {
+  return state
+}
