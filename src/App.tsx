@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Board } from './components/Board.tsx'
 import { boardSize } from './data/board.ts'
-import { areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle } from './domain/preparation.ts'
+import { movementSetting } from './data/movement.ts'
+import type { Character } from './domain/character.ts'
+import { areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement, stepMovement } from './domain/preparation.ts'
 import { tapCharacter, tapPosition } from './domain/selection.ts'
 import './App.css'
 
@@ -27,6 +29,28 @@ function CountInput({ side, value, onChange, autoFocus = false }: { side: '味�
   )
 }
 
+function MovementSetting({ character, onChange }: { character: Character; onChange: (movement: number) => void }) {
+  const decrement = stepMovement(character.movement, -1)
+  const increment = stepMovement(character.movement, 1)
+  const name = `${character.name}の移動力`
+  return (
+    <div role="group" aria-label={name} className="movement-setting">
+      <p className="movement-setting-title">
+        <span className={`board-token board-token-${character.side}`} aria-hidden="true">{character.number}</span>
+        <span>{name}</span>
+      </p>
+      <div className="count-controls">
+        <button type="button" aria-label={`${name}を減らす`} disabled={decrement === null}
+          onClick={() => { if (decrement !== null) onChange(decrement) }}>−</button>
+        <output className="movement-value">{character.movement}</output>
+        <button type="button" aria-label={`${name}を増やす`} disabled={increment === null}
+          onClick={() => { if (increment !== null) onChange(increment) }}>＋</button>
+        <span>マス</span>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [battle, setBattle] = useState(createInitialBattle)
   const [allyCount, setAllyCount] = useState('0')
@@ -35,6 +59,10 @@ function App() {
   const [focusCounts, setFocusCounts] = useState(false)
   const prepared = prepareBattle(allyCount, enemyCount)
   const unplaced = battle.characters.filter((character) => character.position === null)
+  const { selection } = battle
+  // 欄は準備中の画面にだけ置く。確定後は出さない（#37）。
+  const editing = selection.kind === 'character'
+    ? battle.characters.find((character) => character.id === selection.id) : undefined
   const reset = () => {
     setBattle(createInitialBattle())
     setAllyCount('0')
@@ -51,7 +79,7 @@ function App() {
         <div>
           <Board size={boardSize} state={battle}
             onTap={(position) => setBattle((current) => ({ ...current, ...tapPosition(current, position, boardSize) }))} />
-          <p className="legend"><span className="ally-label">● 味方</span> <span className="enemy-label">● 敵</span> 移動力は全駒5マス</p>
+          <p className="legend"><span className="ally-label">● 味方</span> <span className="enemy-label">● 敵</span> 移動力の初期値は{movementSetting.initial}マス（準備中に駒を選ぶと変更できます）</p>
         </div>
         {battle.phase === 'counts' ? (
           <section aria-label="駒の数の指定" className="preparation-panel">
@@ -71,7 +99,9 @@ function App() {
             <h2>{battle.phase === 'preparing' ? '駒を配置' : '準備完了'}</h2>
             {battle.phase === 'preparing' ? (
               <>
-                <p>一覧から駒を選び、盤面の空きマスに置いてください。確定するまで位置を修正できます。</p>
+                <p>一覧から駒を選び、盤面の空きマスに置いてください。確定するまで位置を修正できます。選んだ駒の移動力は −・＋ で変更できます。</p>
+                {editing && <MovementSetting character={editing}
+                  onChange={(movement) => setBattle((current) => setMovement(current, editing.id, movement))} />}
                 <div role="group" aria-label="未配置の駒">
                   <h3>未配置：{unplaced.length}体</h3>
                   {unplaced.length === 0 ? <p>全駒を配置しました。「確定」で準備を完了します。</p> : (

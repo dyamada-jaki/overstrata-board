@@ -1,4 +1,4 @@
-import { areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle } from './preparation.ts'
+import { areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement, stepMovement } from './preparation.ts'
 import { getSelectedMovementRange, tapPosition } from './selection.ts'
 
 const size = { width: 10, height: 10 }
@@ -77,5 +77,39 @@ describe('数の操作と双方0体の案内', () => {
     ['10', '10', false], ['', '0', false], ['0', '11', false],
   ])('味方%s/敵%sの双方0体案内は%s', (ally, enemy, expected) => {
     expect(areBothCountsZero(ally, enemy)).toBe(expected)
+  })
+})
+
+describe('準備中の移動力の変更（#37）', () => {
+  it.each([
+    [0, -1, null], [0, 1, 1], [1, -1, 0], [5, -1, 4], [5, 1, 6], [8, 1, 9], [9, 1, null], [9, -1, 8],
+  ] as const)('%dを%dすると%s', (movement, delta, expected) => {
+    expect(stepMovement(movement, delta)).toBe(expected)
+  })
+
+  it('対象の駒だけを書き換え、選択・位置・段階は保ち、元の状態を変更しない', () => {
+    const prepared = prepareBattle('2', '1')!
+    const state = Object.freeze({ ...prepared, selection: { kind: 'character' as const, id: 'ally-2' } })
+    const next = setMovement(state, 'ally-2', 9)
+    expect(next.characters.map((character) => [character.id, character.movement])).toEqual([['ally-1', 5], ['ally-2', 9], ['enemy-1', 5]])
+    expect(next.selection).toEqual(state.selection)
+    expect(next.phase).toBe('preparing')
+    expect(next.characters[1]).toEqual({ ...state.characters[1], movement: 9 })
+    expect(state.characters[1]!.movement).toBe(5)
+    expect(setMovement(state, 'ally-1', 0).characters.map((character) => character.movement)).toEqual([0, 5, 5])
+  })
+
+  it.each([-1, 10, 1.5])('%sは設定せず、状態を変えない', (movement) => {
+    const state = prepareBattle('1', '0')!
+    expect(setMovement(state, 'ally-1', movement)).toBe(state)
+  })
+
+  it('確定後・数指定の段階・存在しない駒では状態を変えない', () => {
+    const state = prepareBattle('1', '0')!
+    const active = { ...state, phase: 'active' as const }
+    expect(setMovement(active, 'ally-1', 3)).toBe(active)
+    const counts = createInitialBattle()
+    expect(setMovement(counts, 'ally-1', 3)).toBe(counts)
+    expect(setMovement(state, 'enemy-1', 3)).toBe(state)
   })
 })
