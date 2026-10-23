@@ -92,6 +92,8 @@ test('20体の一覧と番号10を表示し、陣営色が異なり横スクロ�
   await page.goto('/')
   await prepare(page, '10', '10')
   await expect(page.getByRole('group', { name: '未配置の駒' }).getByRole('button')).toHaveCount(20)
+  expect(await token(page, '味方1').evaluate((el) => getComputedStyle(el).backgroundColor))
+    .not.toBe(await token(page, '敵1').evaluate((el) => getComputedStyle(el).backgroundColor))
   await place(page, '味方10', 1, 1)
   await place(page, '敵10', 10, 10)
   const ally = cell(page, 1, 1).locator('span')

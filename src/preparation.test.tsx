@@ -14,6 +14,8 @@ function prepare(ally = '2', enemy = '1') {
   input('味方', ally)
   input('敵', enemy)
   click('駒を用意する')
+  expect(screen.getByRole('region', { name: '配置の準備' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: '駒を配置' })).toBeVisible()
 }
 function place(name: string, x: number, y: number) {
   fireEvent.click(token(name))
@@ -40,6 +42,8 @@ describe('数の指定（承認された入力仕様）', () => {
     expect(screen.getByText('味方か敵を1体以上にしてください')).toBeVisible()
     expect(screen.queryByRole('button', { name: '準備をやり直す' })).not.toBeInTheDocument()
     expect(field('味方')).toHaveAttribute('inputmode', 'numeric')
+    expect(field('味方')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
+    expect(field('敵')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
   })
 
   it('−/＋は1ずつ増減し、0と10の端では範囲を超えない', () => {
@@ -47,10 +51,12 @@ describe('数の指定（承認された入力仕様）', () => {
     expect(screen.getByRole('button', { name: '味方の数を減らす' })).toBeDisabled()
     click('味方の数を増やす')
     expect(field('味方')).toHaveValue('1')
+    expect(screen.queryByText('味方か敵を1体以上にしてください')).not.toBeInTheDocument()
     expect(field('敵')).toHaveValue('0')
     click('味方の数を減らす')
     expect(field('味方')).toHaveValue('0')
     input('敵', '9')
+    expect(screen.queryByText('味方か敵を1体以上にしてください')).not.toBeInTheDocument()
     click('敵の数を増やす')
     expect(field('敵')).toHaveValue('10')
     expect(screen.getByRole('button', { name: '敵の数を増やす' })).toBeDisabled()
@@ -72,6 +78,8 @@ describe('数の指定（承認された入力仕様）', () => {
     input('味方', ' 3 ')
     expect(field('味方')).not.toHaveAttribute('aria-invalid', 'true')
     expect(screen.queryByText('0〜10の整数で入力してください')).not.toBeInTheDocument()
+    expect(field('味方')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
+    expect(screen.queryByText('味方か敵を1体以上にしてください')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '駒を用意する' })).toBeEnabled()
   })
 
@@ -177,6 +185,7 @@ describe('未配置から配置・確定・移動まで', () => {
     prepare('1', '0')
     place('味方1', 3, 4)
     expect(screen.getByRole('button', { name: '確定' })).toBeEnabled()
+    expect(screen.getByText('全駒を配置しました。「確定」で準備を完了します。')).toBeVisible()
     expect(screen.queryByRole('button', { name: '新しい戦闘を始める' })).not.toBeInTheDocument()
     fireEvent.click(selected === '駒' ? cell(3, 4) : cell(1, 1))
     expect(pressed()).toHaveLength(1)
@@ -187,6 +196,8 @@ describe('未配置から配置・確定・移動まで', () => {
     expect(screen.queryByRole('button', { name: '確定' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '準備をやり直す' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '新しい戦闘を始める' })).toBeVisible()
+    expect(screen.getByRole('region', { name: '戦闘中' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: '準備完了' })).toBeVisible()
     fireEvent.click(cell(3, 4))
     expect(range().length).toBeGreaterThan(0)
     fireEvent.click(cell(10, 10))
@@ -203,7 +214,7 @@ describe('確認付きの全体やり直し', () => {
     const before = { occupied: occupants(), selected: pressed(), range: range(), unplaced: within(unplaced()).getAllByRole('button') }
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     click('準備をやり直す')
-    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/全駒と設定.*消/))
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/今の戦闘.*全駒と設定.*消/))
     expect(occupants()).toEqual(before.occupied)
     expect(pressed()).toEqual(before.selected)
     expect(range()).toEqual(before.range)
@@ -239,4 +250,14 @@ describe('確認付きの全体やり直し', () => {
     expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力5）')
     expect(screen.getByRole('button', { name: '新しい戦闘を始める' })).toBeVisible()
   })
+})
+
+it('入力フォームの送信では画面遷移を防ぎ、指定した駒を用意する', () => {
+  render(<App />)
+  input('味方', '1')
+  const form = field('味方').closest('form')!
+  const submit = new Event('submit', { bubbles: true, cancelable: true })
+  fireEvent(form, submit)
+  expect(submit.defaultPrevented).toBe(true)
+  expect(token('味方1')).toBeVisible()
 })

@@ -39,6 +39,9 @@ describe('戦闘準備の入口', () => {
     const initial = createInitialBattle()
     expect(canConfirmBattle(initial)).toBe(false)
     expect(confirmBattle(initial)).toEqual(initial)
+    const emptyPreparation = { ...initial, phase: 'preparing' as const }
+    expect(canConfirmBattle(emptyPreparation)).toBe(false)
+    expect(confirmBattle(emptyPreparation)).toEqual(emptyPreparation)
     const state = prepareBattle('1', '0')!
     const placed = { ...state, ...tapPosition({ ...state, selection: { kind: 'character', id: state.characters[0]!.id } }, { x: 2, y: 3 }, size) }
     expect(canConfirmBattle(placed)).toBe(true)
