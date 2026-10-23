@@ -146,8 +146,13 @@ test('確認中のキーボードとポインターは背後へ届かず、取�
       await expect(dialog).toHaveJSProperty('open', true)
       // show() や open 属性だけではモーダルにも inert にもならない。
       expect(await dialog.evaluate((el) => el.matches(':modal'))).toBe(true)
-      for (const key of ['Shift+Tab', 'Shift+Tab', 'Tab', 'Tab', 'Tab']) {
-        await page.keyboard.press(key)
+      for (const [key, action] of [
+        ['Shift+Tab', phase === 'preparing' ? 'やり直す' : '始める'], ['Shift+Tab', 'キャンセル'],
+        ['Tab', phase === 'preparing' ? 'やり直す' : '始める'], ['Tab', 'キャンセル'],
+        ['Tab', phase === 'preparing' ? 'やり直す' : '始める'],
+      ]) {
+        await page.keyboard.press(key!)
+        await expect(dialog.getByRole('button', { name: action, exact: true })).toBeFocused()
         expect(await page.evaluate(() => {
           const focused = document.activeElement
           return focused === document.body || !!focused?.closest('dialog')

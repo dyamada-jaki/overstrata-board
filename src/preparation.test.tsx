@@ -14,6 +14,7 @@ function prepare(ally = '2', enemy = '1') {
   input('味方', ally)
   input('敵', enemy)
   click('駒を用意する')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(screen.getByRole('region', { name: '配置の準備' })).toBeVisible()
   expect(screen.getByRole('heading', { name: '駒を配置' })).toBeVisible()
 }
@@ -118,7 +119,9 @@ describe('数の指定（承認された入力仕様）', () => {
   it('双方10体の20体を色と番号で見分け、10を0と省略しない', () => {
     render(<App />)
     prepare('10', '10')
-    expect(within(unplaced()).getAllByRole('button')).toHaveLength(20)
+    expect(within(unplaced()).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(
+      ['味方', '敵'].flatMap((side) => Array.from({ length: 10 }, (_, i) => `未配置 ${side}${i + 1}（${side}・移動力5）`)),
+    )
     for (const side of ['味方', '敵']) {
       for (let number = 1; number <= 10; number += 1) {
         expect(token(`${side}${number}`)).toHaveAccessibleName(`未配置 ${side}${number}（${side}・移動力5）`)
@@ -229,14 +232,25 @@ describe('確認付きの全体やり直し', () => {
     const dialog = screen.getByRole('dialog')
     const cancel = within(dialog).getByRole('button', { name: 'キャンセル' })
     const approve = within(dialog).getByRole('button', { name: 'やり直す' })
+    const key = (target: HTMLElement, name: string, shiftKey: boolean, prevented: boolean) => {
+      const event = new KeyboardEvent('keydown', { key: name, shiftKey, bubbles: true, cancelable: true })
+      fireEvent(target, event)
+      expect(event.defaultPrevented).toBe(prevented)
+    }
     expect(cancel).toHaveFocus()
-    fireEvent.keyDown(cancel, { key: 'ArrowLeft' })
+    key(cancel, 'ArrowLeft', false, false)
     expect(cancel).toHaveFocus()
-    fireEvent.keyDown(cancel, { key: 'Tab', shiftKey: true })
+    // 内側への移動はブラウザへ渡し、両端から循環させるときだけ既定の移動を止める。
+    key(cancel, 'Tab', false, false)
+    key(cancel, 'Tab', true, true)
     expect(approve).toHaveFocus()
-    fireEvent.keyDown(approve, { key: 'Tab' })
+    key(approve, 'ArrowLeft', false, false)
+    expect(approve).toHaveFocus()
+    key(approve, 'Tab', true, false)
+    key(approve, 'Tab', false, true)
     expect(cancel).toHaveFocus()
     click('キャンセル')
+    expect(screen.getByRole('button', { name: '準備をやり直す' })).toHaveFocus()
     expect(screen.getByRole('region', { name: '配置の準備' })).toBeVisible()
     expect(cell(3, 4)).toHaveAccessibleName('マス (3, 4) 味方1（味方・移動力5）')
   })
