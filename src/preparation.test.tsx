@@ -32,8 +32,6 @@ function expectInitial() {
   expect(screen.queryByRole('button', { name: '確定' })).not.toBeInTheDocument()
 }
 
-afterEach(() => vi.restoreAllMocks())
-
 describe('数の指定（承認された入力仕様）', () => {
   it('空の100マス・0/0・案内から始まり、初期段階ではやり直しも確定も出さない', () => {
     render(<App />)
@@ -81,6 +79,23 @@ describe('数の指定（承認された入力仕様）', () => {
     expect(field('味方')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
     expect(screen.queryByText('味方か敵を1体以上にしてください')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '駒を用意する' })).toBeEnabled()
+  })
+
+  it('敵の欄だけが不正なら、敵の欄の下に案内し、敵の±と用意を押せず味方の欄は案内しない', () => {
+    render(<App />)
+    input('味方', '2')
+    input('敵', '11')
+    expect(field('敵')).toHaveAttribute('aria-invalid', 'true')
+    expect(field('敵')).toHaveAccessibleDescription('0〜10の整数で入力してください')
+    expect(field('敵').closest('.count-field')).toContainElement(screen.getByText('0〜10の整数で入力してください'))
+    expect(field('味方')).toHaveAttribute('aria-invalid', 'false')
+    expect(field('味方')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
+    expect(within(field('味方').closest('.count-field') as HTMLElement).queryByText('0〜10の整数で入力してください')).not.toBeInTheDocument()
+    for (const action of ['敵の数を減らす', '敵の数を増やす', '駒を用意する']) {
+      expect(screen.getByRole('button', { name: action })).toBeDisabled()
+    }
+    expect(screen.getByRole('button', { name: '味方の数を減らす' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '味方の数を増やす' })).toBeEnabled()
   })
 
   it.each([['0', '1', '敵1'], ['1', '0', '味方1']])('片側だけ（味方%s/敵%s）でも用意する', (ally, enemy, name) => {
@@ -206,23 +221,50 @@ describe('未配置から配置・確定・移動まで', () => {
 })
 
 describe('確認付きの全体やり直し', () => {
+  it.each(['準備中', '確定後'])('%sでEscの取消イベントを受けると段階・選択・位置を維持して開いたボタンへ戻す', (phase) => {
+    render(<App />)
+    prepare('1', '0')
+    place('味方1', 3, 4)
+    if (phase === '確定後') click('確定')
+    fireEvent.click(cell(3, 4))
+    const before = { occupied: occupants(), selected: pressed(), range: range() }
+    const opener = screen.getByRole('button', { name: phase === '準備中' ? '準備をやり直す' : '新しい戦闘を始める' })
+    opener.focus()
+    fireEvent.click(opener)
+    const dialog = screen.getByRole('dialog')
+    fireEvent(dialog, new Event('cancel', { cancelable: true }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(opener).toHaveFocus()
+    expect(occupants()).toEqual(before.occupied)
+    expect(pressed()).toEqual(before.selected)
+    expect(range()).toEqual(before.range)
+    expect(screen.getByRole('region', { name: phase === '準備中' ? '配置の準備' : '戦闘中' })).toBeVisible()
+  })
+
   it.each(['未配置', '配置済み', 'マス'])('準備中の確認取消で%sの選択を含め全内容を保ち、承認すると0/0に戻る', (selected) => {
     render(<App />)
     prepare()
     place('味方1', 3, 4)
     fireEvent.click(selected === '未配置' ? token('敵1') : selected === '配置済み' ? cell(3, 4) : cell(1, 1))
     const before = { occupied: occupants(), selected: pressed(), range: range(), unplaced: within(unplaced()).getAllByRole('button') }
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    click('準備をやり直す')
-    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/今の戦闘.*全駒と設定.*消/))
+    const opener = screen.getByRole('button', { name: '準備をやり直す' })
+    opener.focus()
+    fireEvent.click(opener)
+    const dialog = screen.getByRole('dialog', { name: '準備をやり直す' })
+    expect(dialog).toHaveAccessibleDescription('今の戦闘の準備を最初からやり直します。未配置・配置済みの全駒と、味方・敵の数の設定を消して、最初の準備画面へ戻ります。')
+    expect(within(dialog).getByRole('button', { name: 'キャンセル' })).toHaveFocus()
+    click('キャンセル')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(opener).toHaveFocus()
     expect(occupants()).toEqual(before.occupied)
     expect(pressed()).toEqual(before.selected)
     expect(range()).toEqual(before.range)
     expect(within(unplaced()).getAllByRole('button')).toEqual(before.unplaced)
     expect(screen.getByRole('button', { name: '確定' })).toBeDisabled()
-    confirm.mockReturnValue(true)
     click('準備をやり直す')
+    click('やり直す')
     expectInitial()
+    expect(field('味方')).toHaveFocus()
     prepare('0', '1')
     expect(token('敵1')).toBeVisible()
   })
@@ -234,16 +276,23 @@ describe('確認付きの全体やり直し', () => {
     click('確定')
     fireEvent.click(cell(5, 5))
     const before = { occupied: occupants(), selected: pressed(), range: range() }
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    click('新しい戦闘を始める')
-    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/次の戦闘.*全駒と設定.*消/))
+    const opener = screen.getByRole('button', { name: '新しい戦闘を始める' })
+    opener.focus()
+    fireEvent.click(opener)
+    const dialog = screen.getByRole('dialog', { name: '新しい戦闘を始める' })
+    expect(dialog).toHaveAccessibleDescription('次の戦闘の準備をゼロから始めます。今の盤面の全駒と、味方・敵の数の設定を消して、最初の準備画面へ戻ります。')
+    expect(within(dialog).getByRole('button', { name: 'キャンセル' })).toHaveFocus()
+    click('キャンセル')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(opener).toHaveFocus()
     expect(occupants()).toEqual(before.occupied)
     expect(pressed()).toEqual(before.selected)
     expect(range()).toEqual(before.range)
     expect(screen.getByRole('button', { name: '新しい戦闘を始める' })).toBeVisible()
-    confirm.mockReturnValue(true)
     click('新しい戦闘を始める')
+    click('始める')
     expectInitial()
+    expect(field('味方')).toHaveFocus()
     prepare('1', '0')
     place('味方1', 1, 1)
     click('確定')

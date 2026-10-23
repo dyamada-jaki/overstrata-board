@@ -14,14 +14,11 @@ async function place(page: Page, name: string, x: number, y: number) {
   await cell(page, x, y).click()
 }
 async function confirmReset(page: Page, button: string, accept: boolean) {
-  const dialog = page.waitForEvent('dialog').then(async (dialog) => {
-    expect(dialog.type()).toBe('confirm')
-    expect(dialog.message()).toContain('全駒と設定')
-    if (accept) await dialog.accept()
-    else await dialog.dismiss()
-  })
   await page.getByRole('button', { name: button }).click()
-  await dialog
+  const dialog = page.getByRole('dialog', { name: button })
+  await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeFocused()
+  await dialog.getByRole('button', { name: accept ? (button === '準備をやり直す' ? 'やり直す' : '始める') : 'キャンセル', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
 }
 
 test('数指定→配置と選択切替→確定→範囲内外の移動→新戦闘→再準備まで使える', async ({ page }, testInfo) => {
@@ -92,8 +89,31 @@ test('20体の一覧と番号10を表示し、陣営色が異なり横スクロ�
   await page.goto('/')
   await prepare(page, '10', '10')
   await expect(page.getByRole('group', { name: '未配置の駒' }).getByRole('button')).toHaveCount(20)
-  expect(await token(page, '味方1').evaluate((el) => getComputedStyle(el).backgroundColor))
-    .not.toBe(await token(page, '敵1').evaluate((el) => getComputedStyle(el).backgroundColor))
+  expect(await token(page, '味方1').locator('.board-token').evaluate((el) => getComputedStyle(el).backgroundColor))
+    .not.toBe(await token(page, '敵1').locator('.board-token').evaluate((el) => getComputedStyle(el).backgroundColor))
+  const buttons = page.getByRole('group', { name: '未配置の駒' }).getByRole('button')
+  const bounds = await buttons.evaluateAll((els) => els.map((el) => {
+    const { x, y, width, height } = el.getBoundingClientRect()
+    return { x, y, width, height }
+  }))
+  for (const box of bounds) {
+    expect(box.width).toBeGreaterThanOrEqual(44)
+    expect(box.height).toBeGreaterThanOrEqual(44)
+  }
+  expect(Math.max(...bounds.slice(0, 10).map((box) => box.y + box.height))).toBeLessThanOrEqual(bounds[10]!.y)
+  expect(await buttons.allTextContents()).toEqual([
+    ...Array.from({ length: 10 }, (_, i) => `${i + 1}味方${i + 1}`),
+    ...Array.from({ length: 10 }, (_, i) => `${i + 1}敵${i + 1}`),
+  ])
+  const board = await page.getByRole('group', { name: '戦闘盤面' }).boundingBox()
+  const panel = await page.getByRole('region', { name: '配置の準備' }).boundingBox()
+  if (page.viewportSize()!.width >= 1024) {
+    expect(panel!.x).toBeGreaterThanOrEqual(board!.x + board!.width)
+    expect(board!.y + board!.height).toBeLessThanOrEqual(720)
+    expect(panel!.y + panel!.height).toBeLessThanOrEqual(720)
+  } else {
+    expect(panel!.y).toBeGreaterThanOrEqual(board!.y + board!.height)
+  }
   await place(page, '味方10', 1, 1)
   await place(page, '敵10', 10, 10)
   const ally = cell(page, 1, 1).locator('span')
@@ -107,4 +127,56 @@ test('20体の一覧と番号10を表示し、陣営色が異なり横スクロ�
   await confirmReset(page, '準備をやり直す', true)
   await expect(page.getByRole('textbox', { name: '味方の数' })).toHaveValue('0')
   await expect(page.getByRole('button', { name: /^マス .*（/ })).toHaveCount(0)
+})
+
+// #39 で見つかった Shift+Tab → 背後の確定 → Enter の回帰を実ブラウザで防ぐ。
+test('確認中のキーボードとポインターは背後へ届かず、取消・Escで段階と選択を保つ', async ({ page }) => {
+  await page.goto('/')
+  await prepare(page, '1', '0')
+  await place(page, '味方1', 3, 4)
+  await cell(page, 3, 4).click()
+  const originalRange = await range(page).count()
+  for (const phase of ['preparing', 'active']) {
+    const opener = page.getByRole('button', { name: phase === 'preparing' ? '準備をやり直す' : '新しい戦闘を始める' })
+    for (const cancel of ['キャンセル', 'Escape']) {
+      await opener.click()
+      const dialog = page.getByRole('dialog')
+      await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeFocused()
+      await expect(dialog).toHaveJSProperty('open', true)
+      // show() や open 属性だけではモーダルにも inert にもならない。
+      expect(await dialog.evaluate((el) => el.matches(':modal'))).toBe(true)
+      for (const key of ['Shift+Tab', 'Shift+Tab', 'Tab', 'Tab', 'Tab']) {
+        await page.keyboard.press(key)
+        expect(await page.evaluate(() => {
+          const focused = document.activeElement
+          return focused === document.body || !!focused?.closest('dialog')
+        })).toBe(true)
+      }
+      // 背後の盤面位置を実座標でクリックしても、駒を移動できない。
+      const boardCell = await cell(page, 10, 10).boundingBox()
+      await page.mouse.click(boardCell!.x + boardCell!.width / 2, boardCell!.y + boardCell!.height / 2)
+      await expect(dialog).toBeVisible()
+      await expect(cell(page, 3, 4)).toHaveAttribute('aria-pressed', 'true')
+      if (cancel === 'Escape') await page.keyboard.press('Escape')
+      else await dialog.getByRole('button', { name: 'キャンセル' }).click()
+      await expect(dialog).not.toBeVisible()
+      await expect(opener).toBeFocused()
+      await expect(cell(page, 3, 4)).toHaveAccessibleName('マス (3, 4) 味方1（味方・移動力5）')
+      await expect(cell(page, 3, 4)).toHaveAttribute('aria-pressed', 'true')
+      await expect(range(page)).toHaveCount(originalRange)
+      await expect(page.getByRole('region', { name: phase === 'preparing' ? '配置の準備' : '戦闘中' })).toBeVisible()
+    }
+    if (phase === 'preparing') {
+      // 最も近い背後の操作は「確定」。逆方向へ回って Enter を押しても確定しない。
+      await opener.click()
+      await page.keyboard.press('Shift+Tab')
+      await page.keyboard.press('Shift+Tab')
+      await page.keyboard.press('Enter')
+      await expect(page.getByRole('dialog')).not.toBeVisible()
+      await expect(opener).toBeVisible()
+      await expect(cell(page, 3, 4)).toHaveAttribute('aria-pressed', 'true')
+      await page.getByRole('button', { name: '確定', exact: true }).click()
+      await cell(page, 3, 4).click()
+    }
+  }
 })
