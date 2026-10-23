@@ -9,9 +9,10 @@ export default {
     'src/domain/board.ts', // 内部座標と表示座標の変換、盤面の座標一覧（spec.md 2.1）
     'src/data/board.ts', // 盤面サイズ
     'src/components/Board.tsx', // マス・キャラの選択表示、移動範囲の表示、座標ラベル（spec.md 2.1・2.3）
-    'src/domain/selection.ts', // 未選択・マス・キャラの選択の状態変化と移動（spec.md 2.1・2.3）
-    // サンプル4体の初期配置（spec.md 2.2）。数値は変異しないため、名前・陣営・装備の文字列が対象になる。
-    'src/data/characters.ts',
+    'src/domain/selection.ts', // 未選択・マス・キャラの選択の状態変化と移動、未配置の駒の配置（spec.md 2.1・2.2・2.3）
+    'src/domain/battle.ts', // 駒の数の境界、駒の用意、一覧の駒の選択、確定の条件（spec.md 2.2）
+    'src/data/battle.ts', // 駒の移動力と1陣営の最大数。数値は変異しないため、仕様例のテストで確かめる
+    'src/components/BattleScreen.tsx', // 数の入力と案内、未配置一覧、確定・やり直しの表示と確認（spec.md 2.2）
   ],
   // 対象外: テスト（*.test.*・src/test/）、CSS、型だけの宣言（src/domain/character.ts など）、生成物、雛形 src/domain/sample.ts、
   // 文言と受け渡しだけの src/App.tsx、起動処理の src/main.tsx、開発基盤（scripts/・e2e/・docker/）。

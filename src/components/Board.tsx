@@ -1,16 +1,21 @@
-import { useState } from 'react'
 import { formatPosition, getBoardPositions } from '../domain/board.ts'
-import type { Character, Side } from '../domain/character.ts'
+import type { Side } from '../domain/character.ts'
 import type { BoardSize, Position } from '../domain/movement.ts'
-import { getSelectedMovementRange, tapPosition, type BoardState } from '../domain/selection.ts'
+import { getSelectedMovementRange, type BoardState } from '../domain/selection.ts'
 import './Board.css'
 
 const sideLabels: Record<Side, string> = { ally: '味方', enemy: '敵' }
 
 const keyOf = (position: Position) => `${position.x},${position.y}`
 
-export function Board({ size, characters = [] }: { size: BoardSize; characters?: readonly Character[] }) {
-  const [state, setState] = useState<BoardState>(() => ({ characters, selection: { kind: 'none' } }))
+const emptyState: BoardState = { characters: [], selection: { kind: 'none' } }
+
+/** 盤面の表示。状態は持たず、マスを押したら onTapPosition で親へ伝える。 */
+export function Board({ size, state = emptyState, onTapPosition }: {
+  size: BoardSize
+  state?: BoardState
+  onTapPosition?: (position: Position) => void
+}) {
   const { selection } = state
   const occupants = new Map(state.characters.flatMap((character) => (
     character.position ? [[keyOf(character.position), character] as const] : []
@@ -52,10 +57,11 @@ export function Board({ size, characters = [] }: { size: BoardSize; characters?:
               className={inRange ? 'board-cell board-cell-range' : 'board-cell'}
               aria-label={label}
               aria-pressed={selected}
-              onClick={() => setState((current) => tapPosition(current, position, size))}
+              onClick={() => onTapPosition?.(position)}
             >
+              {/* 陣営は色、同じ陣営の駒は番号で見分ける（spec.md 2.2）。 */}
               {occupant && (
-                <span className={`board-token board-token-${occupant.side}`}>{occupant.name}</span>
+                <span className={`board-token board-token-${occupant.side}`}>{occupant.number}</span>
               )}
             </button>
           )

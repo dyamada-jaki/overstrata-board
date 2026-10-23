@@ -1,0 +1,192 @@
+.battle-counts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.battle-count {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.battle-count label {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.battle-count-controls {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.battle-count input {
+  width: 3.5rem;
+  height: 2.75rem;
+  border: 1px solid #94a3b8;
+  border-radius: 0.375rem;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.battle-count input[aria-invalid='true'] {
+  border-color: #b91c1c;
+  outline-color: #b91c1c;
+}
+
+.battle-count input:disabled {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.battle-step,
+.battle-button {
+  min-height: 2.75rem;
+  border: 1px solid #64748b;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.battle-step {
+  width: 2.75rem;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.battle-button {
+  padding: 0 1rem;
+  font-weight: 700;
+}
+
+.battle-button-primary {
+  border-color: #1e3a8a;
+  background: #1e40af;
+  color: #fff;
+}
+
+.battle-button-danger {
+  border-color: #991b1b;
+  background: #b91c1c;
+  color: #fff;
+}
+
+.battle-step:disabled,
+.battle-button:disabled {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.battle-prepare {
+  display: grid;
+  gap: 0.25rem;
+  align-self: end;
+}
+
+.battle-counts > .battle-note {
+  flex-basis: 100%;
+}
+
+p.battle-note,
+p.battle-error {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+p.battle-error {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.battle-unplaced {
+  margin-top: 0.75rem;
+}
+
+.battle-unplaced h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.battle-unplaced ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 一覧の駒は丸の印と名前で表示し、20体でも折り返して横にはみ出さない。 */
+.battle-token-button {
+  display: grid;
+  justify-items: center;
+  gap: 0.125rem;
+  width: 3.25rem;
+  padding: 0.25rem 0;
+  border: 2px solid transparent;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.battle-token-button .board-token {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.battle-token-button[aria-pressed='true'] {
+  border-color: #f59e0b;
+  box-shadow: inset 0 0 0 1px #f59e0b;
+}
+
+.battle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.battle-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(15 23 42 / 0.5);
+}
+
+.battle-dialog {
+  width: 100%;
+  max-width: 22rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.battle-dialog h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.battle-dialog p {
+  color: #334155;
+}
+
+.battle-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
