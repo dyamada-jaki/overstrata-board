@@ -5,7 +5,7 @@ const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('butto
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
 const token = (name: string) => screen.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
 const editor = (name: string) => screen.getByRole('group', { name: `${name}の移動力` })
-const value = (name: string) => within(editor(name)).getByRole('status')
+const value = (name: string) => within(editor(name)).getByRole('status', { name: `${name}の移動力の値` })
 const step = (name: string, direction: '減らす' | '増やす') => click(`${name}の移動力を${direction}`)
 const range = () => screen.queryAllByRole('button', { name: / 移動範囲$/ }).map((el) => el.getAttribute('aria-label'))
 function prepare(ally = '2', enemy = '1') {
@@ -54,6 +54,21 @@ describe('準備中の駒ごとの移動力（spec.md 2.2・2.3）', () => {
     fireEvent.click(token('味方1'))
     expect(screen.queryByRole('group', { name: /の移動力$/ })).not.toBeInTheDocument()
     expect(range()).toEqual([])
+  })
+
+  it('配置済みから未配置へ切り替えると、一覧の対象のそばに設定欄を1つだけ表示する', () => {
+    render(<App />)
+    prepare()
+    place('味方1', 1, 1)
+    fireEvent.click(cell(1, 1))
+    step('味方1', '減らす')
+    fireEvent.click(token('敵1'))
+    expect(screen.getAllByRole('group', { name: '敵1の移動力' })).toHaveLength(1)
+    expect(within(screen.getByRole('group', { name: '未配置の駒' })).getByRole('group', { name: '敵1の移動力' })).toBeVisible()
+    expect(within(screen.getByRole('group', { name: '戦闘盤面' })).queryByRole('group', { name: /の移動力$/ })).not.toBeInTheDocument()
+    expect(value('敵1')).toHaveTextContent(/^5$/)
+    expect(range()).toEqual([])
+    expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力4）')
   })
 
   it('配置前の値を保持し、配置後の編集ですぐ範囲を更新し、占有と盤外を除く', () => {

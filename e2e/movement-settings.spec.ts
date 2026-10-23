@@ -21,6 +21,25 @@ async function expectContained(page: Page, name: string) {
   }
 }
 
+// CSSの式を写さず、対象の駒に接して開き、駒自体を覆わないことを測る。
+async function expectNearToken(page: Page, name: string) {
+  const control = await editor(page, name).boundingBox()
+  const target = await token(page, name).boundingBox()
+  const board = await page.getByRole('group', { name: '戦闘盤面' }).boundingBox()
+  expect(control!.x).toBeGreaterThanOrEqual(board!.x)
+  expect(control!.y).toBeGreaterThanOrEqual(board!.y)
+  expect(control!.x + control!.width).toBeLessThanOrEqual(board!.x + board!.width)
+  expect(control!.y + control!.height).toBeLessThanOrEqual(board!.y + board!.height)
+  const verticalGap = Math.min(
+    Math.abs(control!.y - (target!.y + target!.height)),
+    Math.abs(control!.y + control!.height - target!.y),
+  )
+  expect(verticalGap).toBeLessThanOrEqual(2)
+  const centerX = target!.x + target!.width / 2
+  expect(control!.x).toBeLessThan(centerX)
+  expect(control!.x + control!.width).toBeGreaterThan(centerX)
+}
+
 test('駒のそばで移動力を設定し、範囲更新・0での自由移動・確定・次の戦闘まで値を扱う', async ({ page }, testInfo) => {
   await page.goto('/')
   await prepare(page)
@@ -35,6 +54,7 @@ test('駒のそばで移動力を設定し、範囲更新・0での自由移動�
   await cell(page, 10, 10).click()
   await cell(page, 1, 1).click()
   await expectContained(page, '味方1')
+  await expectNearToken(page, '味方1')
   await expect(cell(page, 6, 1)).toHaveAccessibleName('マス (6, 1)')
   await page.getByRole('button', { name: '味方1の移動力を増やす' }).click()
   await expect(cell(page, 6, 1)).toHaveAccessibleName('マス (6, 1) 移動範囲')
@@ -56,6 +76,7 @@ test('駒のそばで移動力を設定し、範囲更新・0での自由移動�
   for (let i = 0; i < 4; i += 1) await page.getByRole('button', { name: '敵1の移動力を増やす' }).click()
   await expect(page.getByRole('button', { name: '敵1の移動力を増やす' })).toBeDisabled()
   await expectContained(page, '敵1')
+  await expectNearToken(page, '敵1')
   await page.getByRole('button', { name: '確定', exact: true }).click()
   await expect(page.getByRole('button', { pressed: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: / 移動範囲$/ })).toHaveCount(0)
