@@ -59,3 +59,17 @@ export function canConfirmBattle(state: BattleState): boolean {
 export function confirmBattle(state: BattleState): BattleState {
   return canConfirmBattle(state) ? { ...state, phase: 'active', selection: { kind: 'none' } } : state
 }
+
+/** 移動力の±の操作後の値。0〜9を超える操作はできない（#37）。 */
+export function stepMovement(movement: number, delta: -1 | 1): number | null {
+  void movement
+  void delta
+  return null
+}
+
+/** 準備中だけ、指定した駒の移動力を0〜9の整数に変える（#37）。 */
+export function setMovement(state: BattleState, id: string, movement: number): BattleState {
+  void id
+  void movement
+  return state
+}
