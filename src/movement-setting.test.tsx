@@ -88,9 +88,9 @@ describe('準備中の駒ごとの移動力（#37）', () => {
     times(() => minus('味方1'), 2)
     expect(cell(5, 1)).toHaveAccessibleName('マス (5, 1) 移動範囲')
     expect(cell(6, 1)).toHaveAccessibleName('マス (6, 1)')
-    // 斜め2マス先は距離3（spec.md 3.1）。
-    expect(cell(3, 3)).toHaveAccessibleName('マス (3, 3) 移動範囲')
-    expect(cell(4, 4)).toHaveAccessibleName('マス (4, 4)')
+    // 斜めに3は距離4、右へ4・下へ3は距離5（spec.md 3.1）。
+    expect(cell(4, 4)).toHaveAccessibleName('マス (4, 4) 移動範囲')
+    expect(cell(5, 4)).toHaveAccessibleName('マス (5, 4)')
     expect(range()).not.toContain('マス (2, 1) 敵1（敵・移動力5） 移動範囲')
     expect(cell(2, 1)).toHaveAccessibleName('マス (2, 1) 敵1（敵・移動力5）')
     expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力4）')
