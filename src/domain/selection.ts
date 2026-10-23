@@ -1,5 +1,5 @@
 import type { Character } from './character.ts'
-import { canMoveTo, getMovement, getMovementRange, type BoardSize, type Position } from './movement.ts'
+import { canMoveTo, getMovementRange, type BoardSize, type Position } from './movement.ts'
 
 /** 未選択・空きマス1つ・キャラ1体のいずれか（spec.md 2.1）。 */
 export type Selection =
@@ -19,13 +19,17 @@ function isSame(a: Position, b: Position): boolean {
   return a.x === b.x && a.y === b.y
 }
 
+function placedPositions(characters: readonly Character[]): Position[] {
+  return characters.flatMap((character) => (character.position ? [character.position] : []))
+}
+
 /**
  * 盤面のマスを押したときの次の状態（spec.md 2.1・2.3）。キャラのいるマスはキャラを押したとみなす。
  * キャラ選択中に空きマスを押すと、移動範囲の内外を問わず移動して選択を解除する。
  */
 export function tapPosition(state: BoardState, position: Position, boardSize: BoardSize): BoardState {
   const { characters, selection } = state
-  const tapped = characters.find((character) => isSame(character.position, position))
+  const tapped = characters.find((character) => character.position !== null && isSame(character.position, position))
 
   if (tapped) {
     const deselect = selection.kind === 'character' && selection.id === tapped.id
@@ -33,7 +37,7 @@ export function tapPosition(state: BoardState, position: Position, boardSize: Bo
   }
 
   if (selection.kind === 'character') {
-    const occupied = characters.map((character) => character.position)
+    const occupied = placedPositions(characters)
     if (!canMoveTo(position, occupied, boardSize)) return state
     return {
       characters: characters.map((character) => (
@@ -53,9 +57,7 @@ export function getSelectedMovementRange(state: BoardState, boardSize: BoardSize
   if (selection.kind !== 'character') return []
 
   const selected = characters.find((character) => character.id === selection.id)
-  if (!selected) return []
-  const others = characters
-    .filter((character) => character.id !== selected.id)
-    .map((character) => character.position)
-  return getMovementRange(selected.position, getMovement(selected.armor), others, boardSize)
+  if (!selected?.position) return []
+  const others = placedPositions(characters.filter((character) => character.id !== selected.id))
+  return getMovementRange(selected.position, selected.movement, others, boardSize)
 }
