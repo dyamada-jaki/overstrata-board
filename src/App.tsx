@@ -60,7 +60,8 @@ function App() {
   const prepared = prepareBattle(allyCount, enemyCount)
   const unplaced = battle.characters.filter((character) => character.position === null)
   const { selection } = battle
-  const editing = battle.phase === 'preparing' && selection.kind === 'character'
+  // 欄は準備中の画面にだけ置く。確定後は出さない（#37）。
+  const editing = selection.kind === 'character'
     ? battle.characters.find((character) => character.id === selection.id) : undefined
   const reset = () => {
     setBattle(createInitialBattle())
