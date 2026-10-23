@@ -9,12 +9,14 @@ export default {
     'src/domain/board.ts', // 内部座標と表示座標の変換、盤面の座標一覧（spec.md 2.1）
     'src/data/board.ts', // 盤面サイズ
     'src/components/Board.tsx', // マス・キャラの選択表示、移動範囲の表示、座標ラベル（spec.md 2.1・2.3）
+    'src/domain/preparation.ts', // 数入力の境界・未配置の生成・確定の条件（spec.md 2.2と計画承認）
+    'src/App.tsx', // 数入力と±の有効条件・準備/確定/確認付きリセットの画面操作
     'src/domain/selection.ts', // 未選択・マス・キャラの選択の状態変化と移動（spec.md 2.1・2.3）
-    // サンプル4体の初期配置（spec.md 2.2）。数値は変異しないため、名前・陣営・装備の文字列が対象になる。
+    // #9の過去サンプルの初期配置と装備から移動力への変換（起動時には使わない）。
     'src/data/characters.ts',
   ],
   // 対象外: テスト（*.test.*・src/test/）、CSS、型だけの宣言（src/domain/character.ts など）、生成物、雛形 src/domain/sample.ts、
-  // 文言と受け渡しだけの src/App.tsx、起動処理の src/main.tsx、開発基盤（scripts/・e2e/・docker/）。
+  // 起動処理の src/main.tsx、開発基盤（scripts/・e2e/・docker/）。
 
   testRunner: 'vitest',
   // 既存の vite.config.ts（jsdom・setup）で、実物の部品・状態・domain を使う既存テストをそのまま実行する。

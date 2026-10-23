@@ -40,23 +40,23 @@ describe('戦闘準備の入口', () => {
     expect(canConfirmBattle(initial)).toBe(false)
     expect(confirmBattle(initial)).toEqual(initial)
     const state = prepareBattle('1', '0')!
-    const placed = { ...state, ...tapPosition({ ...state, selection: { kind: 'character', id: state.characters[0].id } }, { x: 2, y: 3 }, size) }
+    const placed = { ...state, ...tapPosition({ ...state, selection: { kind: 'character', id: state.characters[0]!.id } }, { x: 2, y: 3 }, size) }
     expect(canConfirmBattle(placed)).toBe(true)
     const selected = Object.freeze({ ...placed, selection: { kind: 'cell' as const, position: { x: 0, y: 0 } } })
     expect(confirmBattle(selected)).toEqual({ phase: 'active', characters: placed.characters, selection: { kind: 'none' } })
     expect(selected.selection.kind).toBe('cell')
-    const active = { ...confirmBattle(selected), selection: { kind: 'character' as const, id: state.characters[0].id } }
+    const active = { ...confirmBattle(selected), selection: { kind: 'character' as const, id: state.characters[0]!.id } }
     expect(canConfirmBattle(active)).toBe(false)
     expect(confirmBattle(active)).toEqual(active)
   })
   it('未配置選択中は範囲を出さず、盤面外への配置では入力状態を変更しない', () => {
     const state = prepareBattle('1', '0')!
-    const selected = Object.freeze({ ...state, selection: { kind: 'character' as const, id: state.characters[0].id } })
+    const selected = Object.freeze({ ...state, selection: { kind: 'character' as const, id: state.characters[0]!.id } })
     expect(getSelectedMovementRange(selected, size)).toEqual([])
     expect(tapPosition(selected, { x: 10, y: 0 }, size)).toEqual(selected)
     expect(tapPosition(selected, { x: -1, y: 0 }, size)).toEqual(selected)
     const placed = tapPosition(selected, { x: 0, y: 0 }, size)
-    expect(placed.characters[0].position).toEqual({ x: 0, y: 0 })
-    expect(selected.characters[0].position).toBeNull()
+    expect(placed.characters[0]!.position).toEqual({ x: 0, y: 0 })
+    expect(selected.characters[0]!.position).toBeNull()
   })
 })

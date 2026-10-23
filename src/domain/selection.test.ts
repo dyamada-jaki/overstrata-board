@@ -1,11 +1,9 @@
-import type { Character } from './character.ts'
+import { sampleCharacters } from '../data/characters.ts'
 import { getMovementRange } from './movement.ts'
 import { getSelectedMovementRange, tapPosition, type BoardState } from './selection.ts'
 
 // spec.md 2.2 のサンプルと同じ配置（内部座標）。
-const ally1: Character = { id: 'ally-1', name: '味方1', side: 'ally', armor: 'light', position: { x: 2, y: 7 } }
-const ally2: Character = { id: 'ally-2', name: '味方2', side: 'ally', armor: 'heavy', position: { x: 5, y: 8 } }
-const enemy1: Character = { id: 'enemy-1', name: '敵1', side: 'enemy', armor: 'medium', position: { x: 3, y: 2 } }
+const [ally1, ally2, enemy1] = sampleCharacters
 const characters = [ally1, ally2, enemy1]
 const size = { width: 10, height: 10 }
 
@@ -30,17 +28,17 @@ describe('tapPosition（spec.md 2.1・2.3 の選択と移動）', () => {
     { label: '未選択', selection: { kind: 'none' } as const },
     { label: 'マス選択中', selection: { kind: 'cell', position: { x: 0, y: 0 } } as const },
   ])('$label にキャラを押すと、そのキャラだけを選択する', ({ selection }) => {
-    expect(tapPosition(stateOf(selection), ally1.position, size))
+    expect(tapPosition(stateOf(selection), ally1.position!, size))
       .toEqual({ characters, selection: { kind: 'character', id: 'ally-1' } })
   })
 
   it('キャラ選択中に同じキャラを押すと、位置を変えず解除する', () => {
-    expect(tapPosition(stateOf({ kind: 'character', id: 'ally-1' }), ally1.position, size))
+    expect(tapPosition(stateOf({ kind: 'character', id: 'ally-1' }), ally1.position!, size))
       .toEqual({ characters, selection: { kind: 'none' } })
   })
 
   it('キャラ選択中に別キャラを押すと、誰も移動せず選択だけを切り替える', () => {
-    expect(tapPosition(stateOf({ kind: 'character', id: 'ally-1' }), enemy1.position, size))
+    expect(tapPosition(stateOf({ kind: 'character', id: 'ally-1' }), enemy1.position!, size))
       .toEqual({ characters, selection: { kind: 'character', id: 'enemy-1' } })
   })
 
@@ -69,11 +67,21 @@ describe('getSelectedMovementRange', () => {
   it('選択中のキャラの装備による移動力で、他キャラのマスを除いた #7 の範囲を返す', () => {
     // 味方2は重装で移動力3。
     expect(getSelectedMovementRange(stateOf({ kind: 'character', id: 'ally-2' }), size))
-      .toEqual(getMovementRange(ally2.position, 3, [ally1.position, enemy1.position], size))
+      .toEqual(getMovementRange(ally2.position!, 3, [ally1.position!, enemy1.position!], size))
     // 味方1から敵1までは距離5だが、敵1のマスは含まない。
     const range = getSelectedMovementRange(stateOf({ kind: 'character', id: 'ally-1' }), size)
     expect(range).toContainEqual({ x: 2, y: 2 })
-    expect(range).not.toContainEqual(enemy1.position)
-    expect(range).not.toContainEqual(ally1.position)
+    expect(range).not.toContainEqual(enemy1.position!)
+    expect(range).not.toContainEqual(ally1.position!)
   })
+})
+
+// 過去サンプルを新しい駒モデルへ移した後もspec.md 2.2の表の情報を保つ。
+it('過去サンプル4体は表の名前・陣営・番号・移動力・初期位置を保つ', () => {
+  expect(sampleCharacters).toEqual([
+    { id: 'ally-1', name: '味方1', side: 'ally', number: 1, movement: 5, position: { x: 2, y: 7 } },
+    { id: 'ally-2', name: '味方2', side: 'ally', number: 2, movement: 3, position: { x: 5, y: 8 } },
+    { id: 'enemy-1', name: '敵1', side: 'enemy', number: 1, movement: 4, position: { x: 3, y: 2 } },
+    { id: 'enemy-2', name: '敵2', side: 'enemy', number: 2, movement: 5, position: { x: 6, y: 1 } },
+  ])
 })

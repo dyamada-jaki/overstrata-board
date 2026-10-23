@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
 
-const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
+const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
 const field = (side: '味方' | '敵') => screen.getByRole('textbox', { name: `${side}の数` })
 const input = (side: '味方' | '敵', value: string) => fireEvent.change(field(side), { target: { value } })
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
@@ -27,7 +27,7 @@ function expectInitial() {
   expect(range()).toEqual([])
   expect(screen.queryByRole('group', { name: '未配置の駒' })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: '駒を用意する' })).toBeDisabled()
-  expect(screen.queryByRole('button', { name: '確定', exact: true })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: '確定' })).not.toBeInTheDocument()
 }
 
 afterEach(() => vi.restoreAllMocks())
@@ -81,7 +81,7 @@ describe('数の指定（承認された入力仕様）', () => {
     expect(within(unplaced()).getAllByRole('button')).toEqual([token(name)])
     expect(occupants()).toEqual([])
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '確定', exact: true })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '確定' })).toBeDisabled()
   })
 
   it('先頭0と前後空白を許し、指定数の駒を用意する', () => {
@@ -176,7 +176,7 @@ describe('未配置から配置・確定・移動まで', () => {
     render(<App />)
     prepare('1', '0')
     place('味方1', 3, 4)
-    expect(screen.getByRole('button', { name: '確定', exact: true })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '確定' })).toBeEnabled()
     expect(screen.queryByRole('button', { name: '新しい戦闘を始める' })).not.toBeInTheDocument()
     fireEvent.click(selected === '駒' ? cell(3, 4) : cell(1, 1))
     expect(pressed()).toHaveLength(1)
@@ -184,7 +184,7 @@ describe('未配置から配置・確定・移動まで', () => {
     expect(pressed()).toEqual([])
     expect(range()).toEqual([])
     expect(cell(3, 4)).toHaveAccessibleName('マス (3, 4) 味方1（味方・移動力5）')
-    expect(screen.queryByRole('button', { name: '確定', exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '確定' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '準備をやり直す' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '新しい戦闘を始める' })).toBeVisible()
     fireEvent.click(cell(3, 4))
@@ -208,7 +208,7 @@ describe('確認付きの全体やり直し', () => {
     expect(pressed()).toEqual(before.selected)
     expect(range()).toEqual(before.range)
     expect(within(unplaced()).getAllByRole('button')).toEqual(before.unplaced)
-    expect(screen.getByRole('button', { name: '確定', exact: true })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '確定' })).toBeDisabled()
     confirm.mockReturnValue(true)
     click('準備をやり直す')
     expectInitial()

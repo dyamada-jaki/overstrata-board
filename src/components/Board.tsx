@@ -1,19 +1,20 @@
-import { useState } from 'react'
 import { formatPosition, getBoardPositions } from '../domain/board.ts'
-import type { Character, Side } from '../domain/character.ts'
-import type { Armor, BoardSize, Position } from '../domain/movement.ts'
-import { getSelectedMovementRange, tapPosition, type BoardState } from '../domain/selection.ts'
+import type { Side } from '../domain/character.ts'
+import type { BoardSize, Position } from '../domain/movement.ts'
+import { getSelectedMovementRange, type BoardState } from '../domain/selection.ts'
 import './Board.css'
 
 const sideLabels: Record<Side, string> = { ally: '味方', enemy: '敵' }
-const armorLabels: Record<Armor, string> = { light: '軽装', medium: '中装', heavy: '重装' }
-
 const keyOf = (position: Position) => `${position.x},${position.y}`
 
-export function Board({ size, characters = [] }: { size: BoardSize; characters?: readonly Character[] }) {
-  const [state, setState] = useState<BoardState>(() => ({ characters, selection: { kind: 'none' } }))
+export function Board({ size, state, onTap }: {
+  size: BoardSize
+  state: BoardState
+  onTap: (position: Position) => void
+}) {
   const { selection } = state
-  const occupants = new Map(state.characters.map((character) => [keyOf(character.position), character]))
+  const occupants = new Map(state.characters.flatMap((character) => character.position === null
+    ? [] : [[keyOf(character.position), character] as const]))
   const range = new Set(getSelectedMovementRange(state, size).map(keyOf))
   const columns = { gridTemplateColumns: `repeat(${size.width}, minmax(0, 1fr))` }
 
@@ -22,12 +23,8 @@ export function Board({ size, characters = [] }: { size: BoardSize; characters?:
       <div className="board-columns" role="group" aria-label="横の座標" style={columns}>
         {Array.from({ length: size.width }, (_, x) => <span key={x}>{x + 1}</span>)}
       </div>
-      <div
-        className="board-rows"
-        role="group"
-        aria-label="縦の座標"
-        style={{ gridTemplateRows: `repeat(${size.height}, minmax(0, 1fr))` }}
-      >
+      <div className="board-rows" role="group" aria-label="縦の座標"
+        style={{ gridTemplateRows: `repeat(${size.height}, minmax(0, 1fr))` }}>
         {Array.from({ length: size.height }, (_, y) => <span key={y}>{y + 1}</span>)}
       </div>
       <div className="board-cells" style={columns}>
@@ -40,22 +37,14 @@ export function Board({ size, characters = [] }: { size: BoardSize; characters?:
             : selection.kind === 'cell' && keyOf(selection.position) === key
           const label = [
             `マス ${formatPosition(position)}`,
-            occupant && `${occupant.name}（${sideLabels[occupant.side]}・${armorLabels[occupant.armor]}）`,
+            occupant && `${occupant.name}（${sideLabels[occupant.side]}・移動力${occupant.movement}）`,
             inRange && '移動範囲',
           ].filter(Boolean).join(' ')
-
           return (
-            <button
-              key={key}
-              type="button"
+            <button key={key} type="button"
               className={inRange ? 'board-cell board-cell-range' : 'board-cell'}
-              aria-label={label}
-              aria-pressed={selected}
-              onClick={() => setState((current) => tapPosition(current, position, size))}
-            >
-              {occupant && (
-                <span className={`board-token board-token-${occupant.side}`}>{occupant.name}</span>
-              )}
+              aria-label={label} aria-pressed={selected} onClick={() => onTap(position)}>
+              {occupant && <span className={`board-token board-token-${occupant.side}`}>{occupant.number}</span>}
             </button>
           )
         })}
