@@ -11,7 +11,7 @@ import {
   tapToken,
   type BattleState,
 } from '../domain/battle.ts'
-import type { Character } from '../domain/character.ts'
+import type { Character, Side } from '../domain/character.ts'
 import { tapPosition } from '../domain/selection.ts'
 import { Board } from './Board.tsx'
 import './BattleScreen.css'
@@ -25,6 +25,7 @@ const resetTexts: Record<ResetKind, { title: string; purpose: string; action: st
 }
 
 const initialCount = '0'
+const sides: readonly Side[] = ['ally', 'enemy']
 
 /** 駒の準備から確定後の移動までを1台で行う画面。準備の状態と数の入力をここで持つ。 */
 export function BattleScreen() {
@@ -69,7 +70,7 @@ export function BattleScreen() {
               <p className="battle-note">味方か敵を1体以上にしてください</p>
             )}
           </div>
-        ) : (
+        ) : battle.stage === 'placing' && (
           <p className="battle-note">数を変えるときは「準備をやり直す」を押してください</p>
         )}
       </section>
@@ -181,22 +182,28 @@ function UnplacedTokens({ tokens, selectedId, onTap }: {
       {tokens.length === 0 ? (
         <p className="battle-note">すべて配置しました。「確定」を押すと準備が完了します。</p>
       ) : (
-        <ul>
-          {tokens.map((token) => (
-            <li key={token.id}>
-              <button
-                type="button"
-                className="battle-token-button"
-                aria-label={token.name}
-                aria-pressed={selectedId === token.id}
-                onClick={() => onTap(token.id)}
-              >
-                <span className={`board-token board-token-${token.side}`}>{token.number}</span>
-                <span>{token.name}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        // 味方と敵は別の行に分け、それぞれ番号順に折り返して並べる。
+        sides.map((side) => {
+          const group = tokens.filter((token) => token.side === side)
+          return group.length > 0 && (
+            <ul key={side}>
+              {group.map((token) => (
+                <li key={token.id}>
+                  <button
+                    type="button"
+                    className="battle-token-button"
+                    aria-label={token.name}
+                    aria-pressed={selectedId === token.id}
+                    onClick={() => onTap(token.id)}
+                  >
+                    <span className={`board-token board-token-${token.side}`}>{token.number}</span>
+                    <span>{token.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )
+        })
       )}
     </section>
   )

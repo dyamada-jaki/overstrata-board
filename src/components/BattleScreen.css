@@ -117,7 +117,7 @@ p.battle-error {
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
-  margin: 0;
+  margin: 0 0 0.375rem;
   padding: 0;
   list-style: none;
 }
@@ -189,4 +189,10 @@ p.battle-error {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+/* 案内の文字で欄の幅を広げず、入力欄の幅で折り返す（味方・敵の並びを崩さない）。 */
+.battle-count p.battle-error {
+  width: 0;
+  min-width: 100%;
 }

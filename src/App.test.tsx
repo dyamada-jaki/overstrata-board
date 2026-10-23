@@ -424,6 +424,8 @@ describe('確定（spec.md 2.2）', () => {
     expect(screen.queryByRole('button', { name: '準備をやり直す' })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: '未配置の駒' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '新しい戦闘を始める' })).toBeEnabled()
+    // 確定後は「準備をやり直す」が無いので、その案内も出さない。
+    expect(screen.queryByText('数を変えるときは「準備をやり直す」を押してください')).not.toBeInTheDocument()
 
     fireEvent.click(token('味方1'))
     expect(rangeNames()).toEqual(expectedRange({ x: 0, y: 0 }, [{ x: 1, y: 0 }]))
