@@ -105,6 +105,10 @@ button, input { font: inherit; }
 }
 .unplaced-token .board-token { width: 1.75rem; height: 1.75rem; }
 .unplaced-token[aria-pressed='true'] { outline: 3px solid #f59e0b; outline-offset: 1px; }
+.movement-setting { border: 2px solid #f59e0b; border-radius: 0.5rem; padding: 0.5rem 0.75rem; margin-bottom: 1rem; background: #fffbeb; }
+.movement-setting-title { display: flex; gap: 0.5rem; align-items: center; margin: 0 0 0.375rem; color: #1e293b; font-weight: bold; }
+.movement-setting-title .board-token { width: 1.75rem; height: 1.75rem; margin: 0; }
+.movement-value { min-width: 2.5rem; text-align: center; font-size: 1.25rem; font-weight: bold; }
 
 @media (min-width: 420px) {
   .count-fields { grid-template-columns: 1fr 1fr; }
