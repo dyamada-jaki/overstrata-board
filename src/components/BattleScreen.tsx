@@ -51,71 +51,75 @@ export function BattleScreen() {
     setReset(null)
   }
 
+  // 盤面を先に置き、スマホでは盤面全体を最初に見せる（spec.md 2.4）。広い画面では操作を盤面の右に並べる。
   return (
     <>
-      <section className="battle-counts" aria-label="駒の数">
-        <CountField label="味方の数" value={allyInput} onChange={setAllyInput} disabled={!counting} />
-        <CountField label="敵の数" value={enemyInput} onChange={setEnemyInput} disabled={!counting} />
-        {counting ? (
-          <div className="battle-prepare">
-            <button
-              type="button"
-              className="battle-button battle-button-primary"
-              disabled={!canPrepareTokens(allyCount, enemyCount)}
-              onClick={prepare}
-            >
-              駒を用意する
-            </button>
-            {allyCount === 0 && enemyCount === 0 && (
-              <p className="battle-note">味方か敵を1体以上にしてください</p>
-            )}
-          </div>
-        ) : battle.stage === 'placing' && (
-          <p className="battle-note">数を変えるときは「準備をやり直す」を押してください</p>
-        )}
-      </section>
-
-      <Board
-        size={boardSize}
-        state={battle}
-        onTapPosition={(position) => setBattle((current) => tapPosition(current, position, boardSize))}
-      />
-
-      {battle.stage === 'placing' && (
-        <UnplacedTokens
-          tokens={unplaced}
-          selectedId={battle.selection.kind === 'character' ? battle.selection.id : null}
-          onTap={(id) => setBattle((current) => tapToken(current, id))}
+      <div className="battle-layout">
+        <Board
+          size={boardSize}
+          state={battle}
+          onTapPosition={(position) => setBattle((current) => tapPosition(current, position, boardSize))}
         />
-      )}
+        <div className="battle-panel">
+          <section className="battle-counts" aria-label="駒の数">
+            <CountField label="味方の数" value={allyInput} onChange={setAllyInput} disabled={!counting} />
+            <CountField label="敵の数" value={enemyInput} onChange={setEnemyInput} disabled={!counting} />
+            {counting ? (
+              <div className="battle-prepare">
+                <button
+                  type="button"
+                  className="battle-button battle-button-primary"
+                  disabled={!canPrepareTokens(allyCount, enemyCount)}
+                  onClick={prepare}
+                >
+                  駒を用意する
+                </button>
+                {allyCount === 0 && enemyCount === 0 && (
+                  <p className="battle-note">味方か敵を1体以上にしてください</p>
+                )}
+              </div>
+            ) : battle.stage === 'placing' && (
+              <p className="battle-note">数を変えるときは「準備をやり直す」を押してください</p>
+            )}
+          </section>
 
-      {battle.stage === 'placing' && (
-        <div className="battle-actions">
-          <button
-            type="button"
-            className="battle-button battle-button-primary"
-            disabled={!canConfirm(battle)}
-            onClick={() => setBattle(confirmPlacement)}
-          >
-            確定
-          </button>
-          {unplaced.length > 0 && (
-            <p className="battle-note">未配置の駒が残っています（残り{unplaced.length}体）</p>
+          {battle.stage === 'placing' && (
+            <UnplacedTokens
+              tokens={unplaced}
+              selectedId={battle.selection.kind === 'character' ? battle.selection.id : null}
+              onTap={(id) => setBattle((current) => tapToken(current, id))}
+            />
           )}
-          <button type="button" className="battle-button" onClick={() => setReset('retry')}>
-            準備をやり直す
-          </button>
-        </div>
-      )}
 
-      {battle.stage === 'confirmed' && (
-        <div className="battle-actions">
-          <p className="battle-note">準備が完了しました。駒を選んで動かせます。</p>
-          <button type="button" className="battle-button" onClick={() => setReset('next')}>
-            新しい戦闘を始める
-          </button>
+          {battle.stage === 'placing' && (
+            <div className="battle-actions">
+              <button
+                type="button"
+                className="battle-button battle-button-primary"
+                disabled={!canConfirm(battle)}
+                onClick={() => setBattle(confirmPlacement)}
+              >
+                確定
+              </button>
+              {unplaced.length > 0 && (
+                <p className="battle-note">未配置の駒が残っています（残り{unplaced.length}体）</p>
+              )}
+              <button type="button" className="battle-button" onClick={() => setReset('retry')}>
+                準備をやり直す
+              </button>
+            </div>
+          )}
+
+          {battle.stage === 'confirmed' && (
+            <div className="battle-actions">
+              <p className="battle-note">準備が完了しました。駒を選んで動かせます。</p>
+              <button type="button" className="battle-button" onClick={() => setReset('next')}>
+                新しい戦闘を始める
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {reset && <ResetDialog kind={reset} onConfirm={clearAll} onCancel={() => setReset(null)} />}
     </>

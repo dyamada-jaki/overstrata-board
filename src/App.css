@@ -20,6 +20,13 @@ main {
   padding: 1rem;
 }
 
+/* 広い画面では盤面の右に操作を並べるため広げる（盤面の幅は36rem のときと同じ）。 */
+@media (min-width: 64rem) {
+  main {
+    max-width: 64rem;
+  }
+}
+
 h1 {
   margin: 0 0 0.75rem;
   font-size: 1.4rem;

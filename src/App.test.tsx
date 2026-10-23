@@ -293,6 +293,10 @@ describe('駒の用意と未配置一覧（spec.md 2.2）', () => {
   it('同じ陣営は同じ色の印、別の陣営は別の印で表示し、番号で見分ける', () => {
     render(<App />)
     prepare(2, 2)
+    // 未配置一覧の印も、陣営ごとに別の色で表示する。
+    const listMarkOf = (name: string) => within(unplaced(name)).getByText(/^\d+$/)
+    expect(listMarkOf('味方1').className).toBe(listMarkOf('味方2').className)
+    expect(listMarkOf('味方1').className).not.toBe(listMarkOf('敵1').className)
     place('味方1', '(1, 1)')
     place('味方2', '(2, 1)')
     place('敵1', '(3, 1)')
@@ -405,6 +409,7 @@ describe('確定（spec.md 2.2）', () => {
     place('敵1', '(2, 1)')
     expect(confirmButton()).toBeEnabled()
     expect(screen.getByText('すべて配置しました。「確定」を押すと準備が完了します。')).toBeVisible()
+    expect(screen.queryByText(/未配置の駒が残っています/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '準備をやり直す' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '新しい戦闘を始める' })).not.toBeInTheDocument()
   })
@@ -446,6 +451,7 @@ describe('準備をやり直す・新しい戦闘を始める（spec.md 2.2）',
 
     fireEvent.click(screen.getByRole('button', { name: '準備をやり直す' }))
     expect(dialog()).toHaveAccessibleName('準備をやり直す')
+    expect(dialog()).toHaveAccessibleDescription(/^今の戦闘の準備を最初からやり直します。/)
     expect(dialog()).toHaveTextContent('今の戦闘の準備を最初からやり直します。')
     expect(dialog()).toHaveTextContent('全駒と、味方・敵の数の設定を消して、最初の準備画面へ戻ります。')
     fireEvent.click(within(dialog()).getByRole('button', { name: 'キャンセル' }))
@@ -476,6 +482,7 @@ describe('準備をやり直す・新しい戦闘を始める（spec.md 2.2）',
 
     fireEvent.click(screen.getByRole('button', { name: '新しい戦闘を始める' }))
     expect(dialog()).toHaveAccessibleName('新しい戦闘を始める')
+    expect(dialog()).toHaveAccessibleDescription(/^次の戦闘の準備をゼロから始めます。/)
     expect(dialog()).toHaveTextContent('次の戦闘の準備をゼロから始めます。')
     expect(dialog()).toHaveTextContent('全駒と、味方・敵の数の設定を消して、最初の準備画面へ戻ります。')
     fireEvent.click(within(dialog()).getByRole('button', { name: 'キャンセル' }))

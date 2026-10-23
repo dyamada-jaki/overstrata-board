@@ -156,9 +156,13 @@ describe('駒の準備と確定（spec.md 2.2）', () => {
     })
   })
 
-  it('数の指定・確定後の段階では確定できない', () => {
+  it('数の指定・確定後の段階や、駒が1体も無いときは確定できない', () => {
+    const placed = { ...token('ally', 1), position: { x: 0, y: 0 } }
     expect(canConfirm(createBattle())).toBe(false)
-    const confirmed: BattleState = { stage: 'confirmed', characters: [], selection: { kind: 'none' } }
+    expect(canConfirm({ stage: 'counts', characters: [placed], selection: { kind: 'none' } })).toBe(false)
+    const confirmed: BattleState = { stage: 'confirmed', characters: [placed], selection: { kind: 'none' } }
     expect(canConfirm(confirmed)).toBe(false)
+    expect(confirmPlacement(confirmed)).toBe(confirmed)
+    expect(canConfirm({ stage: 'placing', characters: [], selection: { kind: 'none' } })).toBe(false)
   })
 })
