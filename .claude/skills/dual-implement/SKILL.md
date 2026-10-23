@@ -60,6 +60,7 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
 それぞれの `worker-start --json` の結果から、dispatch ID と worktree の絶対パス（`path`）を控えておく（手順6で使う）。見つからなければ `orca worktree list --json` で `issue-N-claude` / `issue-N-codex` を探す。
 
 `worker-start` が 0 以外で終わったら、起動し直さない。結果の `failedStage` と `recovery` を読み、`orca skills get orchestration --reference references/recovery-and-cleanup.md` に従う。
+- `failedStage` が `agent_readiness` のときは、`residualResources` のターミナルを `orca terminal read` で読み、CLI の更新案内などの画面で止まっていないか見る。更新案内なら更新はせず「スキップ」を選び（#32 で Codex CLI の更新案内により止まったため）、`recovery` に従って片付けてから、`--task <task_id> --retry-of <dispatch_id>` と同じ置き場所・エージェント・モデルを明示して起動し直す
 
 ### 実装用の指示（`--spec` に入れる。<…> は埋める）
 ```
@@ -201,6 +202,7 @@ orca orchestration worker-start --spec "<下の品質レビュー用の指示>" 
      - 開発チームとして同意できない指摘は直さない。両者の見解を並べ、手順9で人間に判断を仰ぐ
      - 差し戻しは2回まで（「開発設定」の「PO の差し戻し」）。3回目の差し戻しになったら、直さずに手順9で人間に判断を仰ぐ
 6. PO の判定・回数・対象 SHA・修正と再確認の内容を、手順7の Issue レポートに追記する
+7. 人間が、不採用にする PR の作りの移植や追加の修正を求めたときも、5. の差し戻しと同じ流れ（PR の作者と同じエージェントで修正 → 相互レビューの担当が新しい SHA を再確認 → 推薦を更新 → PO に再確認）で進める。差し戻しの回数には数えない（#32 で #39 の作りを #38 へ移植したため）
 
 ## 9. 人間に報告する
 報告の形（日本語）:
@@ -212,9 +214,9 @@ orca orchestration worker-start --spec "<下の品質レビュー用の指示>" 
 5. **一次判断**: どちらを採るかの推奨と理由。採る PR をマージ前に直すべき点（あれば）。別 Issue にする改善点の候補
 6. **PO の受け入れ一次判断**: 判定（受け入れ / 人間の判断が必要 / 未実施・返事待ち）、コメントへのリンク、差し戻しの回数と直した内容。PO が挙げた「人間に確かめてほしいこと」
 7. **人間にやってほしいこと**:
-   - 画面を含む Issue では、Issue の「レビュー時の実機確認」の項目をそのまま並べ、スマホ実機での確かめ方を添える（どの worktree で `docker compose up` し、スマホでどの URL（Mac の LAN の IP とポート）を開くか）。結果は PR にコメントで残すよう頼む
+   - 画面を含む Issue では、Issue の「レビュー時の実機確認」の項目をそのまま並べ、スマホ実機での確かめ方を添える（どの worktree で `docker compose up` し、スマホでどの URL を開くか。Tailscale の IP（`tailscale ip -4`）があればその IP とポート、無ければ Mac の LAN の IP とポート。#32 で利用者が Tailscale の IP を望んだため）。結果は PR にコメントで残すよう頼む
      - URL は PR 番号・対象 SHA（先頭7桁）と並べた表で示し、「SHA は確認したコードを示すコミットの ID」と一言添える（#9 で、SHA が分かりにくく、コメントの SHA が PR と逆に書かれたため）
-     - コメントの雛形を付ける: `実機確認 PR #番号 / 端末（機種・ブラウザ） / 対象 SHA` と、確認項目ごとの結果（OK・気になった点）
+     - コメントの雛形を付ける: `実機確認 PR #番号 / 端末（機種・ブラウザ） / 対象 SHA / 接続の経路（Tailscale・同じ LAN）` と、確認項目ごとの結果（OK・気になった点）
      - サーバーの起動と停止は、頼まれれば開発チームが行えることも伝える
    - この開発チームの端末で `/finish-issue <採る PR 番号>`（Codex なら `$finish-issue`）を実行すれば、マージ・後片付け・ふりかえりの結果と改善案の共有、人間が承認した改善の反映まで行えること（採らない理由を一言添える）
 
