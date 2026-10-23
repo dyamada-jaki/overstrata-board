@@ -110,7 +110,7 @@ describe('App', () => {
   })
 
   it('3列2行の設定では6マスと対応する座標ラベルを表示する', () => {
-    render(<Board size={{ width: 3, height: 2 }} />)
+    render(<Board size={{ width: 3, height: 2 }} state={{ characters: [], selection: { kind: 'none' } }} onTap={() => {}} />)
     expect(screen.getAllByRole('button').map((cell) => cell.getAttribute('aria-label')))
       .toEqual(['マス (1, 1)', 'マス (2, 1)', 'マス (3, 1)',
         'マス (1, 2)', 'マス (2, 2)', 'マス (3, 2)'])
@@ -120,6 +120,21 @@ describe('App', () => {
       .map((label) => label.textContent)).toEqual(['1', '2'])
   })
 })
+
+function renderPreparedSamples() {
+  render(<App />)
+  for (const side of ['味方', '敵']) {
+    fireEvent.change(screen.getByRole('textbox', { name: `${side}の数` }), { target: { value: '2' } })
+  }
+  fireEvent.click(screen.getByRole('button', { name: '駒を用意する' }))
+  for (const [name, position] of [
+    ['味方1', '(3, 8)'], ['味方2', '(6, 9)'], ['敵1', '(4, 3)'], ['敵2', '(7, 2)'],
+  ]) {
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^未配置 ${name}（`) }))
+    fireEvent.click(screen.getByRole('button', { name: `マス ${position}` }))
+  }
+  fireEvent.click(screen.getByRole('button', { name: '確定' }))
+}
 
 describe('キャラの選択と移動（spec.md 2.2・2.3）', () => {
   const pressed = () => screen.queryAllByRole('button', { pressed: true })
@@ -133,22 +148,22 @@ describe('キャラの選択と移動（spec.md 2.2・2.3）', () => {
 
   // spec.md 2.2 の表（表示座標）と、それに対応する内部座標。
   const initial = [
-    'マス (7, 2) 敵2（敵・軽装）',
-    'マス (4, 3) 敵1（敵・中装）',
-    'マス (3, 8) 味方1（味方・軽装）',
-    'マス (6, 9) 味方2（味方・重装）',
+    'マス (7, 2) 敵2（敵・移動力5）',
+    'マス (4, 3) 敵1（敵・移動力5）',
+    'マス (3, 8) 味方1（味方・移動力5）',
+    'マス (6, 9) 味方2（味方・移動力5）',
   ]
   const ally1 = { x: 2, y: 7 }
   const ally2 = { x: 5, y: 8 }
   const enemy1 = { x: 3, y: 2 }
   const enemy2 = { x: 6, y: 1 }
 
-  it('サンプル4体を表の表示座標のマスに、名前・陣営・装備付きで重複なく表示する', () => {
-    render(<App />)
+  it('用意した4体を表と同じ座標へ配置し、名前・陣営・移動力付きで重複なく表示する', () => {
+    renderPreparedSamples()
     expect(screen.getAllByRole('button', { name: /^マス / })).toHaveLength(100)
     expect(occupiedNames()).toEqual(initial)
     for (const name of ['味方1', '味方2', '敵1', '敵2']) {
-      expect(within(character(name)).getByText(name)).toBeVisible()
+      expect(within(character(name)).getByText(name.endsWith('1') ? '1' : '2')).toBeVisible()
     }
     // 内部座標をそのまま表示座標にした (3, 8) → (2, 7) などには置かない。
     for (const label of ['マス (2, 7)', 'マス (5, 8)', 'マス (3, 2)', 'マス (6, 1)']) {
@@ -159,20 +174,20 @@ describe('キャラの選択と移動（spec.md 2.2・2.3）', () => {
   })
 
   it('未選択でキャラを押すと、その1体だけを選択し、敵1のマスを除いた移動範囲を表示する', () => {
-    render(<App />)
+    renderPreparedSamples()
     const target = character('味方1')
     fireEvent.click(target)
     expect(pressed()).toEqual([target])
-    expect(target).toHaveAccessibleName('マス (3, 8) 味方1（味方・軽装）')
-    // 軽装の移動力5。敵1 (4, 3) は距離5でも除かれる。
+    expect(target).toHaveAccessibleName('マス (3, 8) 味方1（味方・移動力5）')
+    // #32の全駒の移動力5。敵1 (4, 3) は距離5でも除かれる。
     expect(rangeNames()).toEqual(expectedRange(ally1, 5, [ally2, enemy1, enemy2]))
     expect(rangeNames()).toContain('マス (3, 3) 移動範囲')
     expect(rangeNames()).not.toContain('マス (3, 2) 移動範囲')
-    expect(character('敵1')).toHaveAccessibleName('マス (4, 3) 敵1（敵・中装）')
+    expect(character('敵1')).toHaveAccessibleName('マス (4, 3) 敵1（敵・移動力5）')
   })
 
   it('マス選択中にキャラを押すと、マスの選択を外してキャラだけを選択する', () => {
-    render(<App />)
+    renderPreparedSamples()
     const cell = screen.getByRole('button', { name: 'マス (1, 1)' })
     fireEvent.click(cell)
     expect(pressed()).toEqual([cell])
@@ -184,27 +199,27 @@ describe('キャラの選択と移動（spec.md 2.2・2.3）', () => {
   })
 
   it('キャラ選択中に別キャラを押すと、誰も移動せず選択と範囲だけが切り替わる', () => {
-    render(<App />)
+    renderPreparedSamples()
     fireEvent.click(character('味方1'))
     fireEvent.click(character('敵1'))
     expect(occupiedNames()).toEqual(initial)
     expect(pressed()).toEqual([character('敵1')])
-    // 中装の移動力4。(4, 1) は敵1の範囲で、味方1からは距離7。
-    expect(rangeNames()).toEqual(expectedRange(enemy1, 4, [ally1, ally2, enemy2]))
+    // #32の全駒の移動力5。(4, 1) は敵1の範囲で、味方1からは距離7。
+    expect(rangeNames()).toEqual(expectedRange(enemy1, 5, [ally1, ally2, enemy2]))
     expect(rangeNames()).toContain('マス (4, 1) 移動範囲')
   })
 
   it('範囲内の空きマスへ移動すると選択と範囲が消え、次の空きマスはマス選択になる', () => {
-    render(<App />)
+    renderPreparedSamples()
     const destination = screen.getByRole('button', { name: 'マス (3, 4)' })
     fireEvent.click(character('味方1'))
     expect(destination).toHaveAccessibleName('マス (3, 4) 移動範囲')
     fireEvent.click(destination)
     expect(occupiedNames()).toEqual([
-      'マス (7, 2) 敵2（敵・軽装）',
-      'マス (4, 3) 敵1（敵・中装）',
-      'マス (3, 4) 味方1（味方・軽装）',
-      'マス (6, 9) 味方2（味方・重装）',
+      'マス (7, 2) 敵2（敵・移動力5）',
+      'マス (4, 3) 敵1（敵・移動力5）',
+      'マス (3, 4) 味方1（味方・移動力5）',
+      'マス (6, 9) 味方2（味方・移動力5）',
     ])
     expect(screen.getByRole('button', { name: 'マス (3, 8)' })).toHaveAccessibleName('マス (3, 8)')
     expect(pressed()).toEqual([])
@@ -214,27 +229,27 @@ describe('キャラの選択と移動（spec.md 2.2・2.3）', () => {
     const next = screen.getByRole('button', { name: 'マス (1, 1)' })
     fireEvent.click(next)
     expect(pressed()).toEqual([next])
-    expect(character('味方1')).toHaveAccessibleName('マス (3, 4) 味方1（味方・軽装）')
+    expect(character('味方1')).toHaveAccessibleName('マス (3, 4) 味方1（味方・移動力5）')
   })
 
   it('範囲外の空きマスにも移動でき、移動先から新しい範囲を表示する', () => {
-    render(<App />)
+    renderPreparedSamples()
     const destination = screen.getByRole('button', { name: 'マス (1, 1)' })
     fireEvent.click(character('味方2'))
-    // 重装の移動力3。(1, 1) は距離10で範囲外。
-    expect(rangeNames()).toEqual(expectedRange(ally2, 3, [ally1, enemy1, enemy2]))
+    // #32の全駒の移動力5。(1, 1) は距離10で範囲外。
+    expect(rangeNames()).toEqual(expectedRange(ally2, 5, [ally1, enemy1, enemy2]))
     expect(destination).toHaveAccessibleName('マス (1, 1)')
     fireEvent.click(destination)
-    expect(character('味方2')).toHaveAccessibleName('マス (1, 1) 味方2（味方・重装）')
+    expect(character('味方2')).toHaveAccessibleName('マス (1, 1) 味方2（味方・移動力5）')
     expect(pressed()).toEqual([])
     expect(rangeNames()).toEqual([])
 
     fireEvent.click(character('味方2'))
-    expect(rangeNames()).toEqual(expectedRange({ x: 0, y: 0 }, 3, [ally1, enemy1, enemy2]))
+    expect(rangeNames()).toEqual(expectedRange({ x: 0, y: 0 }, 5, [ally1, enemy1, enemy2]))
   })
 
   it('選択中のキャラを再タップすると、位置を変えず選択と範囲を解除する', () => {
-    render(<App />)
+    renderPreparedSamples()
     const target = character('味方1')
     fireEvent.click(target)
     fireEvent.click(target)
@@ -244,7 +259,7 @@ describe('キャラの選択と移動（spec.md 2.2・2.3）', () => {
   })
 
   it('キャラ選択中に座標ラベル・盤面外の余白を押しても、選択・範囲・位置を変えない', () => {
-    render(<App />)
+    renderPreparedSamples()
     const target = character('味方1')
     fireEvent.click(target)
     const range = rangeNames()

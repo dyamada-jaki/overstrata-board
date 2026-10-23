@@ -75,9 +75,9 @@
   margin: auto;
   border-radius: 50%;
   color: #fff;
-  font-size: 0.6rem;
+  font-size: clamp(0.75rem, 3vw, 1.15rem);
   font-weight: 700;
-  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
