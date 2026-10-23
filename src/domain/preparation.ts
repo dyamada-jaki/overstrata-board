@@ -13,6 +13,17 @@ export function parseCount(input: string): number | null {
   return count <= 10 ? count : null
 }
 
+/** ±の操作後の数。不正な入力や0〜10を超える操作はできない。 */
+export function stepTokenCount(input: string, delta: -1 | 1): number | null {
+  const count = parseCount(input)
+  return count === null ? null : parseCount(String(count + delta))
+}
+
+/** 双方0体の案内は、不正な入力への案内とは区別する。 */
+export function areBothCountsZero(allyInput: string, enemyInput: string): boolean {
+  return parseCount(allyInput) === 0 && parseCount(enemyInput) === 0
+}
+
 export function createInitialBattle(): BattleState {
   return { phase: 'counts', characters: [], selection: { kind: 'none' } }
 }

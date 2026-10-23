@@ -19,6 +19,7 @@ async function confirmReset(page: Page, button: string, accept: boolean) {
   await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeFocused()
   await dialog.getByRole('button', { name: accept ? (button === '準備をやり直す' ? 'やり直す' : '始める') : 'キャンセル', exact: true }).click()
   await expect(dialog).not.toBeVisible()
+  if (accept) await expect(page.getByRole('textbox', { name: '味方の数' })).toBeFocused()
 }
 
 test('数指定→配置と選択切替→確定→範囲内外の移動→新戦闘→再準備まで使える', async ({ page }, testInfo) => {

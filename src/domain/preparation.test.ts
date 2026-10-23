@@ -1,4 +1,4 @@
-import { canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle } from './preparation.ts'
+import { areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle } from './preparation.ts'
 import { getSelectedMovementRange, tapPosition } from './selection.ts'
 
 const size = { width: 10, height: 10 }
@@ -61,5 +61,21 @@ describe('戦闘準備の入口', () => {
     const placed = tapPosition(selected, { x: 0, y: 0 }, size)
     expect(placed.characters[0]!.position).toEqual({ x: 0, y: 0 })
     expect(selected.characters[0]!.position).toBeNull()
+  })
+})
+
+describe('数の操作と双方0体の案内', () => {
+  it.each([
+    ['0', -1, null], ['0', 1, 1], ['1', -1, 0], ['9', 1, 10],
+    ['10', 1, null], ['10', -1, 9], [' 05 ', -1, 4],
+    ['', 1, null], ['11', -1, null], ['-1', 1, null], ['1.5', -1, null],
+  ] as const)('「%s」を%dすると%s', (input, delta, expected) => {
+    expect(stepTokenCount(input, delta)).toBe(expected)
+  })
+  it.each([
+    ['0', '0', true], [' 00 ', '0', true], ['1', '0', false], ['0', '1', false],
+    ['10', '10', false], ['', '0', false], ['0', '11', false],
+  ])('味方%s/敵%sの双方0体案内は%s', (ally, enemy, expected) => {
+    expect(areBothCountsZero(ally, enemy)).toBe(expected)
   })
 })

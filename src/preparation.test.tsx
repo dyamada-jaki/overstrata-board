@@ -221,6 +221,26 @@ describe('未配置から配置・確定・移動まで', () => {
 })
 
 describe('確認付きの全体やり直し', () => {
+  it('確認の両端でTabとShift+Tabを押すと確認内に戻り、他のキーでは選択や段階を変えない', () => {
+    render(<App />)
+    prepare('1', '0')
+    place('味方1', 3, 4)
+    click('準備をやり直す')
+    const dialog = screen.getByRole('dialog')
+    const cancel = within(dialog).getByRole('button', { name: 'キャンセル' })
+    const approve = within(dialog).getByRole('button', { name: 'やり直す' })
+    expect(cancel).toHaveFocus()
+    fireEvent.keyDown(cancel, { key: 'ArrowLeft' })
+    expect(cancel).toHaveFocus()
+    fireEvent.keyDown(cancel, { key: 'Tab', shiftKey: true })
+    expect(approve).toHaveFocus()
+    fireEvent.keyDown(approve, { key: 'Tab' })
+    expect(cancel).toHaveFocus()
+    click('キャンセル')
+    expect(screen.getByRole('region', { name: '配置の準備' })).toBeVisible()
+    expect(cell(3, 4)).toHaveAccessibleName('マス (3, 4) 味方1（味方・移動力5）')
+  })
+
   it.each(['準備中', '確定後'])('%sでEscの取消イベントを受けると段階・選択・位置を維持して開いたボタンへ戻す', (phase) => {
     render(<App />)
     prepare('1', '0')
