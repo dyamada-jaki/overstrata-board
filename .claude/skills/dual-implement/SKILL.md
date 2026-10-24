@@ -69,7 +69,7 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
 やること: <.claude または .agents>/skills/implement-issue/SKILL.md の5手順と docs/testing.md に従って Issue #N を実装し、PR を作る。ただし次の点だけ手順を置き換える。
 - 最初に、worktree の直下に .env を作る（コミットしない）: HOST_PORT=<ポート> と COMPOSE_PROJECT_NAME=issue-N-<claude|codex>
 - 手順3の計画は、人間に直接聞かず、指示文の先頭に付いている ask コマンド（orca orchestration ask）で、計画の全文を質問として送る。返事が来るまで実装を始めない。返事に修正の指示があれば従う。ask が時間切れになったら、同じ message ID で --resume して待ち続ける（勝手に進めない）
-- 作業時間を測るため、次の作業を始めるたびに、ask と同じ orca で `orca orchestration send --to run:<Run ID> --type status --subject "作業: <名前>"` を送る。名前は 計画 / 待ち（計画の承認を待つ間）/ テスト / 実装 / 確認コマンド / E2E / ミューテーション / 画面確認 / PR作成 / CI待ち から選ぶ。前の作業に戻るときも送り直す
+- 作業時間を測るため、次の作業を始めるたびに、ask と同じ orca で `orca orchestration send --to run:<Run ID> --type status --subject "作業: <名前>"` を送る。名前は 計画 / 待ち（計画の承認を待つ間）/ テスト / 実装 / 確認コマンド / E2E / ミューテーション / 画面確認 / PR作成 から選ぶ。前の作業に戻るときも送り直す
 - 手順5の PR のタイトルの先頭に「[<Claude Code|Codex>]」を付ける。PR 本文の先頭に「作成: <Claude Code|Codex>」と書く
 守ること: CLAUDE.md（AGENTS.md）の「守ること」。Issue のスコープ外はやらない。main に直接 push しない。
 画面を含む Issue では、implement-issue の手順4に従って Orca のブラウザで「開発設定」の画面確認の幅（スマホ幅と PC 幅）を確かめ、手順5の形で PR に書く。開発サーバーは自分の .env のポートで起動し、確認が終わったら止める。スマホ実機での確認はしない（レビュー時に人間が行う）。
@@ -165,7 +165,7 @@ orca orchestration worker-start --spec "<下の品質レビュー用の指示>" 
 ## 7. まとめて一次判断し、推薦を PR に残す
 レビューの指摘をそのまま信じない。コーディネーター自身が裏を取ってから判断する。
 - `gh pr view <番号> --comments` で両 PR の相互レビューと、適用した品質レビューを読む
-- `gh pr checks <番号>` で CI の結果を見る
+- `gh pr checks <番号>` で CI の結果を見る。前に CI が成功した SHA からの差分が `.md` のファイルだけなら、実行中の CI は待たずに進めてよい。推薦にはその SHA と「差分は `.md` だけで CI は実行中」と書く。CI の成功は finish-issue のマージ前に確かめる
 - 指摘ごとに差分と関連するコード・仕様で確かめ、「確認できた / 誤り / 判断できない」を付ける。重複をまとめ、今回の必須修正と独立した改善の候補を分ける
 - `headRefOid` を再取得し、レビュー対象と一致するか確かめる。修正された場合は、必要な担当者に更新差分と影響範囲を再確認させ、最新 SHA の結果を残す。古いレビューだけで採用可能としない。未解消の必須指摘や未完了の確認は最終報告に明記する
 
@@ -199,7 +199,7 @@ orca orchestration worker-start --spec "<下の品質レビュー用の指示>" 
    - **受け入れ**: 手順9へ
    - **人間の判断が必要**: 手順9へ。PO が挙げた判断事項を、そのまま人間に見せる
    - **差し戻し**: 指摘ごとに、差分・仕様・Issue で裏を取る
-     - 直すべき指摘は、PR の作者と同じエージェントで修正ワーカーを、その PR の worktree に起動して直させる（`worker-start --worktree path:<その PR の worktree> --agent <claude|codex>`。モデルは「モデルの指定」の実装ワーカーと同じで、Codex には `--model gpt-6.1-sol --effort xhigh` を付ける）。指示には、直す点と根拠、振る舞いを変える修正はテストを先に書くこと、同じブランチに push すること、worker_done に新しい head SHA を書くことを含める
+     - 直すべき指摘は、PR の作者と同じエージェントで修正ワーカーを、その PR の worktree に起動して直させる（`worker-start --worktree path:<その PR の worktree> --agent <claude|codex>`。モデルは「モデルの指定」の実装ワーカーと同じで、Codex には `--model gpt-6.1-sol --effort xhigh` を付ける）。指示には、直す点と根拠、振る舞いを変える修正はテストを先に書くこと、同じブランチに push すること、worker_done に新しい head SHA を書くことを含める。直したのが `.md` のファイルだけ（前に CI が成功した SHA からの `git diff --name-only` が `.md` だけ）なら、push したら CI の終わりを待たずに worker_done を送ることも含める（#37 で README だけの直しが CI のミューテーションを約15分待ったため）
      - 修正後は、手順6.2の相互レビューの担当で、新しい SHA の更新差分と影響範囲を再確認させる。推薦コメントを新しい SHA で更新し、2. に戻って PO に再確認を送る
      - 開発チームとして同意できない指摘は直さない。両者の見解を並べ、手順9で人間に判断を仰ぐ
      - 差し戻しは2回まで（「開発設定」の「PO の差し戻し」）。3回目の差し戻しになったら、直さずに手順9で人間に判断を仰ぐ
