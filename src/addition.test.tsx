@@ -187,6 +187,8 @@ describe('追加する駒の移動力と確定（#33）', () => {
     prepare('1', '0')
     place('味方1', 1, 1)
     add('0', '1')
+    // 準備中の追加分は「確定」でまとめて確定し、「追加分を確定」は出さない。
+    expect(screen.queryByRole('button', { name: '追加分を確定' })).not.toBeInTheDocument()
     fireEvent.click(token('敵1'))
     expect(value('敵1')).toHaveTextContent(/^5$/)
     times(() => within(setting('敵1')).getByRole('button', { name: '敵1の移動力を増やす' }), 4)
@@ -371,9 +373,12 @@ describe('番号の発行と上限（#33）', () => {
     click('キャンセル')
     add('0', '1')
     expect(unplacedNames().at(-1)).toBe('未配置 敵4（敵・移動力5）')
+    click('駒を増やす')
     click(reset)
     click(approve)
     prepare('0', '2')
+    // 全体のクリアで追加数のエリアも閉じる。
+    expect(queryArea()).not.toBeInTheDocument()
     expect(unplacedNames()).toEqual(['未配置 敵1（敵・移動力5）', '未配置 敵2（敵・移動力5）'])
   })
 })

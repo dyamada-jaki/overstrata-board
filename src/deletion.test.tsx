@@ -117,6 +117,8 @@ describe('駒の削除（#33）', () => {
     expect(occupants()).toEqual([])
     expect(unplacedNames()).toEqual([])
     expect(screen.getAllByRole('button', { name: /^マス / })).toHaveLength(100)
+    expect(screen.getByText('駒がありません。「駒を増やす」で追加できます。')).toBeVisible()
+    expect(screen.queryByText('全駒を配置しました。「確定」で準備を完了します。')).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: '配置の準備' })).toBeVisible()
     expect(screen.getByRole('heading', { name: '駒を配置' })).toBeVisible()
     expect(screen.getByRole('button', { name: '確定' })).toBeDisabled()

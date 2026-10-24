@@ -187,6 +187,8 @@ describe('途中の追加（#33）', () => {
   it('準備中の追加も未配置・未確定で、味方・敵を同時に追加できる', () => {
     const next = prepareAdditions(prepareBattle('1', '1')!, ' 2 ', '01')!
     expect(names(next)).toEqual(['味方1', '敵1', '味方2', '味方3', '敵2'])
+    expect(next.issued).toEqual({ ally: 3, enemy: 2 })
+    expect(names(prepareAdditions(next, '1', '1')!).slice(-2)).toEqual(['味方4', '敵3'])
     expect(next.phase).toBe('preparing')
     expect(next.characters.every((character) => !character.confirmed && character.position === null)).toBe(true)
     expect(canConfirmBattle(next)).toBe(false)
