@@ -1,13 +1,17 @@
 import { movementSetting } from '../data/movement.ts'
+import { tokenLimits } from '../data/tokens.ts'
 import type { Character, Side } from './character.ts'
 import type { BoardState } from './selection.ts'
 
 export interface BattleState extends BoardState {
   readonly phase: 'counts' | 'preparing' | 'active'
+  /** 各陣営で最後に発行した番号。削除では戻さず、全体のクリアでだけ0に戻す（#33）。 */
+  readonly issued: Readonly<Record<Side, number>>
 }
 
 /** 承認された入力仕様: 前後空白を除く半角数字のみ、0〜10。 */
-export function parseCount(input: string): number | null {
+export function parseCount(input: string, max: number = tokenLimits.perSide): number | null {
+  void max
   const trimmed = input.trim()
   if (!/^[0-9]+$/.test(trimmed)) return null
   const count = Number(trimmed)
@@ -15,9 +19,9 @@ export function parseCount(input: string): number | null {
 }
 
 /** ±の操作後の数。不正な入力や0〜10を超える操作はできない。 */
-export function stepTokenCount(input: string, delta: -1 | 1): number | null {
-  const count = parseCount(input)
-  return count === null ? null : parseCount(String(count + delta))
+export function stepTokenCount(input: string, delta: -1 | 1, max: number = tokenLimits.perSide): number | null {
+  const count = parseCount(input, max)
+  return count === null ? null : parseCount(String(count + delta), max)
 }
 
 /** 双方0体の案内は、不正な入力への案内とは区別する。 */
@@ -26,7 +30,7 @@ export function areBothCountsZero(allyInput: string, enemyInput: string): boolea
 }
 
 export function createInitialBattle(): BattleState {
-  return { phase: 'counts', characters: [], selection: { kind: 'none' } }
+  return { phase: 'counts', characters: [], selection: { kind: 'none' }, issued: { ally: 0, enemy: 0 } }
 }
 
 /** 数指定から、移動力が初期値・未配置の駒を用意する（spec.md 2.2）。 */
@@ -43,12 +47,14 @@ export function prepareBattle(allyInput: string, enemyInput: string): BattleStat
       number,
       movement: movementSetting.initial,
       position: null,
+      confirmed: false,
     }
   })
   return {
     phase: 'preparing',
     characters: [...make('ally', ally), ...make('enemy', enemy)],
     selection: { kind: 'none' },
+    issued: { ally: 0, enemy: 0 },
   }
 }
 
@@ -78,4 +84,32 @@ export function setMovement(state: BattleState, id: string, movement: number): B
     ...state,
     characters: state.characters.map((character) => character.id === id ? { ...character, movement } : character),
   }
+}
+
+// 以下は #33 の枠だけ（テスト先行のため未実装）。
+export function getAddableCount(state: BattleState, side: Side): number {
+  void state
+  void side
+  return 0
+}
+
+export function prepareAdditions(state: BattleState, allyInput: string, enemyInput: string): BattleState | null {
+  void state
+  void allyInput
+  void enemyInput
+  return null
+}
+
+export function deleteCharacter(state: BattleState, id: string): BattleState {
+  void id
+  return state
+}
+
+export function canConfirmAdditions(state: BattleState): boolean {
+  void state
+  return false
+}
+
+export function confirmAdditions(state: BattleState): BattleState {
+  return state
 }
