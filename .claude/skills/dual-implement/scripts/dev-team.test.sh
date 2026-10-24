@@ -154,5 +154,11 @@ echo "term_po" > "$FAKE/state/po.handle"
 ORCA_TERMINAL_HANDLE=term_po run close-self; rc=$?
 check "PO の端末では close-self を断る" test "$rc-$(cat "$FAKE/closed" 2>/dev/null)" = "1-"
 
+reset "" ""
+run mark 5 開発チーム "1. 事前確認"; run mark 5 PO 待ち
+check "mark: 1行ずつ時刻・担当・作業を追記する" test "$(cut -f2,3 "$FAKE/state/work-times/5.tsv" | tr '\t\n' ':;')" = "開発チーム:1. 事前確認;PO:待ち;"
+run mark 5 開発チーム; rc=$?
+check "mark: 作業が無ければ断る" test "$rc" -ne 0
+
 echo
 [ "$fails" -eq 0 ] && echo "すべて成功" || { echo "失敗: ${fails} 件"; exit 1; }

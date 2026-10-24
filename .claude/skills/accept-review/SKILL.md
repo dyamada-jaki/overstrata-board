@@ -21,6 +21,7 @@ disable-model-invocation: true
   - 開発チームの「開発チームの推薦」コメント（比較・一次判断・残っている指摘）
   - 相互レビュー・品質レビューのコメントは、結論と必須指摘の扱いだけ確かめる。読み直してコードレビューをやり直さない
 - PR 本文の `Closes #番号` から Issue 番号 `N` を取り、`gh issue view N --json title,body,comments` で目的・受け入れ条件・スコープ外を読む
+- Issue 番号が分かったら、`bash .claude/skills/dual-implement/scripts/dev-team.sh mark N PO 受け入れ確認` を実行する（開発チームが作業時間を集計するため）
 - `docs/spec.md` のうち、Issue がリンクしている箇所を読む
 - `docs/issue-reports/issue-N.md` があれば、承認した計画と確認事項の決着を読む
 - 前の受け入れ確認（このスキルのコメント）があれば読み、何回目の確認かを数える
@@ -65,7 +66,7 @@ orca orchestration send --to run:R --type handoff \
   --subject "#N 受け入れ一次判断: <受け入れ / 差し戻し / 人間の判断が必要>" \
   --body "<コメントの URL>。<差し戻しなら、直してほしい点の要約>"
 ```
-送れなかったら、その旨と判定を人間に伝える。
+送れなかったら、その旨と判定を人間に伝える。送ったあと（`R` が無ければコメントのあと）、`dev-team.sh mark N PO 終了` を実行する。
 
 ## 5. 人間に伝える
 この端末で、判定とコメントへのリンクを3行ほどで伝える。spec.md・Issue に戻す候補があれば、相談したいこととして添える。

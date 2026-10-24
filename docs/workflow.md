@@ -301,5 +301,6 @@ Orcaで差分を見る。エージェントのコードレビューでは、Issu
 | `docs/decisions/` | Issue を越えて効く技術判断（ADR） | 決めたことは書き換えず、変えるときは新しい ADR で置き換える |
 | `CLAUDE.md` / `AGENTS.md` | エージェントの常識 | 失敗の傾向を見て育てる |
 | `.git/po.handle`・`.git/dev-team.lock` | PO と動いている開発チームの端末（Git の管理外） | 開き直し・Issue ごとに書き換わる |
+| `.git/work-times/<Issue番号>.tsv` | 開発チームと PO の作業の区切り（`dev-team.sh mark`。Git の管理外）。ワーカーの区切りは Orca の Run に残る | finish-issue で `work-times.py` が集計し、Issue レポートの「作業時間」に貼る |
 | `.claude/skills/` / `.agents/skills/` | 実装・レビュー・完了処理の手順（両方を同じ内容に保つ） | 実践の結果を見て育てる |
 | vaultのネタ帳 | 開発の経緯（日記の素材） | 追記のみ |

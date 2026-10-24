@@ -16,6 +16,7 @@ allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *), Bash(
 - 人間が呼んだときだけ使う（Claude Code は `disable-model-invocation`、Codex は `agents/openai.yaml` で自動の呼び出しを止めている）。Claude Code ではこのスキルのターンは Sonnet で動く。Codex にはスキルごとのモデル指定がないので、コーディネーターのモデルのまま動く
 - マージ・不採用 PR のクローズ・後片付けの機械的な操作は `bash .claude/skills/finish-issue/scripts/finish.sh <サブコマンド>` で行う（リポジトリのルートで実行）。判断と確認はこのスキルの手順で済ませてから呼ぶ。スクリプトが止まったら、無理に手で続けず人間に伝える
 - Orca は、同じセッションで動作確認した実行ファイルを使う。PATH 上の `orca` が使えない場合は、補助スクリプトの実行時だけ、その実行ファイルのディレクトリを PATH の先頭に置く
+- **作業時間を測る**: 手順を始めるたびに `bash .claude/skills/dual-implement/scripts/dev-team.sh mark N 開発チーム "<手順の番号と見出し>"` を実行する。人間の返事を待ち始めたら `待ち` を渡す（dual-implement と同じ）
 - 消すものは、必ず中身を見てから消す。手順3でマージ・後片付け等の実行内容を確認し、その後はふりかえりまで進める。既に具体的な実行内容が承認されていれば、同じ確認を繰り返さない
 - ふりかえり（⑧）もこのスキルで行う。結果と具体的な改善案を会話で示して採否を確認し、承認された範囲をスキル・文書などへ反映する。判断待ちの改善は反映せず、状態を記録して返答を待つ
 - このスキルは、その Issue の開発チームの端末で動かす（workflow.md「3つの席」）。spec.md の変更と Issue の登録・順番は PO の担当なので、ここでは直さずに PO へ申し送る（手順8）
@@ -74,6 +75,7 @@ allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *), Bash(
 最後に main を最新にする: `bash .claude/skills/finish-issue/scripts/finish.sh sync-main`
 
 ## 7. ふりかえり、内容を共有する
+- 先に作業時間の表を作る: `python3 .claude/skills/dual-implement/scripts/work-times.py N <Run ID>`（Run ID は `orca orchestration run-current --json`）。作業ごとの開始・終了・所要が出る。時間がかかった作業、同じ作業の繰り返し（直すたびの CI 待ちなど）、Issue の大きさに比べて重い作業を拾い、作業方針の改善案の根拠にする。人間の待ち時間は改善の対象にしない。印が抜けて区切れない区間は「記録なし」と書き、推測で埋めない
 - `docs/workflow.md` ステップ8に従い、計画・実装・テスト・レビュー・後片付けを振り返る。今回の証拠から、続けること、改善すること、まだ判断できないことを整理する。1回の結果だけでモデルの優劣や費用対効果を断定しない
 - 計画で選んだ前回の改善について、試した場面・証拠・効果を観測したか／問題が再発したか／未確認の理由と、継続・修正・削除・継続観測の判断を残す。反映済みだけで効果確認済みとしない。#9では `docs/testing.md` 5章に従って#8・#9の二重実装と品質レビューを別々に評価し、担当構成の継続案と根拠を利用者へ示す
 - レポートへのリンクだけで済ませず、ふりかえりの結果を会話で示す。改善案ごとに根拠、反映先のファイルや Issue、具体的な変更内容、期待する効果と確認方法をまとめ、人間に採用・見送り・保留の判断を仰ぐ
@@ -104,7 +106,7 @@ allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *), Bash(
 - 差分と変更に合う検証で反映結果を確かめる。未確認のモデル設定や、リポジトリ外の資料・環境設定を今回のふりかえりだけで書き換えない
 
 ## 9. 記録を更新・保存する
-- `docs/issue-reports/issue-N.md` に、採用・不採用の理由、マージ結果、削除・保管した資源、ふりかえりと改善の反映結果を追記する。受け入れ条件の判定と PR・CI・レビューへのリンクを確かめる。`docs/issue-reports/README.md` の一覧にもリンクを追加する
+- `docs/issue-reports/issue-N.md` の「作業時間」に、手順7で作った表と所見を貼る。続けて、採用・不採用の理由、マージ結果、削除・保管した資源、ふりかえりと改善の反映結果を追記する。受け入れ条件の判定と PR・CI・レビューへのリンクを確かめる。`docs/issue-reports/README.md` の一覧にもリンクを追加する
 - 改善ごとに人間の判断・承認内容、反映先のファイルや Issue のリンクと、「反映済み」「登録済み・未実装」「判断待ち」「見送り（理由）」などの状態を残す。残作業と理由を明記し、実施していない改善を完了としない
 - 今回変更した関連ファイルだけを、`git commit -- <ファイル>` のようにパスを指定して main にコミットし（新しいファイルは先に `git add <ファイル>` する。ADR など）、push の前に `git pull --rebase --autostash` する（PO も同じ main で作業しているため。PO の書きかけは一時的に退避され、元に戻る）。記録のみなら `docs: record #N completion`、スクリプト等も変えた場合は内容に合うメッセージを付ける。他の作業の変更を混ぜない
 
@@ -120,6 +122,7 @@ allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *), Bash(
 - この端末を閉じるか、返答待ちで残すか
 
 ## 11. 開発チームを終えて、端末を閉じる
+- `dev-team.sh mark N 開発チーム 終了` を実行する
 - `bash .claude/skills/dual-implement/scripts/dev-team.sh release N` で「着手中」を外し、開発チームの登録を消す。これで起動係が次の「開発可」の Issue を拾えるようになる。判断待ちの改善が残っていても、マージ・後片付け・記録が済んでいれば外してよい
 - **人間に聞くことが残っていなければ**、最後の操作として `bash .claude/skills/dual-implement/scripts/dev-team.sh close-self` でこの端末を閉じる。閉じるとエージェントも止まるので、これより後に操作を置かない
 - **返答待ちの改善などが残っていれば**閉じない。返答を受けて反映・記録を終え、聞くことがなくなった時点で `close-self` を実行する

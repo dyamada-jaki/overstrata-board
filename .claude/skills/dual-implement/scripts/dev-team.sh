@@ -11,6 +11,9 @@
 #   dev-team.sh close-self                  この端末を閉じる（finish-issue の最後の操作。release の後でないと断る）
 #   dev-team.sh po-register                 この端末を PO として登録する（PO を開いたときに呼ぶ）
 #   dev-team.sh po-find                     PO の端末の handle とエージェントの種類を出す。PO がいなければ 1 で終わる
+#   dev-team.sh mark <Issue番号> <担当> <作業>
+#                                           作業の区切りを記録する（ここから <作業> を始めた）。待つ間は「待ち」、終えたら「終了」。
+#                                           集計は work-times.py（finish-issue が Issue レポートに貼る）
 #
 # 端末の題名はエージェントが書き換えるので、端末は Git の管理外に置いた handle のファイルで見つける。
 # ファイルに書いた端末が閉じていれば、いないとみなす。
@@ -35,6 +38,7 @@ main_worktree=$(git worktree list --porcelain | awk 'NR==1 && $1=="worktree" {pr
 state_dir=${DEV_TEAM_STATE_DIR:-$(git rev-parse --path-format=absolute --git-common-dir)}
 team_file="${state_dir}/dev-team.lock"   # 中身: <Issue番号> <handle>（端末を開く前は handle の代わりに launching）
 po_file="${state_dir}/po.handle"         # 中身: <handle>
+times_dir="${state_dir}/work-times"       # <Issue番号>.tsv。1行に <UTC の時刻> <担当> <作業>（タブ区切り）
 
 # ラベルの付いた開いている Issue の番号（小さい順）。gh issue list は検索を使い反映が遅れるので、REST で引く。
 # それでも付け替えの直後は古い結果を返すことがあるので、二重起動は team_file でも防ぐ
@@ -166,6 +170,12 @@ case "$cmd" in
     "$orca_bin" terminal close --terminal "$handle" --json >/dev/null
     ;;
 
+  mark)
+    n=${1:?Issue番号}; who=${2:?担当}; what=${3:?作業}
+    mkdir -p "$times_dir"
+    printf '%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$who" "$what" >> "${times_dir}/${n}.tsv"
+    ;;
+
   po-register)
     handle=$(own_handle)
     echo "$handle" > "$po_file"
@@ -180,7 +190,7 @@ case "$cmd" in
     ;;
 
   *)
-    sed -n '2,20p' "$0" >&2
+    sed -n '2,23p' "$0" >&2
     exit 2
     ;;
 esac

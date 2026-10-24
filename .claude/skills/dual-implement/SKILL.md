@@ -19,6 +19,7 @@ disable-model-invocation: true
 - **マージ（⑦）はしない。** 人間が判断する
 - 人間に聞く場面は2回だけ: 手順4（計画承認）と手順9（最終報告）。PO への確認（手順8）は人間を通さずに行う。それ以外は止まらずに進める
 - 起動・登録・PO の探し方は `bash .claude/skills/dual-implement/scripts/dev-team.sh <サブコマンド>` で行う（リポジトリのルートで実行）
+- **作業時間を測る**: 手順を始めるたびに `bash .claude/skills/dual-implement/scripts/dev-team.sh mark N 開発チーム "<手順の番号と見出し>"` を実行する（例: `"6.2 相互レビュー"`）。人間・ワーカー・PO の返事を待ち始めたら、見出しの代わりに `待ち` を渡す。どの作業に時間がかかったかを見て作業方針を見直すためで、人間の待ち時間は対象にしない。集計は finish-issue で行う
 - 待つときは `orca orchestration check --wait --timeout-ms 60000` を繰り返す。時間切れは失敗ではない。進捗を伝えながら待ち続ける
 
 ## モデルの指定
@@ -68,6 +69,7 @@ orca orchestration worker-start --spec "<下の実装用の指示>" --task-title
 やること: <.claude または .agents>/skills/implement-issue/SKILL.md の5手順と docs/testing.md に従って Issue #N を実装し、PR を作る。ただし次の点だけ手順を置き換える。
 - 最初に、worktree の直下に .env を作る（コミットしない）: HOST_PORT=<ポート> と COMPOSE_PROJECT_NAME=issue-N-<claude|codex>
 - 手順3の計画は、人間に直接聞かず、指示文の先頭に付いている ask コマンド（orca orchestration ask）で、計画の全文を質問として送る。返事が来るまで実装を始めない。返事に修正の指示があれば従う。ask が時間切れになったら、同じ message ID で --resume して待ち続ける（勝手に進めない）
+- 作業時間を測るため、次の作業を始めるたびに、ask と同じ orca で `orca orchestration send --to run:<Run ID> --type status --subject "作業: <名前>"` を送る。名前は 計画 / 待ち（計画の承認を待つ間）/ テスト / 実装 / 確認コマンド / E2E / ミューテーション / 画面確認 / PR作成 / CI待ち から選ぶ。前の作業に戻るときも送り直す
 - 手順5の PR のタイトルの先頭に「[<Claude Code|Codex>]」を付ける。PR 本文の先頭に「作成: <Claude Code|Codex>」と書く
 守ること: CLAUDE.md（AGENTS.md）の「守ること」。Issue のスコープ外はやらない。main に直接 push しない。
 画面を含む Issue では、implement-issue の手順4に従って Orca のブラウザで「開発設定」の画面確認の幅（スマホ幅と PC 幅）を確かめ、手順5の形で PR に書く。開発サーバーは自分の .env のポートで起動し、確認が終わったら止める。スマホ実機での確認はしない（レビュー時に人間が行う）。
