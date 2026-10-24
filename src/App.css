@@ -87,6 +87,12 @@ button, input { font: inherit; }
 .preparation-panel .primary { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
 .preparation-panel .reset, .reset-dialog .reset { background: #fff; color: #9a3412; border-color: #9a3412; }
 .reset-help { margin: 1rem 0 0.5rem; }
+.count-help { margin: 0.25rem 0 0; }
+.confirm-additions { margin: 0 0.5rem 0.5rem 0; }
+.add-tokens { display: block; margin-bottom: 1rem; background: #f1f5f9; color: #1e293b; }
+.addition-area { border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.5rem 0.75rem; margin-bottom: 1rem; background: #f8fafc; }
+.addition-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
+.addition-actions button:not(.primary) { background: #fff; color: #1e293b; }
 .unplaced-tokens { display: grid; gap: 0.375rem; margin-bottom: 1rem; }
 .unplaced-side { display: flex; flex-wrap: wrap; gap: 0.375rem; }
 .unplaced-side:empty { display: none; }
@@ -105,7 +111,9 @@ button, input { font: inherit; }
 }
 .unplaced-token .board-token { width: 1.75rem; height: 1.75rem; }
 .unplaced-token[aria-pressed='true'] { outline: 3px solid #f59e0b; outline-offset: 1px; }
-.movement-setting { border: 2px solid #f59e0b; border-radius: 0.5rem; padding: 0.5rem 0.75rem; margin-bottom: 1rem; background: #fffbeb; }
+/* 選択中の駒の操作（移動力の設定欄と削除）をまとめて囲む（#37・#33）。 */
+.selected-piece { display: grid; gap: 0.5rem; justify-items: start; border: 2px solid #f59e0b; border-radius: 0.5rem; padding: 0.5rem 0.75rem; margin-bottom: 1rem; background: #fffbeb; }
+.selected-piece > .movement-setting-title { margin: 0; }
 .movement-setting-title { display: flex; gap: 0.5rem; align-items: center; margin: 0 0 0.375rem; color: #1e293b; font-weight: bold; }
 .movement-setting-title .board-token { width: 1.75rem; height: 1.75rem; margin: 0; }
 .movement-value { min-width: 2.5rem; text-align: center; font-size: 1.25rem; font-weight: bold; }

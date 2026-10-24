@@ -355,7 +355,8 @@ describe('番号の発行と上限（#33）', () => {
     expect(addField('敵')).toHaveAccessibleDescription('あと0体追加できます')
     input('味方', '1')
     click('追加する')
-    expect(unplacedNames().at(-1)).toBe('未配置 味方1（味方・移動力5）')
+    // 一覧は味方の行が先（spec.md 2.2）。
+    expect(unplacedNames()[0]).toBe('未配置 味方1（味方・移動力5）')
   }, 60_000)
 
   it.each([
