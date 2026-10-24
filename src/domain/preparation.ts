@@ -79,3 +79,11 @@ export function setMovement(state: BattleState, id: string, movement: number): B
     characters: state.characters.map((character) => character.id === id ? { ...character, movement } : character),
   }
 }
+
+// #33 テスト先行用の公開入口。振る舞いは次の実装コミットで追加する。
+export function getAdditionCapacity(_state: BattleState, _side: Side): number { return 0 }
+export function addPieces(_state: BattleState, _ally: string, _enemy: string): BattleState | null { return null }
+export function removePiece(state: BattleState, _id: string): BattleState { return state }
+export function canConfirmAdditions(_state: BattleState): boolean { return false }
+export function confirmAdditions(state: BattleState): BattleState { return state }
+export function canEditMovement(_state: BattleState, _id: string): boolean { return false }
