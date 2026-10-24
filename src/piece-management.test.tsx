@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
 
-const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
+const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
 const token = (name: string) => screen.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
 const input = (name: string, value: string) => fireEvent.change(screen.getByRole('textbox', { name }), { target: { value } })
@@ -125,7 +125,7 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     prepare()
     remove('敵1')
     expect(screen.getByRole('region', { name: '配置の準備' })).toBeVisible()
-    expect(screen.getByRole('button', { name: '確定', exact: true })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '確定' })).toBeDisabled()
     expect(screen.getAllByRole('button', { name: /^マス / })).toHaveLength(100)
     click('準備をやり直す')
     click('キャンセル')

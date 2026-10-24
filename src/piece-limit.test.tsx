@@ -6,7 +6,7 @@ import App from './App.tsx'
 it('共通の同時上限を2へ変えると最初の準備・追加の入力/案内/残数/生成がすべて揃う', () => {
   render(<App />)
   const input = (name: string, value: string) => fireEvent.change(screen.getByRole('textbox', { name }), { target: { value } })
-  const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
+  const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
   expect(screen.getByText('それぞれ0〜2体の整数を入力してください。')).toBeVisible()
   input('味方の数', '3')
   expect(screen.getByRole('textbox', { name: '味方の数' })).toHaveAccessibleDescription('0〜2の整数で入力してください')
