@@ -3,7 +3,11 @@ import App from './App.tsx'
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
-const token = (name: string) => screen.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
+const token = (name: string) => {
+  const group = screen.queryByRole('group', { name: '未配置の駒' })
+  return (group && within(group).queryByRole('button', { name: new RegExp(`^未配置 ${name}（`) }))
+    || screen.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
+}
 const input = (name: string, value: string) => fireEvent.change(screen.getByRole('textbox', { name }), { target: { value } })
 const form = () => screen.getByRole('group', { name: '駒の追加数' })
 const pending = () => within(screen.getByRole('group', { name: '未配置の駒' }))
@@ -29,9 +33,10 @@ function place(name: string, x: number, y: number) {
 }
 function remove(name: string) {
   fireEvent.click(token(name))
-  click('この駒を削除')
-  expect(screen.getByRole('dialog')).toHaveTextContent(`${name}を削除しますか？`)
-  click('削除する')
+  fireEvent.click(screen.getByText('この駒を削除', { selector: 'button' }))
+  const dialog = screen.getByRole('dialog')
+  expect(dialog).toHaveTextContent(`${name}を削除しますか？`)
+  fireEvent.click(within(dialog).getByRole('button', { name: '削除する' }))
 }
 
 describe('準備中/戦闘途中の追加・削除（#33）', () => {
@@ -73,8 +78,11 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     prepare('0', '8')
     click('駒を増やす')
     expect(screen.getByRole('button', { name: '追加する' })).toBeDisabled()
+    expect(within(form()).getByText('味方か敵を1体以上にしてください')).toBeVisible()
+    expect(screen.getByRole('textbox', { name: '敵の追加数' })).toHaveAccessibleDescription('0〜2体の整数を入力してください。')
     expect(screen.getByRole('button', { name: '敵の追加数を減らす' })).toBeDisabled()
     input('味方の追加数', '1')
+    expect(within(form()).queryByText('味方か敵を1体以上にしてください')).not.toBeInTheDocument()
     input('敵の追加数', invalid)
     expect(screen.getByRole('textbox', { name: '敵の追加数' })).toHaveAccessibleDescription('0〜2の整数で入力してください')
     expect(screen.getByRole('button', { name: '敵の追加数を増やす' })).toBeDisabled()
@@ -104,6 +112,8 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
       click('この駒を削除')
       expect(screen.getByRole('button', { name: 'キャンセル' })).toHaveFocus()
       click('キャンセル')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'この駒を削除' })).toHaveFocus()
       expect(pressed()).toEqual(selected)
       expect(range().map((el) => el.getAttribute('aria-label'))).toEqual(before)
       expect(token(name)).toBeVisible()
@@ -176,6 +186,7 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     expect(pressed()).toEqual([])
     expect(range()).toEqual([])
     expect(screen.queryByRole('button', { name: '追加分を確定' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: '未配置の駒' })).not.toBeInTheDocument()
     for (const name of ['敵1', '敵2']) {
       fireEvent.click(token(name))
       expect(settings()).toEqual([])
@@ -196,6 +207,7 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     expect(screen.getByRole('button', { name: '追加分を確定' })).toBeDisabled()
     remove('敵2')
     expect(screen.queryByRole('button', { name: '追加分を確定' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: '未配置の駒' })).not.toBeInTheDocument()
     expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力5）')
     remove('味方1')
     expect(screen.getByRole('region', { name: '戦闘中' })).toBeVisible()
@@ -220,6 +232,21 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     expect(pressed()).toEqual([cell(10, 10)])
     click('追加分を確定')
     expect(pressed()).toEqual([])
+  })
+
+  it('追加数の入力中のやり直しは取消で入力保持、実行でフォームを閉じ番号1へ戻る', () => {
+    render(<App />)
+    prepare()
+    click('駒を増やす')
+    input('敵の追加数', '2')
+    click('準備をやり直す')
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'キャンセル' }))
+    expect(screen.getByRole('textbox', { name: '敵の追加数' })).toHaveValue('2')
+    click('準備をやり直す')
+    click('やり直す')
+    prepare()
+    expect(screen.queryByRole('group', { name: '駒の追加数' })).not.toBeInTheDocument()
+    expect(token('敵1')).toHaveAccessibleName('未配置 敵1（敵・移動力5）')
   })
 
   it('99番を省略せず配置でき、削除後も敵の番号は枯渇、味方だけ追加できる', () => {
