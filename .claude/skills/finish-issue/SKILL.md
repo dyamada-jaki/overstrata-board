@@ -23,7 +23,7 @@ allowed-tools: Bash(bash .claude/skills/finish-issue/scripts/finish.sh *), Bash(
 
 ## 1. 対象を確かめる
 - `gh pr view P --json number,title,state,mergeable,mergeStateStatus,headRefName,headRefOid,body,url` で、PR が OPEN でマージできる状態か見る。head の SHA を控える
-- `gh pr checks P` で CI がすべて成功しているか見る。実行中なら `gh pr checks P --watch` で終わるまで待つ（`.md` だけの直しでは、CI を待たずに受け入れ確認まで進めているため）。失敗なら止めて人間に伝える
+- `gh pr checks P` で CI がすべて成功しているか見る。実行中なら `gh pr checks P --watch` で終わるまで待つ（手元で確認を通した変更と `.md` だけの直しでは、CI を待たずに受け入れ確認まで進めているため）。失敗なら止めて人間に伝える
 - PR 本文の `Closes #番号` から Issue 番号 `N` を取る
 - `docs/testing.md` を読み、PR コメント・レビューと Issue レポートで、採用判断に使うレビューが現在の head を確認しているか、必須指摘が解消されているか確かめる。dual-implement を使った場合は相互レビューと適用対象の品質レビューを確認し、欠けている場合は同スキルの手順6〜7の該当部分で補う。通常の単独実装には、依頼されていない dual-implement を新たに始めない。実装者の報告や古い SHA のレビューを現在の確認済みとして扱わず、修正後の再確認を終えてから進む
 - PO の受け入れ確認: PR のコメントから、最新の「受け入れ一次判断（PO）」を探す。判定が「受け入れ」で、コメントの「head <SHA>」が控えた head SHA と一致すれば確認済みとする。コメントが無い、差し戻しか「人間の判断が必要」のまま、SHA が今の head と違う、のどれかなら、手順3でその状態を伝え、マージするかを人間に決めてもらう。PO の確認のあとに修正が入っていれば、dual-implement の手順8で PO に確認し直してもらうことを勧める
