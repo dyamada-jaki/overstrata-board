@@ -34,8 +34,8 @@ function fixture(t, event = 'push') {
     if (endpoint.includes('/artifacts')) return { artifacts }
     return { workflow_runs: runs }
   }
-  const decide = () => {
-    context.target = git('rev-parse', 'HEAD'); context.head = context.target
+  const decide = (head) => {
+    context.target = git('rev-parse', 'HEAD'); context.head = head ?? context.target
     return decideMutation(context, { api })
   }
   return { cwd, git, write, commit, verified, context, record, runs, decide,
@@ -70,7 +70,9 @@ for (const file of ['src/app.ts', 'src/app.test.ts', 'package-lock.json', '.gith
   test(`Markdownと${file}の混在は全対象を実行する`, async (t) => {
     const f = fixture(t)
     f.write('README.md', 'docs\n'); f.write(file, 'changed\n'); f.commit()
-    assert.equal((await f.decide()).run, true)
+    const result = await f.decide()
+    assert.equal(result.run, true)
+    assert.match(result.reason, /Markdown以外/)
   })
 }
 
@@ -85,14 +87,18 @@ for (const [from, to] of [['src/app.ts', 'docs/app.md'], ['docs/old.md', 'src/ol
   test(`${from} → ${to} の改名は全対象を実行する`, async (t) => {
     const f = fixture(t)
     renameSync(path.join(f.cwd, from), path.join(f.cwd, to)); f.commit()
-    assert.equal((await f.decide()).run, true)
+    const result = await f.decide()
+    assert.equal(result.run, true)
+    assert.match(result.reason, /Markdown以外/)
   })
 }
 
 test('コードの削除は全対象を実行する', async (t) => {
   const f = fixture(t)
   rmSync(path.join(f.cwd, 'src/app.ts')); f.commit()
-  assert.equal((await f.decide()).run, true)
+  const result = await f.decide()
+  assert.equal(result.run, true)
+  assert.match(result.reason, /Markdown以外/)
 })
 
 for (const state of ['failure', 'in_progress', 'unknown']) {
@@ -105,6 +111,7 @@ for (const state of ['failure', 'in_progress', 'unknown']) {
     f.write('README.md', 'last commit is docs\n'); f.commit()
     const result = await f.decide()
     assert.equal(result.run, true)
+    assert.match(result.reason, /Markdown以外/)
     assert.equal(result.from, f.verified)
   })
 }
@@ -129,21 +136,29 @@ test('比較元が取得できない場合は全対象を実行する', async (t
   const f = fixture(t)
   f.record.head_sha = 'f'.repeat(40)
   f.write('README.md', 'docs\n'); f.commit()
-  assert.equal((await f.decide()).run, true)
+  const result = await f.decide()
+  assert.equal(result.run, true)
+  assert.match(result.reason, /成功記録/)
 })
 
 test('API取得失敗・成功記録なしは全対象を実行する', async (t) => {
   const f = fixture(t)
   f.write('README.md', 'docs\n'); f.commit()
   const context = { ...f.context, target: f.git('rev-parse', 'HEAD') }
-  assert.equal((await decideMutation(context, { api: async () => { throw new Error('403') } })).run, true)
+  const failedApi = await decideMutation(context, { api: async () => { throw new Error('403') } })
+  assert.equal(failedApi.run, true)
+  assert.match(failedApi.reason, /比較不能.*403/)
   f.runs.length = 0
-  assert.equal((await f.decide()).run, true)
+  const missingRecord = await f.decide()
+  assert.equal(missingRecord.run, true)
+  assert.match(missingRecord.reason, /成功記録/)
 })
 
 test('同じSHAの再実行は全対象を実行し、異なるSHAで同じtreeなら差分なしで省略する', async (t) => {
   const f = fixture(t)
-  assert.equal((await f.decide()).run, true)
+  const rerun = await f.decide()
+  assert.equal(rerun.run, true)
+  assert.match(rerun.reason, /再実行/)
   f.commit()
   const result = await f.decide()
   assert.equal(result.run, false)
@@ -154,13 +169,42 @@ test('省略済みrun自体の再実行でも全対象を実行する', async (t
   const f = fixture(t)
   f.write('README.md', 'docs\n'); f.commit()
   f.context.attempt = 2
-  assert.equal((await f.decide()).run, true)
+  const result = await f.decide()
+  assert.equal(result.run, true)
+  assert.match(result.reason, /再実行/)
 })
 
 test('PRのbaseにコードの差分が入れば、前headが成功済みでも実行する', async (t) => {
   const f = fixture(t, 'pull_request')
-  f.write('src/from-base.ts', 'base update\n'); f.write('README.md', 'docs\n'); f.commit()
-  assert.equal((await f.decide()).run, true)
+  f.git('switch', '-c', 'pr')
+  f.write('README.md', 'verified PR docs\n'); const verifiedHead = f.commit()
+  f.git('switch', 'main')
+  f.write('docs/base.md', 'previous base update\n'); f.commit()
+  f.git('switch', '-c', 'verified-merge')
+  f.git('merge', '--no-ff', '-m', 'verified merge', 'pr')
+  const verifiedMerge = f.git('rev-parse', 'HEAD')
+  f.record.head_sha = verifiedHead
+  f.setArtifacts([{ name: `mutation-verified-${verifiedMerge}-1`, expired: false }])
+
+  f.git('switch', 'main')
+  f.write('src/from-base.ts', 'base code update\n'); f.context.base = f.commit()
+  f.git('switch', 'pr')
+  f.write('README.md', 'review docs\n'); const head = f.commit()
+  f.git('switch', '-c', 'current-merge', 'main')
+  f.git('merge', '--no-ff', '-m', 'current merge', 'pr')
+  const target = f.git('rev-parse', 'HEAD')
+
+  // PR自身はMarkdownだけ。baseのコードはmerge treeにだけ入り、証明もheadとは別のmerge SHA。
+  assert.equal(f.git('diff', '--name-only', f.verified, head), 'README.md')
+  assert.notEqual(verifiedMerge, verifiedHead)
+  assert.notEqual(target, head)
+  const result = await f.decide(head)
+  assert.equal(result.run, true)
+  assert.match(result.reason, /Markdown以外/)
+  assert.equal(result.from, verifiedMerge)
+  assert.equal(result.head, head)
+  assert.equal(result.target, target)
+  assert.deepEqual(result.files, ['README.md', 'src/from-base.ts'])
 })
 
 test('別PR・別pushブランチ・失敗step・成功証明のないPRを成功記録にしない', async (t) => {
@@ -171,7 +215,9 @@ test('別PR・別pushブランチ・失敗step・成功証明のないPRを成�
     if (kind === 'failed-step') f.setJobs([{ name: 'ミューテーションテスト（StrykerJS）', conclusion: 'success', steps: [{ name: '全対象のミューテーションテスト', conclusion: 'failure' }] }])
     if (kind === 'missing-proof') f.setArtifacts([])
     f.write('README.md', 'docs\n'); f.commit()
-    assert.equal((await f.decide()).run, true, kind)
+    const result = await f.decide()
+    assert.equal(result.run, true, kind)
+    assert.match(result.reason, /成功記録/, kind)
   }
 })
 
