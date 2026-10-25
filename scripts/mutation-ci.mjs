@@ -72,7 +72,11 @@ export async function decideMutation(context, { api = githubApi } = {}) {
         if (fields.length < count) throw new Error('差分のパスが欠落しています')
         files.push(...fields.splice(0, count))
       }
-      if (files.some((file) => !file.endsWith('.md'))) return { ...result, files, reason: 'Markdown以外の変更を含むため全対象を実行' }
+      if (files.some((file) => !file.endsWith('.md'))) {
+        Object.assign(result, { files, reason: 'Markdown以外の変更を含むため全対象を実行' })
+        // 別の成功地点（検証済みPRなど）からなら証明できる場合もある。
+        continue
+      }
       return { ...result, files, run: false, reason: files.length ? '検証済みの比較元からMarkdownだけの変更のため省略' : '検証済みの比較元と差分なしのため省略' }
     }
     return result
