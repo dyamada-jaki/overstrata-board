@@ -1,4 +1,4 @@
-// ミューテーションテストの並列数。手元の既定値は2で、CI だけ環境変数 MUTATION_CONCURRENCY で上げる。
+// ミューテーションテストの並列数。既定値は2で、環境変数 MUTATION_CONCURRENCY で変えられる（CI は2を明示）。
 // stryker.config.mjs（Stryker に渡す値）と scripts/mutation.mjs（ログと実際の割り当ての照合）が使う。
 
 export const defaultConcurrency = 2

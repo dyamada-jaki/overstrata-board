@@ -37,8 +37,8 @@ export default {
   ],
   tempDirName: '.stryker-tmp',
   // 並列数。checker を使うと Stryker は半分を checker（切り上げ）、残りを test runner（切り捨て）に割り当てる。
-  // 手元は他の作業と同時に動かすため既定値2（checker 1・test runner 1）。CI だけ環境変数 MUTATION_CONCURRENCY で上げる
-  // （.github/workflows/ci.yml。4なら checker 2・test runner 2）。実際の割り当ては scripts/mutation.mjs がログで確かめる。
+  // 既定値は2（checker 1・test runner 1）。環境変数 MUTATION_CONCURRENCY で変えられ、CI（.github/workflows/ci.yml）は2を明示する
+  // （#47 で4を試したが、短くならず Timeout が増えたため）。実際の割り当ては scripts/mutation.mjs がログで確かめる。
   concurrency: resolveConcurrency(process.env).concurrency,
   incremental: false,
 
