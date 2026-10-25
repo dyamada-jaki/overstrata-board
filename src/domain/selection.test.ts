@@ -85,3 +85,28 @@ it('過去サンプル4体は表の名前・陣営・番号・移動力・初期
     { id: 'enemy-2', name: '敵2', side: 'enemy', number: 2, movement: 5, position: { x: 6, y: 1 } },
   ])
 })
+
+// #34: 倒れていても未配置からの初回配置と、占有駒への選択操作は可能。
+describe('倒れた駒の配置と移動（spec.md 2.2・2.3）', () => {
+  it.each([{ x: 2, y: 3 }, { x: 9, y: 0 }])('倒れた配置済み駒は範囲内外の空きマス$targetへ動かず入力も変えない', (target) => {
+    const fallen = Object.freeze({ ...ally1, fallen: true })
+    const state: BoardState = Object.freeze({ characters: Object.freeze([fallen, enemy1]), selection: { kind: 'character' as const, id: fallen.id } })
+    const before = structuredClone(state)
+    expect(tapPosition(state, target, size)).toEqual(before)
+    expect(state).toEqual(before)
+    expect(getSelectedMovementRange(state, size)).toEqual(getSelectedMovementRange({ ...state, characters: [ally1, enemy1] }, size))
+    expect(tapPosition(state, fallen.position!, size).selection).toEqual({ kind: 'none' })
+    expect(tapPosition(state, enemy1.position!, size)).toEqual({ characters: state.characters, selection: { kind: 'character', id: enemy1.id } })
+  })
+
+  it('倒れた未配置駒は初回配置だけでき、占有マスなら選択だけ切り替える', () => {
+    const fallen = Object.freeze({ ...ally1, fallen: true, position: null })
+    const state: BoardState = { characters: [fallen, enemy1], selection: { kind: 'character', id: fallen.id } }
+    const target = { x: 0, y: 0 }
+    const placed = tapPosition(state, target, size)
+    expect(placed).toEqual({ characters: [{ ...fallen, position: target }, enemy1], selection: { kind: 'none' } })
+    expect(state.characters[0]!.position).toBeNull()
+    expect(tapPosition(state, enemy1.position!, size)).toEqual({ characters: state.characters, selection: { kind: 'character', id: enemy1.id } })
+    expect(tapPosition({ ...placed, selection: state.selection }, { x: 1, y: 0 }, size)).toEqual({ ...placed, selection: state.selection })
+  })
+})

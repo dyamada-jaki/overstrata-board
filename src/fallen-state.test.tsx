@@ -1,0 +1,188 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import App from './App.tsx'
+
+const button = (name: string) => screen.getByRole('button', { name })
+const click = (name: string) => fireEvent.click(button(name))
+const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
+const token = (name: string) => screen.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
+const range = () => screen.queryAllByRole('button', { name: / 移動範囲$/ }).map((el) => el.getAttribute('aria-label'))
+const pressed = () => screen.queryAllByRole('button', { pressed: true })
+function prepare(ally = '1', enemy = '1') {
+  fireEvent.change(screen.getByRole('textbox', { name: '味方の数' }), { target: { value: ally } })
+  fireEvent.change(screen.getByRole('textbox', { name: '敵の数' }), { target: { value: enemy } })
+  click('駒を用意する')
+}
+function place(name: string, x: number, y: number) {
+  fireEvent.click(token(name))
+  fireEvent.click(cell(x, y))
+}
+function addEnemy() {
+  click('駒を増やす')
+  fireEvent.change(screen.getByRole('textbox', { name: '敵の追加数' }), { target: { value: '1' } })
+  click('追加する')
+}
+const rangeOfThreeAtCorner = [
+  [2, 1], [3, 1], [4, 1],
+  [1, 2], [2, 2], [3, 2], [4, 2],
+  [1, 3], [2, 3], [3, 3],
+  [1, 4], [2, 4],
+].map(([x, y]) => `マス (${x}, ${y}) 移動範囲`)
+
+it('未配置の両陣営で即時切替・復帰ができ、対象だけを変え、同じボタンにフォーカスを残す', () => {
+  render(<App />)
+  prepare()
+  for (const name of ['味方1', '敵1']) {
+    fireEvent.click(token(name))
+    expect(screen.getByText('状態：通常')).toBeVisible()
+    const toggle = button('倒れた状態にする')
+    fireEvent.click(toggle)
+    expect(button('通常に戻す')).toBe(toggle)
+    expect(toggle).toHaveFocus()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('状態：倒れている')).toBeVisible()
+    expect(token(name)).toHaveAccessibleName(`未配置 ${name}（${name === '味方1' ? '味方' : '敵'}・移動力5・倒れた状態）`)
+    expect(token(name)).toHaveAttribute('aria-pressed', 'true')
+    expect(token(name).querySelector('.board-token')).toHaveClass('board-token-fallen')
+    const other = name === '味方1' ? '敵1' : '味方1'
+    expect(token(other)).not.toHaveAccessibleName(/倒れた状態/)
+    click('通常に戻す')
+    expect(button('倒れた状態にする')).toBe(toggle)
+    expect(toggle).toHaveFocus()
+    expect(token(name)).not.toHaveAccessibleName(/倒れた状態/)
+    expect(token(name).querySelector('.board-token')).not.toHaveClass('board-token-fallen')
+    expect(screen.getByText('状態：通常')).toBeVisible()
+  }
+})
+
+it.each(['準備中', '確定後'])('%sは倒れた駒の範囲内外移動だけを止め、選択・範囲・移動力を保ち復帰後は再び動ける', (phase) => {
+  render(<App />)
+  prepare()
+  place('味方1', 1, 1)
+  place('敵1', 5, 5)
+  fireEvent.click(token('味方1'))
+  click('味方1の移動力を減らす')
+  click('味方1の移動力を減らす')
+  if (phase === '確定後') {
+    click('確定')
+    fireEvent.click(token('味方1'))
+  }
+  expect(range()).toEqual(rangeOfThreeAtCorner)
+  click('倒れた状態にする')
+  expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力3・倒れた状態）')
+  expect(cell(1, 1).querySelector('.board-token')).toHaveClass('board-token-fallen')
+  expect(range()).toEqual(rangeOfThreeAtCorner)
+  for (const [x, y] of [[2, 1], [10, 10]]) {
+    fireEvent.click(cell(x!, y!))
+    expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力3・倒れた状態）')
+    expect(pressed()).toEqual([cell(1, 1)])
+    expect(range()).toEqual(rangeOfThreeAtCorner)
+  }
+  fireEvent.click(token('味方1'))
+  expect(pressed()).toEqual([])
+  expect(range()).toEqual([])
+  fireEvent.click(token('味方1'))
+  fireEvent.click(token('敵1'))
+  expect(pressed()).toEqual([cell(5, 5)])
+  expect(cell(5, 5)).toHaveAccessibleName('マス (5, 5) 敵1（敵・移動力5）')
+  fireEvent.click(token('味方1'))
+  expect(screen.getByText('状態：倒れている')).toBeVisible()
+  click('通常に戻す')
+  expect(range()).toEqual(rangeOfThreeAtCorner)
+  expect(pressed()).toEqual([cell(1, 1)])
+  expect(cell(1, 1).querySelector('.board-token')).not.toHaveClass('board-token-fallen')
+  fireEvent.click(cell(2, 1))
+  expect(cell(2, 1)).toHaveAccessibleName('マス (2, 1) 味方1（味方・移動力3）')
+  expect(pressed()).toEqual([])
+  expect(range()).toEqual([])
+  fireEvent.click(token('味方1'))
+  fireEvent.click(cell(10, 10))
+  expect(cell(10, 10)).toHaveAccessibleName('マス (10, 10) 味方1（味方・移動力3）')
+  expect(cell(5, 5)).toHaveAccessibleName('マス (5, 5) 敵1（敵・移動力5）')
+  expect(pressed()).toEqual([])
+  expect(range()).toEqual([])
+})
+
+it('倒れた未配置駒は初回配置でき、状態を引き継いで選択解除し、その後の移動は禁止する', () => {
+  render(<App />)
+  prepare('1', '0')
+  fireEvent.click(token('味方1'))
+  click('味方1の移動力を減らす')
+  click('倒れた状態にする')
+  expect(range()).toEqual([])
+  fireEvent.click(cell(1, 1))
+  expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力4・倒れた状態）')
+  expect(screen.queryByRole('button', { name: /^未配置 / })).not.toBeInTheDocument()
+  expect(pressed()).toEqual([])
+  expect(range()).toEqual([])
+  fireEvent.click(token('味方1'))
+  fireEvent.click(cell(2, 1))
+  expect(pressed()).toEqual([cell(1, 1)])
+  expect(cell(1, 1)).toHaveAccessibleName(/移動力4・倒れた状態/)
+})
+
+it('準備/追加分の確定・他駒の追加と削除で状態を保ち、新しく増やす駒は通常で始まる', () => {
+  render(<App />)
+  prepare('1', '0')
+  fireEvent.click(token('味方1'))
+  click('倒れた状態にする')
+  fireEvent.click(cell(1, 1))
+  click('確定')
+  expect(cell(1, 1)).toHaveAccessibleName(/倒れた状態/)
+  addEnemy()
+  expect(token('敵1')).toHaveAccessibleName('未配置 敵1（敵・移動力5）')
+  fireEvent.click(token('敵1'))
+  click('倒れた状態にする')
+  fireEvent.click(cell(2, 1))
+  click('追加分を確定')
+  expect(pressed()).toEqual([])
+  expect(cell(1, 1)).toHaveAccessibleName(/倒れた状態/)
+  expect(cell(2, 1)).toHaveAccessibleName(/倒れた状態/)
+  addEnemy()
+  expect(token('敵2')).toHaveAccessibleName('未配置 敵2（敵・移動力5）')
+  fireEvent.click(token('敵2'))
+  click('この駒を削除')
+  click('削除する')
+  for (const [x, name] of [[1, '味方1'], [2, '敵1']] as const) {
+    expect(cell(x, 1)).toHaveAccessibleName(/倒れた状態/)
+    fireEvent.click(token(name))
+    expect(screen.getByText('状態：倒れている')).toBeVisible()
+    expect(button('通常に戻す')).toBeEnabled()
+  }
+})
+
+it('倒れた駒の占有マスは配置・移動の対象にならず、通常どおり選択だけを切り替える', () => {
+  render(<App />)
+  prepare('1', '1')
+  fireEvent.click(token('味方1'))
+  click('倒れた状態にする')
+  fireEvent.click(cell(1, 1))
+  fireEvent.click(token('敵1'))
+  fireEvent.click(cell(1, 1))
+  expect(token('敵1')).toHaveAccessibleName('未配置 敵1（敵・移動力5）')
+  expect(pressed()).toEqual([cell(1, 1)])
+  place('敵1', 2, 1)
+  fireEvent.click(token('敵1'))
+  expect(range()).not.toContain('マス (1, 1) 移動範囲')
+  fireEvent.click(cell(1, 1))
+  expect(cell(2, 1)).toHaveAccessibleName('マス (2, 1) 敵1（敵・移動力5）')
+  expect(cell(1, 1)).toHaveAccessibleName(/味方1.*倒れた状態/)
+  expect(pressed()).toEqual([cell(1, 1)])
+})
+
+it.each(['準備中', '確定後'])('%sの全体クリア後に用意する駒は通常で始まる', (phase) => {
+  render(<App />)
+  prepare('1', '0')
+  fireEvent.click(token('味方1'))
+  click('倒れた状態にする')
+  if (phase === '確定後') {
+    fireEvent.click(cell(1, 1))
+    click('確定')
+  }
+  click(phase === '準備中' ? '準備をやり直す' : '新しい戦闘を始める')
+  click(phase === '準備中' ? 'やり直す' : '始める')
+  prepare('1', '0')
+  fireEvent.click(token('味方1'))
+  expect(token('味方1')).toHaveAccessibleName('未配置 味方1（味方・移動力5）')
+  expect(screen.getByText('状態：通常')).toBeVisible()
+  expect(button('倒れた状態にする')).toBeEnabled()
+})
