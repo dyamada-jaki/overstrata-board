@@ -256,7 +256,7 @@ docker compose run --rm app npm run test:mutation   # 開発コンテナ
 4. JSON レポートの検証。対象ファイルの欠落・変異0件・テストで検証された変異0件・テストが1件も実行されないままの `Survived`・`Pending` は失敗にします
 
 - **対象**は `stryker.config.mjs` の `mutate` に明示した11ファイル（距離・移動力・移動範囲、移動力の定数、座標変換・盤面座標、盤面サイズ、マス・キャラの選択表示と座標ラベルの部品、駒の丸のクラスとアクセシブル名の共通処理、選択の状態変化と移動、過去サンプルの初期配置、数入力と準備・確定の処理、準備画面と確認付きリセット、駒の同時数と発行番号の上限）です。除外の理由も同じファイルに書いています。Playwright は変異ごとには実行しません
-- **並列数**は、手元（ホスト・開発コンテナ）では既定値2です。TypeScript の checker を使うため、Stryker は半分を checker（切り上げ）、残りを test runner（切り捨て）に割り当て、2なら checker 1・test runner 1 になります。CI だけ環境変数 `MUTATION_CONCURRENCY`（`.github/workflows/ci.yml`）で上げます。設定どおりのプロセス数が作られたかは、Stryker のログの `Creating N checker process(es) and M test runner process(es)` で確かめ、違えば失敗にします。並列数と実行中の最小の空きメモリは `run.log`・`summary.md` に出ます
+- **並列数**は既定値2です。TypeScript の checker を使うため、Stryker は半分を checker（切り上げ）、残りを test runner（切り捨て）に割り当て、2なら checker 1・test runner 1 になります。環境変数 `MUTATION_CONCURRENCY` で変えられ、CI（`.github/workflows/ci.yml`）は2を明示しています。設定どおりのプロセス数が作られたかは、Stryker のログの `Creating N checker process(es) and M test runner process(es)` で確かめ、違えば失敗にします。並列数と実行中の最小の空きメモリは `run.log`・`summary.md` に出ます
 - 所要時間（全対象）の目安は、手元で約13分（#34、Apple Silicon）、CI は下記の「CI」を参照してください
 - **スコアで不合格にはしません**（`thresholds.break: null`）。`Survived` / `NoCoverage` は1件ずつ分類します
 - 標準の変異には数値リテラルを変える種類がないため、`5` や `10` などの数値そのものは変異しません
@@ -314,6 +314,6 @@ PR を作ったときと main への push のときに、GitHub Actions（`.gith
 - 本番用イメージのビルド
 - Docker で Chromium E2E（幅375px・1280px）。失敗は CI の失敗となり、Actions の実行ページから `e2e-<run ID>-<attempt>` artifact を取得できます（保存14日）
 - ミューテーションテスト（`npm run test:mutation`）。通常テスト・互換処理・Stryker・結果の検証の失敗は CI の失敗になります。スコアでは失敗にしません。状態別件数は Job Summary に、`mutation-artifacts/` の記録は成功・失敗にかかわらず `mutation-<run ID>-<attempt>` artifact に保存します（保存14日）
-  - 並列数は `MUTATION_CONCURRENCY: 4`（checker 2・test runner 2）です（#47）
+  - 並列数は `MUTATION_CONCURRENCY: 2`（checker 1・test runner 1）です。#47 で4（checker 2・test runner 2）を2回試しましたが、所要時間は短くならず（26分52秒・39分22秒。2では27〜36分）、Timeout が4件から52件・66件に増えた（Survived・Killed が Timeout に変わる）ため採用していません。所要時間は27〜36分で、ジョブの上限は60分です
   - **Markdown だけの変更では省略します**。最初の step（`scripts/mutation-scope.mjs`）が、対象より前のコミットのうち全対象のミューテーション（`npm run test:mutation` の step）が成功した最も近いものを比較元にし、比較元から対象までの差分がすべて `.md` の通常ファイルの追加・変更・削除なら、以降の step を省略します。比較元の候補は、main への push では main の祖先の push の run、PR では以前に push した PR の head の run と base の main の push の run です。省略で成功した run は比較元にしません。成功記録が無い（失敗・実行中・不明）、差分を取得できない、Markdown 以外（`.MD`・`.mdx`・シンボリックリンクを含む）を1つでも含む場合は全対象を実行します。同じ SHA の再実行も全対象を実行します
   - 判定・対象 SHA（PR では GitHub が作るマージコミットと PR の head）・比較元と成功記録の run・比較範囲・変更ファイル・理由は、Job Summary・`::notice`・artifact の `scope.md` で確認できます。テスト・型チェック・Lint・ビルド、E2E、本番用イメージのジョブは省略しません
