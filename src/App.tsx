@@ -4,7 +4,7 @@ import { pieceLimits } from './data/pieces.ts'
 import { boardSize } from './data/board.ts'
 import { movementSetting } from './data/movement.ts'
 import type { Character } from './domain/character.ts'
-import { addPieces, canConfirmAdditions, canEditMovement, confirmAdditions, getAdditionCapacity, removePiece, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement, stepMovement } from './domain/preparation.ts'
+import { addPieces, canConfirmAdditions, canEditMovement, confirmAdditions, getAdditionCapacity, removePiece, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement, stepMovement, toggleFallen } from './domain/preparation.ts'
 import { tapCharacter, tapPosition } from './domain/selection.ts'
 import './App.css'
 
@@ -39,7 +39,7 @@ function MovementSetting({ character, onChange }: { character: Character; onChan
   return (
     <div role="group" aria-label={name} className="movement-setting">
       <p className="movement-setting-title">
-        <span className={`board-token board-token-${character.side}`} aria-hidden="true">{character.number}</span>
+        <span className={`board-token board-token-${character.side}${character.fallen ? ' board-token-fallen' : ''}`} aria-hidden="true">{character.number}</span>
         <span>{name}</span>
       </p>
       <div className="count-controls">
@@ -89,7 +89,7 @@ function App() {
   return (
     <main>
       <h1>Overstrata 戦闘ボード</h1>
-      <p className="board-help">駒を選んで空きマスを押すと配置・移動。同じ駒で選択解除。薄い色は移動範囲の目安です。</p>
+      <p className="board-help">駒を選んで空きマスを押すと配置・移動。同じ駒で選択解除。薄い色は移動範囲の目安です。倒れた駒は、通常に戻すまで移動できません。</p>
       <div className="battle-layout">
         <div>
           <Board size={boardSize} state={battle}
@@ -114,12 +114,19 @@ function App() {
             <h2>{battle.phase === 'preparing' ? '駒を配置' : '準備完了'}</h2>
             {battle.phase === 'preparing'
               ? <p>一覧から駒を選び、盤面の空きマスに置いてください。確定するまで位置を修正できます。選んだ駒の移動力は −・＋ で変更できます。</p>
-              : <p>駒を選んで動かせます。移動範囲の外にも自由に動かせます。</p>}
+              : <p>通常の駒は、移動範囲の外にも自由に動かせます。倒れた駒は「通常に戻す」と再び動かせます。</p>}
             {selected && <div className="selected-piece">
               {canEditMovement(battle, selected.id)
                 ? <MovementSetting character={selected} onChange={(movement) => setBattle((current) => setMovement(current, selected.id, movement))} />
-                : <p className="selected-piece-name"><span className={`board-token board-token-${selected.side}`} aria-hidden="true">{selected.number}</span>{selected.name}</p>}
-              <button className="reset" type="button" onClick={(event) => { event.currentTarget.focus(); setDeleting(selected) }}>この駒を削除</button>
+                : <p className="selected-piece-name"><span className={`board-token board-token-${selected.side}${selected.fallen ? ' board-token-fallen' : ''}`} aria-hidden="true">{selected.number}</span>{selected.name}</p>}
+              <p className="piece-state">状態：{selected.fallen ? '倒れている' : '通常'}</p>
+              <div className="piece-actions">
+                <button className="fallen-toggle" type="button" onClick={(event) => {
+                  event.currentTarget.focus()
+                  setBattle((current) => toggleFallen(current, selected.id))
+                }}>{selected.fallen ? '通常に戻す' : '倒れた状態にする'}</button>
+                <button className="reset" type="button" onClick={(event) => { event.currentTarget.focus(); setDeleting(selected) }}>この駒を削除</button>
+              </div>
             </div>}
             {(battle.phase === 'preparing' || battle.pendingIds.length > 0) && <div role="group" aria-label="未配置の駒">
               <h3>未配置：{unplaced.length}体</h3>
@@ -132,10 +139,10 @@ function App() {
                     <div className="unplaced-side" key={side}>
                       {unplaced.filter((character) => character.side === side).map((character) => (
                         <button key={character.id} type="button" className="unplaced-token"
-                          aria-label={`未配置 ${character.name}（${character.side === 'ally' ? '味方' : '敵'}・移動力${character.movement}）`}
+                          aria-label={`未配置 ${character.name}（${character.side === 'ally' ? '味方' : '敵'}・移動力${character.movement}${character.fallen ? '・倒れた状態' : ''}）`}
                           aria-pressed={selection.kind === 'character' && selection.id === character.id}
                           onClick={() => setBattle((current) => ({ ...current, ...tapCharacter(current, character.id) }))}>
-                          <span className={`board-token board-token-${character.side}`} aria-hidden="true">{character.number}</span>
+                          <span className={`board-token board-token-${character.side}${character.fallen ? ' board-token-fallen' : ''}`} aria-hidden="true">{character.number}</span>
                           <span>{character.name}</span>
                         </button>
                       ))}

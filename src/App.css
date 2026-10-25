@@ -136,6 +136,9 @@ button, input { font: inherit; }
 .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; }
 
 .selected-piece { margin-bottom: 1rem; }
+.piece-state { margin-bottom: 0.5rem; }
+.piece-actions { display: grid; justify-items: start; gap: 0.5rem; }
+.fallen-toggle { width: 12rem; max-width: 100%; white-space: nowrap; }
 .selected-piece-name { display: flex; align-items: center; gap: 0.5rem; font-weight: bold; }
 .selected-piece-name .board-token { width: 1.75rem; height: 1.75rem; margin: 0; }
 .addition-panel { margin-block: 0.75rem; }

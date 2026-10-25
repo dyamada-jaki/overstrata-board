@@ -82,7 +82,7 @@ export function addPieces(state: BattleState, allyInput: string, enemyInput: str
     return {
       id: `${side}-${number}`,
       name: `${side === 'ally' ? '味方' : '敵'}${number}`,
-      side, number, movement: movementSetting.initial, position: null,
+      side, number, movement: movementSetting.initial, position: null, fallen: false,
     }
   })
   const added = [...make('ally', ally), ...make('enemy', enemy)]
@@ -91,6 +91,15 @@ export function addPieces(state: BattleState, allyInput: string, enemyInput: str
     characters: [...state.characters, ...added],
     issued: { ally: state.issued.ally + ally, enemy: state.issued.enemy + enemy },
     pendingIds: state.phase === 'active' ? [...state.pendingIds, ...added.map((character) => character.id)] : state.pendingIds,
+  }
+}
+
+/** 倒れた状態だけを切り替え、配置・選択・移動力と戦闘の段階を保つ（#34）。 */
+export function toggleFallen(state: BattleState, id: string): BattleState {
+  return {
+    ...state,
+    characters: state.characters.map((character) => character.id === id
+      ? { ...character, fallen: !character.fallen } : character),
   }
 }
 

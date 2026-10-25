@@ -90,3 +90,8 @@
 .board-token-enemy {
   background: #b91c1c;
 }
+
+/* 丸だけに適用する。盤面と一覧の橙の選択枠は親にあり、影響を受けない。 */
+.board-token-fallen {
+  filter: grayscale(1) brightness(0.65);
+}

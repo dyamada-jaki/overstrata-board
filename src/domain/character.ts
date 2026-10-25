@@ -10,5 +10,7 @@ export interface Character {
   readonly side: Side
   readonly number: number
   readonly movement: number
+  /** 利用者が手動で設定する状態。未配置から配置・確定後まで引き継ぐ。 */
+  readonly fallen: boolean
   readonly position: Position | null
 }

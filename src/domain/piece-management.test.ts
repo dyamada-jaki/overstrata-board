@@ -9,7 +9,7 @@ describe('途中の増減の境界と状態（spec.md 2.2 / #33）', () => {
     const next = addPieces(state, '0', ' 02 ')!
     expect(next).toMatchObject({ phase: 'preparing', selection: state.selection, issued: { ally: 1, enemy: 5 }, pendingIds: [] })
     expect(next.characters.slice(0, 4)).toEqual(state.characters)
-    expect(next.characters.slice(4)).toEqual([4, 5].map((n) => ({ id: `enemy-${n}`, side: 'enemy', number: n, name: `敵${n}`, position: null, movement: 5 })))
+    expect(next.characters.slice(4)).toEqual([4, 5].map((n) => ({ id: `enemy-${n}`, side: 'enemy', number: n, name: `敵${n}`, position: null, movement: 5, fallen: false })))
     expect(state.characters).toHaveLength(4)
     expect(state).toMatchObject({ issued: { ally: 1, enemy: 3 } })
   })

@@ -32,6 +32,9 @@ export function tapPosition(state: BoardState, position: Position, boardSize: Bo
   if (!canMoveTo(position, occupied, boardSize)) return state
 
   if (selection.kind === 'character') {
+    const selected = characters.find((character) => character.id === selection.id)
+    // 初回配置は倒れていても可能。配置済みの移動だけを止め、選択と範囲を保つ。
+    if (selected?.fallen && selected.position !== null) return state
     return {
       characters: characters.map((character) => character.id === selection.id ? { ...character, position } : character),
       selection: none,

@@ -79,16 +79,16 @@ describe('getSelectedMovementRange', () => {
 // 過去サンプルを新しい駒モデルへ移した後もspec.md 2.2の表の情報を保つ。
 it('過去サンプル4体は表の名前・陣営・番号・移動力・初期位置を保つ', () => {
   expect(sampleCharacters).toEqual([
-    { id: 'ally-1', name: '味方1', side: 'ally', number: 1, movement: 5, position: { x: 2, y: 7 } },
-    { id: 'ally-2', name: '味方2', side: 'ally', number: 2, movement: 3, position: { x: 5, y: 8 } },
-    { id: 'enemy-1', name: '敵1', side: 'enemy', number: 1, movement: 4, position: { x: 3, y: 2 } },
-    { id: 'enemy-2', name: '敵2', side: 'enemy', number: 2, movement: 5, position: { x: 6, y: 1 } },
+    { id: 'ally-1', name: '味方1', side: 'ally', number: 1, fallen: false, movement: 5, position: { x: 2, y: 7 } },
+    { id: 'ally-2', name: '味方2', side: 'ally', number: 2, fallen: false, movement: 3, position: { x: 5, y: 8 } },
+    { id: 'enemy-1', name: '敵1', side: 'enemy', number: 1, fallen: false, movement: 4, position: { x: 3, y: 2 } },
+    { id: 'enemy-2', name: '敵2', side: 'enemy', number: 2, fallen: false, movement: 5, position: { x: 6, y: 1 } },
   ])
 })
 
 // #34: 倒れていても未配置からの初回配置と、占有駒への選択操作は可能。
 describe('倒れた駒の配置と移動（spec.md 2.2・2.3）', () => {
-  it.each([{ x: 2, y: 3 }, { x: 9, y: 0 }])('倒れた配置済み駒は範囲内外の空きマス$targetへ動かず入力も変えない', (target) => {
+  it.each([{ x: 2, y: 3 }, { x: 9, y: 0 }])('倒れた配置済み駒は範囲内外の空きマス($x, $y)へ動かず入力も変えない', (target) => {
     const fallen = Object.freeze({ ...ally1, fallen: true })
     const state: BoardState = Object.freeze({ characters: Object.freeze([fallen, enemy1]), selection: { kind: 'character' as const, id: fallen.id } })
     const before = structuredClone(state)

@@ -37,14 +37,14 @@ export function Board({ size, state, onTap }: {
             : selection.kind === 'cell' && keyOf(selection.position) === key
           const label = [
             `マス ${formatPosition(position)}`,
-            occupant && `${occupant.name}（${sideLabels[occupant.side]}・移動力${occupant.movement}）`,
+            occupant && `${occupant.name}（${sideLabels[occupant.side]}・移動力${occupant.movement}${occupant.fallen ? '・倒れた状態' : ''}）`,
             inRange && '移動範囲',
           ].filter(Boolean).join(' ')
           return (
             <button key={key} type="button"
               className={inRange ? 'board-cell board-cell-range' : 'board-cell'}
               aria-label={label} aria-pressed={selected} onClick={() => onTap(position)}>
-              {occupant && <span className={`board-token board-token-${occupant.side}`}>{occupant.number}</span>}
+              {occupant && <span className={`board-token board-token-${occupant.side}${occupant.fallen ? ' board-token-fallen' : ''}`}>{occupant.number}</span>}
             </button>
           )
         })}
