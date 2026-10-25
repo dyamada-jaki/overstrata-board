@@ -322,6 +322,8 @@ PR を作ったときと main への push のときに、GitHub Actions（`.gith
 
 ミューテーションジョブだけは、過去の全対象成功地点から今回のcheckoutまでの差分が `.md` だけ（または別SHAで差分なし）と証明できれば省略します。同じSHAの再実行は全対象を実行します。通常チェック・E2E・本番イメージは毎回実行します。
 
+この省略は、アプリ・テスト・ビルドが `.md` を読まないことが前提です。読むようになったら省略条件を見直してください。
+
 PRは同じPRの以前の検証済みmerge SHA、またはbaseの先祖にある成功したpush SHAと、今回のmerge SHAを比較します。mainへのpushは、直前SHAの先祖にある同じブランチの全対象成功SHAから比較します。成功したworkflow・mutationジョブ・全対象実行stepと、検証SHAを名前に含む `mutation-verified-<SHA>-<attempt>` artifactを照合します（保存14日）。旧workflowのpushだけは、全対象実行stepの成功とhead SHAを使えます。省略したジョブは全対象成功の記録として扱いません。
 
 改名は旧名・新名、削除は削除元も確認します。コード・テスト・依存・CI設定を含む差分、成功記録なし、履歴/API/差分の取得不能は全対象を実行します。最後のコミットだけがMarkdownでも、未検証のコード差分が前に残れば省略しません。検索する成功runは最新100件までで、証明できないときも実行します。対象SHA・比較範囲・成功記録URL・理由はJob Summaryと `mutation-<run ID>-<attempt>` artifact内の `ci-decision.json` に残ります。

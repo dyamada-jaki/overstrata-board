@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   check:
@@ -44,6 +43,9 @@ jobs:
   mutation:
     name: ミューテーションテスト（StrykerJS）
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     # #47: 並列4はTimeout増加で不採用。mainの27〜36分の変動も踏まえて60分を維持する。
     timeout-minutes: 60
     env:
@@ -62,14 +64,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - run: npm ci
-        if: steps.decision.outputs.run == 'true'
+        if: steps.decision.outputs.run != 'false'
       # 通常テスト・互換処理・Stryker・結果検証の失敗はジョブを失敗にする。
       - name: 全対象のミューテーションテスト
-        if: steps.decision.outputs.run == 'true'
+        if: steps.decision.outputs.run != 'false'
         run: npm run test:mutation
       # 省略した成功ジョブを全対象の成功記録として再利用しない。
       - name: 全対象の成功記録を保存
-        if: success() && steps.decision.outputs.run == 'true'
+        if: success() && steps.decision.outputs.run != 'false'
         uses: actions/upload-artifact@v4
         with:
           name: mutation-verified-${{ github.sha }}-${{ github.run_attempt }}
