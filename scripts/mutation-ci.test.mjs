@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, renameSync } from 'node:fs'
+import { chmodSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, renameSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -196,4 +196,19 @@ test('より新しいbaseの成功runが先に並んでも、検証済みPRへ�
     return { workflow_runs: [baseRun, f.record] }
   }
   assert.equal((await decideMutation({ ...f.context, target, head: target }, { api })).run, false)
+})
+
+test('実際のgh接続の入口で1MiBを超える成功run一覧も読んで省略を判定する', (t) => {
+  const f = fixture(t)
+  f.write('README.md', 'docs\n'); const target = f.commit()
+  const jobs = [{ name: 'ミューテーションテスト（StrykerJS）', conclusion: 'success',
+    steps: [{ name: 'Run npm run test:mutation', conclusion: 'success' }] }]
+  f.write('bin/gh', `#!/usr/bin/env node\nconst endpoint=process.argv[3];\nconsole.log(JSON.stringify(endpoint.includes('/jobs') ? ${JSON.stringify({ jobs })} : { workflow_runs: [${JSON.stringify(f.record)}], metadata: 'x'.repeat(2*1024*1024) }));\n`)
+  chmodSync(path.join(f.cwd, 'bin/gh'), 0o755)
+  const context = { ...f.context, target, head: target }
+  const source = `import { decideMutation } from ${JSON.stringify(new URL('./mutation-ci.mjs', import.meta.url).href)}; console.log(JSON.stringify(await decideMutation(${JSON.stringify(context)})));`
+  const result = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', source], {
+    encoding: 'utf8', env: { ...process.env, PATH: `${path.join(f.cwd, 'bin')}${path.delimiter}${process.env.PATH}` },
+  }))
+  assert.equal(result.run, false, result.reason)
 })
