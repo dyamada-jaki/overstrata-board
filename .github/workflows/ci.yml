@@ -43,7 +43,8 @@ jobs:
   mutation:
     name: ミューテーションテスト（StrykerJS）
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # #34 で CI の実測が36分（上限45分の80%）になったため60分にする。#47 の短縮後に見直す。
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
