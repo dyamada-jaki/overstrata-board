@@ -109,3 +109,16 @@ test('要約に対象ごとの Killed・Timeout の列、生き残り、問題�
   assert.match(text, /src\/a\.ts:4/)
   assert.match(text, /src\/b\.ts/)
 })
+
+test('static（読み込み時に決まる値）の変異を状態別に数え、要約に出す', () => {
+  const summary = summarizeReport(report({
+    'src/a.ts': [mutant('Killed', 1, { static: true }), mutant('Killed', 2), mutant('CompileError', 3, { static: true })],
+    'src/b.ts': [mutant('Killed', 4, { static: true }), mutant('Survived', 5, { static: false })],
+  }), expected)
+
+  assert.equal(summary.statics.mutants, 3)
+  assert.equal(summary.statics.Killed, 2)
+  assert.equal(summary.statics.CompileError, 1)
+  assert.equal(summary.statics.Survived, 0)
+  assert.match(formatSummary(summary, expected), /static.*3件.*Killed 2.*CompileError 1/)
+})

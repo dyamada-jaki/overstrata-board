@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run && node --test scripts/e2e-cleanup.test.mjs scripts/mutation-report.test.mjs scripts/stryker-compat.test.mjs",
+    "test": "vitest run && node --test scripts/e2e-cleanup.test.mjs scripts/mutation-concurrency.test.mjs scripts/mutation-report.test.mjs scripts/mutation-scope.test.mjs scripts/stryker-compat.test.mjs",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "test:e2e": "sh scripts/e2e.sh",
