@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Board } from './components/Board.tsx'
+import { pieceDetails, tokenClass } from './components/piece.ts'
 import { pieceLimits } from './data/pieces.ts'
 import { boardSize } from './data/board.ts'
 import { movementSetting } from './data/movement.ts'
 import type { Character } from './domain/character.ts'
-import { addPieces, canConfirmAdditions, canEditMovement, confirmAdditions, getAdditionCapacity, removePiece, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement, stepMovement } from './domain/preparation.ts'
+import { addPieces, canConfirmAdditions, canEditMovement, confirmAdditions, getAdditionCapacity, removePiece, toggleDowned, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement, stepMovement } from './domain/preparation.ts'
 import { tapCharacter, tapPosition } from './domain/selection.ts'
 import './App.css'
 
@@ -39,7 +40,7 @@ function MovementSetting({ character, onChange }: { character: Character; onChan
   return (
     <div role="group" aria-label={name} className="movement-setting">
       <p className="movement-setting-title">
-        <span className={`board-token board-token-${character.side}`} aria-hidden="true">{character.number}</span>
+        <span className={tokenClass(character)} aria-hidden="true">{character.number}</span>
         <span>{name}</span>
       </p>
       <div className="count-controls">
@@ -118,8 +119,15 @@ function App() {
             {selected && <div className="selected-piece">
               {canEditMovement(battle, selected.id)
                 ? <MovementSetting character={selected} onChange={(movement) => setBattle((current) => setMovement(current, selected.id, movement))} />
-                : <p className="selected-piece-name"><span className={`board-token board-token-${selected.side}`} aria-hidden="true">{selected.number}</span>{selected.name}</p>}
-              <button className="reset" type="button" onClick={(event) => { event.currentTarget.focus(); setDeleting(selected) }}>この駒を削除</button>
+                : <p className="selected-piece-name"><span className={tokenClass(selected)} aria-hidden="true">{selected.number}</span>{selected.name}</p>}
+              <p className="piece-status">状態：{selected.downed ? '倒れている' : '通常'}</p>
+              <div className="selected-piece-actions">
+                {/* 文言だけを変える同じボタンなので、切り替え後もフォーカスが残る。 */}
+                <button className="downed-toggle" type="button" onClick={() => setBattle((current) => toggleDowned(current, selected.id))}>
+                  {selected.downed ? '通常に戻す' : '倒れた状態にする'}
+                </button>
+                <button className="reset" type="button" onClick={(event) => { event.currentTarget.focus(); setDeleting(selected) }}>この駒を削除</button>
+              </div>
             </div>}
             {(battle.phase === 'preparing' || battle.pendingIds.length > 0) && <div role="group" aria-label="未配置の駒">
               <h3>未配置：{unplaced.length}体</h3>
@@ -132,10 +140,10 @@ function App() {
                     <div className="unplaced-side" key={side}>
                       {unplaced.filter((character) => character.side === side).map((character) => (
                         <button key={character.id} type="button" className="unplaced-token"
-                          aria-label={`未配置 ${character.name}（${character.side === 'ally' ? '味方' : '敵'}・移動力${character.movement}）`}
+                          aria-label={`未配置 ${character.name}（${pieceDetails(character)}）`}
                           aria-pressed={selection.kind === 'character' && selection.id === character.id}
                           onClick={() => setBattle((current) => ({ ...current, ...tapCharacter(current, character.id) }))}>
-                          <span className={`board-token board-token-${character.side}`} aria-hidden="true">{character.number}</span>
+                          <span className={tokenClass(character)} aria-hidden="true">{character.number}</span>
                           <span>{character.name}</span>
                         </button>
                       ))}

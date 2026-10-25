@@ -79,9 +79,9 @@ describe('getSelectedMovementRange', () => {
 // 過去サンプルを新しい駒モデルへ移した後もspec.md 2.2の表の情報を保つ。
 it('過去サンプル4体は表の名前・陣営・番号・移動力・初期位置を保つ', () => {
   expect(sampleCharacters).toEqual([
-    { id: 'ally-1', name: '味方1', side: 'ally', number: 1, movement: 5, position: { x: 2, y: 7 } },
-    { id: 'ally-2', name: '味方2', side: 'ally', number: 2, movement: 3, position: { x: 5, y: 8 } },
-    { id: 'enemy-1', name: '敵1', side: 'enemy', number: 1, movement: 4, position: { x: 3, y: 2 } },
-    { id: 'enemy-2', name: '敵2', side: 'enemy', number: 2, movement: 5, position: { x: 6, y: 1 } },
+    { id: 'ally-1', name: '味方1', side: 'ally', number: 1, movement: 5, position: { x: 2, y: 7 }, downed: false },
+    { id: 'ally-2', name: '味方2', side: 'ally', number: 2, movement: 3, position: { x: 5, y: 8 }, downed: false },
+    { id: 'enemy-1', name: '敵1', side: 'enemy', number: 1, movement: 4, position: { x: 3, y: 2 }, downed: false },
+    { id: 'enemy-2', name: '敵2', side: 'enemy', number: 2, movement: 5, position: { x: 6, y: 1 }, downed: false },
   ])
 })

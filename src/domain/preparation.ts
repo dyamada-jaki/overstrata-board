@@ -82,7 +82,7 @@ export function addPieces(state: BattleState, allyInput: string, enemyInput: str
     return {
       id: `${side}-${number}`,
       name: `${side === 'ally' ? '味方' : '敵'}${number}`,
-      side, number, movement: movementSetting.initial, position: null,
+      side, number, movement: movementSetting.initial, position: null, downed: false,
     }
   })
   const added = [...make('ally', ally), ...make('enemy', enemy)]
@@ -102,6 +102,14 @@ export function removePiece(state: BattleState, id: string): BattleState {
     characters: state.characters.filter((character) => character.id !== id),
     pendingIds: state.pendingIds.filter((pendingId) => pendingId !== id),
     selection: { kind: 'none' },
+  }
+}
+
+/** 指定した駒だけ倒れた状態と通常を切り替える。位置・移動力・選択は保つ（#34）。 */
+export function toggleDowned(state: BattleState, id: string): BattleState {
+  return {
+    ...state,
+    characters: state.characters.map((character) => character.id === id ? { ...character, downed: !character.downed } : character),
   }
 }
 

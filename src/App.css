@@ -138,6 +138,10 @@ button, input { font: inherit; }
 .selected-piece { margin-bottom: 1rem; }
 .selected-piece-name { display: flex; align-items: center; gap: 0.5rem; font-weight: bold; }
 .selected-piece-name .board-token { width: 1.75rem; height: 1.75rem; margin: 0; }
+.piece-status { margin: 0 0 0.5rem; }
+.selected-piece-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+/* 「倒れた状態にする」⇔「通常に戻す」で幅が変わり、隣のボタンがずれないよう長い方の文言に合わせる（#34）。 */
+.preparation-panel .downed-toggle { min-width: 10.5em; background: #f1f5f9; color: #1e293b; }
 .addition-panel { margin-block: 0.75rem; }
 .addition-panel form { border-top: 1px solid #cbd5e1; margin-top: 0.75rem; padding-top: 0.75rem; }
 .addition-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
