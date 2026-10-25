@@ -1,10 +1,9 @@
 import { formatPosition, getBoardPositions } from '../domain/board.ts'
-import type { Side } from '../domain/character.ts'
 import type { BoardSize, Position } from '../domain/movement.ts'
 import { getSelectedMovementRange, type BoardState } from '../domain/selection.ts'
+import { pieceDetails, tokenClass } from './piece.ts'
 import './Board.css'
 
-const sideLabels: Record<Side, string> = { ally: '味方', enemy: '敵' }
 const keyOf = (position: Position) => `${position.x},${position.y}`
 
 export function Board({ size, state, onTap }: {
@@ -37,14 +36,14 @@ export function Board({ size, state, onTap }: {
             : selection.kind === 'cell' && keyOf(selection.position) === key
           const label = [
             `マス ${formatPosition(position)}`,
-            occupant && `${occupant.name}（${sideLabels[occupant.side]}・移動力${occupant.movement}）`,
+            occupant && `${occupant.name}（${pieceDetails(occupant)}）`,
             inRange && '移動範囲',
           ].filter(Boolean).join(' ')
           return (
             <button key={key} type="button"
               className={inRange ? 'board-cell board-cell-range' : 'board-cell'}
               aria-label={label} aria-pressed={selected} onClick={() => onTap(position)}>
-              {occupant && <span className={`board-token board-token-${occupant.side}`}>{occupant.number}</span>}
+              {occupant && <span className={tokenClass(occupant)}>{occupant.number}</span>}
             </button>
           )
         })}

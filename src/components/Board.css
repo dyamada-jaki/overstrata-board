@@ -90,3 +90,9 @@
 .board-token-enemy {
   background: #b91c1c;
 }
+
+/* 倒れた駒（#34）。将来の駒の画像にも同じ指定が効くよう、色の値ではなくフィルターでモノクロにして暗くする。
+   盤面の選択枠はマスの ::after、一覧の選択枠はボタンの outline なので、このフィルターはかからない。 */
+.board-token-downed {
+  filter: grayscale(1) brightness(0.7);
+}

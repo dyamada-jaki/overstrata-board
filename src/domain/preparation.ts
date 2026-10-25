@@ -106,9 +106,11 @@ export function removePiece(state: BattleState, id: string): BattleState {
 }
 
 /** 指定した駒だけ倒れた状態と通常を切り替える。位置・移動力・選択は保つ（#34）。 */
-// テスト先行の空の枠。実装で置き換える。
 export function toggleDowned(state: BattleState, id: string): BattleState {
-  return id === '' ? state : state
+  return {
+    ...state,
+    characters: state.characters.map((character) => character.id === id ? { ...character, downed: !character.downed } : character),
+  }
 }
 
 export function canConfirmAdditions(state: BattleState): boolean {
