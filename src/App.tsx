@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Board } from './components/Board.tsx'
 import { pieceLimits } from './data/pieces.ts'
 import { boardSize } from './data/board.ts'
@@ -8,7 +8,7 @@ import { addPieces, canConfirmAdditions, canEditMovement, confirmAdditions, getA
 import { tapCharacter, tapPosition } from './domain/selection.ts'
 import './App.css'
 
-function CountInput({ side, value, onChange, autoFocus = false, maximum = pieceLimits.perSide, adding = false, inputRef }: { side: '味方' | '敵'; value: string; onChange: (value: string) => void; autoFocus?: boolean; maximum?: number; adding?: boolean; inputRef?: RefObject<HTMLInputElement | null> }) {
+function CountInput({ side, value, onChange, autoFocus = false, maximum = pieceLimits.perSide, adding = false }: { side: '味方' | '敵'; value: string; onChange: (value: string) => void; autoFocus?: boolean; maximum?: number; adding?: boolean }) {
   const count = parseCount(value, maximum)
   const decrement = stepTokenCount(value, -1, maximum)
   const increment = stepTokenCount(value, 1, maximum)
@@ -20,7 +20,7 @@ function CountInput({ side, value, onChange, autoFocus = false, maximum = pieceL
       <div className="count-controls">
         <button type="button" aria-label={`${label}を減らす`} disabled={decrement === null}
           onClick={() => { if (decrement !== null) onChange(String(decrement)) }}>−</button>
-        <input ref={inputRef} id={id} type="text" inputMode="numeric" value={value} autoFocus={autoFocus}
+        <input id={id} type="text" inputMode="numeric" value={value} autoFocus={autoFocus}
           aria-invalid={count === null} aria-describedby={count === null ? `${id}-error` : adding ? `${id}-help` : 'count-help'}
           onChange={(event) => onChange(event.target.value)} />
         <button type="button" aria-label={`${label}を増やす`} disabled={increment === null}
@@ -64,8 +64,6 @@ function App() {
   const [resetOpen, setResetOpen] = useState(false)
   const [deleting, setDeleting] = useState<Character | null>(null)
   const [focusCounts, setFocusCounts] = useState(false)
-  const allyAdditionRef = useRef<HTMLInputElement>(null)
-  const addButtonRef = useRef<HTMLButtonElement>(null)
   const prepared = prepareBattle(allyCount, enemyCount)
   const addition = adding ? addPieces(battle, allyAddition, enemyAddition) : null
   const allyCapacity = getAdditionCapacity(battle, 'ally')
@@ -150,7 +148,7 @@ function App() {
               ? <button className="primary" type="button" disabled={!canConfirmBattle(battle)} onClick={() => setBattle(confirmBattle)}>確定</button>
               : battle.pendingIds.length > 0 && <button className="primary" type="button" disabled={!canConfirmAdditions(battle)} onClick={() => setBattle(confirmAdditions)}>追加分を確定</button>}
             <div className="addition-panel">
-              <button ref={addButtonRef} type="button" disabled={adding} onClick={openAddition}>駒を増やす</button>
+              <button type="button" disabled={adding} onClick={openAddition}>駒を増やす</button>
               {adding && <form aria-label="駒の追加数" role="group" onSubmit={(event) => {
                 event.preventDefault()
                 if (addition) { setBattle(addition); setAdding(false) }
@@ -159,7 +157,7 @@ function App() {
                 <p>味方：あと{allyCapacity}体追加できます</p>
                 <p>敵：あと{enemyCapacity}体追加できます</p>
                 <div className="count-fields">
-                  <CountInput side="味方" adding inputRef={allyAdditionRef} maximum={allyCapacity} value={allyAddition} onChange={setAllyAddition} />
+                  <CountInput side="味方" adding maximum={allyCapacity} value={allyAddition} onChange={setAllyAddition} />
                   <CountInput side="敵" adding maximum={enemyCapacity} value={enemyAddition} onChange={setEnemyAddition} />
                 </div>
                 {areBothCountsZero(allyAddition, enemyAddition) && <p>味方か敵を1体以上にしてください</p>}
@@ -176,7 +174,7 @@ function App() {
       </div>
       {resetOpen && battle.phase !== 'counts' && <ConfirmationDialog text={resetTexts[battle.phase]} onConfirm={reset} onCancel={() => setResetOpen(false)} />}
       {deleting && <ConfirmationDialog text={{ title: '駒を削除', body: `${deleting.name}を削除しますか？`, action: '削除する' }}
-        fallbackFocus={adding ? allyAdditionRef : addButtonRef} onCancel={() => setDeleting(null)} onConfirm={() => {
+        onCancel={() => setDeleting(null)} onConfirm={() => {
           setBattle((current) => removePiece(current, deleting.id))
           setDeleting(null)
         }} />}
@@ -197,25 +195,22 @@ const resetTexts = {
   },
 }
 
-function ConfirmationDialog({ text, onConfirm, onCancel, fallbackFocus }: {
+function ConfirmationDialog({ text, onConfirm, onCancel }: {
   text: { title: string; body: string; action: string }; onConfirm: () => void; onCancel: () => void
-  fallbackFocus?: RefObject<HTMLElement | null>
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     const dialog = ref.current!
     const opener = document.activeElement
-    const fallback = fallbackFocus?.current
     // top layer に置き、背後を inert にする。open 属性だけでは入力を遮断できない。
     dialog.showModal()
     cancelRef.current!.focus()
     return () => {
       dialog.close()
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus()
-      else fallback?.focus()
     }
-  }, [fallbackFocus])
+  }, [])
   return (
     <dialog ref={ref} className="reset-dialog" aria-labelledby="reset-title" aria-describedby="reset-body"
       onCancel={(event) => { event.preventDefault(); onCancel() }}
