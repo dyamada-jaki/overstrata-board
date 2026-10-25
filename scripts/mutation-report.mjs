@@ -22,7 +22,7 @@ function percent(part, whole) {
 export function summarizeReport(report, expectedFiles) {
   const problems = []
   if (!report?.files) {
-    return { files: [], totals: {}, survivors: [], problems: ['JSON レポートがありません'] }
+    return { files: [], totals: {}, statics: {}, survivors: [], problems: ['JSON レポートがありません'] }
   }
 
   const entries = Object.entries(report.files)
@@ -33,6 +33,9 @@ export function summarizeReport(report, expectedFiles) {
   totals.valid = totals.Killed + totals.Timeout + totals.Survived + totals.NoCoverage
   totals.score = percent(totals.Killed + totals.Timeout, totals.valid)
   totals.killedOnly = percent(totals.Killed, totals.valid)
+  // static（読み込み時に決まる値）の変異は、変異ごとに全テストを実行するため時間がかかる。件数を別に出す。
+  const statics = countStatuses(all.filter((mutant) => mutant.static))
+  statics.mutants = all.filter((mutant) => mutant.static).length
 
   for (const file of expectedFiles) {
     if (!(file in report.files)) problems.push(`${file}: 対象ファイルがレポートにありません`)
@@ -56,11 +59,11 @@ export function summarizeReport(report, expectedFiles) {
       file, line: location.start.line, column: location.start.column, mutatorName, replacement, status,
     }))
 
-  return { files, totals, survivors, problems }
+  return { files, totals, statics, survivors, problems }
 }
 
 /** 端末と GitHub の Job Summary に出す Markdown。 */
-export function formatSummary({ files, totals, survivors, problems }, expectedFiles = []) {
+export function formatSummary({ files, totals, statics = {}, survivors, problems }, expectedFiles = []) {
   const head = ['対象', ...statuses]
   const row = (name, counts) => `| ${[name, ...statuses.map((status) => counts[status] ?? 0)].join(' | ')} |`
   const listed = new Set(files.map(({ file }) => file))
@@ -75,6 +78,8 @@ export function formatSummary({ files, totals, survivors, problems }, expectedFi
     '',
     `スコア（Killed+Timeout）: ${totals.score ?? '-'}% / Killed のみ: ${totals.killedOnly ?? '-'}%`
       + `（分母 ${totals.valid ?? 0}件。CompileError・RuntimeError・Ignored は含めない）`,
+    `static（読み込み時に決まる値）の変異: ${statics.mutants ?? 0}件`
+      + `（${statuses.filter((status) => statics[status] > 0).map((status) => `${status} ${statics[status]}`).join(' / ') || '-'}）`,
   ]
   if (survivors.length > 0) {
     lines.push('', '### Survived / NoCoverage（分類が必要）', '')

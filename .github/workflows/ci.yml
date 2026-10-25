@@ -45,16 +45,35 @@ jobs:
     runs-on: ubuntu-latest
     # #34 で CI の実測が36分（上限45分の80%）になったため60分にする。#47 の短縮後に見直す。
     timeout-minutes: 60
+    # 比較元の成功記録（過去の run のジョブと step の結果）を読むため、actions: read を付ける。
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 比較元から対象までの差分を取るため、履歴をすべて取得する。
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      # 全対象を通した最も近い比較元からの変更が Markdown だけなら、以下を省略する（scripts/mutation-scope.mjs）。
+      # 判定・対象 SHA・比較範囲・理由は Job Summary と mutation-artifacts/scope.md に残す。判定できなければ実行する。
+      - name: 実行範囲の判定（Markdown だけの変更なら省略）
+        id: scope
+        run: node scripts/mutation-scope.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - if: steps.scope.outputs.skip != 'true'
+        run: npm ci
       # 通常テスト・互換処理・Stryker・結果の検証のどこで失敗してもジョブを失敗にする。
       # スコアでは不合格にせず、Job Summary とレポートで確認する。
-      - run: npm run test:mutation
+      # 並列数は CI だけ上げる（手元の既定値は2。stryker.config.mjs・README を参照）。
+      - if: steps.scope.outputs.skip != 'true'
+        run: npm run test:mutation
+        env:
+          MUTATION_CONCURRENCY: 4
       - name: レポート・ログを保存
         if: always()
         uses: actions/upload-artifact@v4

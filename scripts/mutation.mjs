@@ -7,6 +7,7 @@ import { appendFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { allocate, readAllocation, resolveConcurrency } from './mutation-concurrency.mjs'
 import { formatSummary, summarizeReport } from './mutation-report.mjs'
 import { applyCompat } from './stryker-compat.mjs'
 
@@ -55,6 +56,18 @@ log(`対象コミット: ${git.status === 0 ? git.stdout.trim() : '不明（git 
   + `${dirty.status === 0 && dirty.stdout.trim() ? '（未コミットの変更あり）' : ''}`)
 log(`環境: Node ${process.version}・${os.platform()} ${os.arch()}・CPU ${os.availableParallelism()}`)
 
+let parallel
+try {
+  parallel = resolveConcurrency(process.env)
+} catch (error) {
+  log(String(error instanceof Error ? error.message : error))
+  await finish(1)
+}
+const expectedAllocation = allocate(parallel.concurrency)
+log(`並列数: ${parallel.concurrency}（${parallel.source}）→ checker ${expectedAllocation.checkers}・test runner ${expectedAllocation.testRunners}`)
+const mib = (bytes) => Math.round(bytes / 1024 / 1024)
+log(`メモリ: 合計 ${mib(os.totalmem())} MiB・開始時の空き ${mib(os.freemem())} MiB`)
+
 const { default: config } = await import(pathToFileURL(path.join(root, 'stryker.config.mjs')).href)
 const expectedFiles = config.mutate
 const invalid = expectedFiles.filter((file) => /[*?[\]{}!:]/.test(file) || !existsSync(path.join(root, file)))
@@ -82,9 +95,14 @@ if (compat !== 0) await finish(1)
 // 前回のレポートで成功に見えないよう、実行前に消す。
 await rm(reportDir, { recursive: true, force: true })
 await rm(strykerLog, { force: true })
+// 並列化によるメモリ不足を見つけるため、Stryker の実行中の空きメモリの最小値を測る。
+let minFree = os.freemem()
+const sampler = setInterval(() => { minFree = Math.min(minFree, os.freemem()) }, 5000)
 const stryker = await step('Stryker（初期実行と変異の検証）', () => run(process.execPath, [
   path.join(root, 'node_modules', '@stryker-mutator', 'core', 'bin', 'stryker.js'), 'run',
 ]))
+clearInterval(sampler)
+log(`メモリ: Stryker 実行中の最小の空き ${mib(minFree)} MiB（5秒ごとに計測）`)
 
 for (const source of [reportDir, strykerLog]) {
   if (existsSync(source)) await cp(source, path.join(runDir, path.basename(source)), { recursive: true })
@@ -93,7 +111,18 @@ for (const source of [reportDir, strykerLog]) {
 const jsonFile = path.join(reportDir, 'mutation.json')
 const report = existsSync(jsonFile) ? JSON.parse(await readFile(jsonFile, 'utf8')) : null
 const summary = summarizeReport(report, expectedFiles)
+// 設定した並列数どおりの checker・test runner が作られたかを Stryker のログで確かめる。
+const actual = readAllocation(existsSync(strykerLog) ? await readFile(strykerLog, 'utf8') : '')
+if (!actual) {
+  summary.problems.push('Stryker のログに checker・test runner のプロセス数がありません')
+} else if (actual.checkers !== expectedAllocation.checkers || actual.testRunners !== expectedAllocation.testRunners) {
+  summary.problems.push(`プロセス数が設定と違います（期待 checker ${expectedAllocation.checkers}・test runner `
+    + `${expectedAllocation.testRunners}、実際 checker ${actual.checkers}・test runner ${actual.testRunners}）`)
+}
 const text = formatSummary(summary, expectedFiles)
+  + `\n並列数: ${parallel.concurrency}（${parallel.source}）。Stryker のログ: `
+  + `${actual ? `checker ${actual.checkers}・test runner ${actual.testRunners}` : '不明'}。`
+  + `メモリ: 合計 ${mib(os.totalmem())} MiB・Stryker 実行中の最小の空き ${mib(minFree)} MiB\n`
 log(`\n${text}`)
 await writeFile(path.join(runDir, 'summary.md'), text)
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, text)
