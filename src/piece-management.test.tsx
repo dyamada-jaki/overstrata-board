@@ -130,6 +130,18 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     expect(screen.getByText('全駒と設定を消して最初からやり直すこともできます。')).toBeVisible()
   })
 
+  it.each([['閉じた', false], ['開いた', true]] as const)('追加数のエリアを%s状態で削除を実行した後は、他の操作へフォーカスを移さない', (_state, adding) => {
+    render(<App />)
+    prepare()
+    if (adding) click('駒を増やす')
+    remove('敵1')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '駒を増やす' })).not.toHaveFocus()
+    if (adding) expect(screen.getByRole('textbox', { name: '味方の追加数' })).not.toHaveFocus()
+    else expect(screen.queryByRole('textbox', { name: '味方の追加数' })).not.toBeInTheDocument()
+    expect(document.body).toHaveFocus()
+  })
+
   it('全削除でも準備の段階を保ち確定不可。やり直し取消は番号保持、実行は番号1/初期5へ戻る', () => {
     render(<App />)
     prepare()
