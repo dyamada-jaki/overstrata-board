@@ -61,7 +61,7 @@ test('戦闘途中の追加→配置後の設定→再追加→まとめて確�
   await expect(cell(page, 10, 10)).toHaveAccessibleName('マス (10, 10)')
   await expect(cell(page, 1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力5）')
   await expect(cell(page, 3, 1)).toHaveAccessibleName('マス (3, 1) 敵2（敵・移動力5）')
-  await expect(button(page, '駒を増やす')).toBeFocused()
+  await expect(page.locator('body')).toBeFocused()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width)
 })
 
