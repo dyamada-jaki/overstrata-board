@@ -1,0 +1,42 @@
+import { expect, test, type Page } from '@playwright/test'
+
+const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
+const cell = (page: Page, x: number, y: number) => page.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
+const token = (page: Page, name: string) => page.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
+const filterOf = (page: Page, x: number, y: number) => cell(page, x, y).locator('.board-token').evaluate((el) => getComputedStyle(el).filter)
+
+test('倒れた状態に切り替えると見た目が変わって動かなくなり、通常に戻すと元の見た目で動ける', async ({ page }, testInfo) => {
+  await page.goto('/')
+  await page.getByRole('textbox', { name: '味方の数' }).fill('1')
+  await page.getByRole('textbox', { name: '敵の数' }).fill('1')
+  await button(page, '駒を用意する').click()
+  await token(page, '味方1').click()
+  await cell(page, 3, 3).click()
+  await token(page, '敵1').click()
+  await cell(page, 8, 8).click()
+  await button(page, '確定').click()
+
+  const normal = await filterOf(page, 3, 3)
+  await cell(page, 3, 3).click()
+  await button(page, '倒れた状態にする').click()
+  await expect(button(page, '通常に戻す')).toBeFocused()
+  await expect(page.getByText('状態：倒れている')).toBeVisible()
+  await expect(cell(page, 3, 3)).toHaveAccessibleName('マス (3, 3) 味方1（味方・移動力5・倒れた状態）')
+  const downed = await filterOf(page, 3, 3)
+  expect(downed).not.toBe(normal)
+  expect(await filterOf(page, 8, 8)).toBe(normal)
+  await testInfo.attach('倒れた状態の味方1を選択中', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+
+  await cell(page, 4, 3).click()
+  await cell(page, 10, 10).click()
+  await expect(cell(page, 3, 3)).toHaveAccessibleName('マス (3, 3) 味方1（味方・移動力5・倒れた状態）')
+  await expect(cell(page, 3, 3)).toHaveAttribute('aria-pressed', 'true')
+  await expect(cell(page, 4, 3)).toHaveAccessibleName('マス (4, 3) 移動範囲')
+
+  await button(page, '通常に戻す').click()
+  await expect(button(page, '倒れた状態にする')).toBeFocused()
+  expect(await filterOf(page, 3, 3)).toBe(normal)
+  await cell(page, 10, 10).click()
+  await expect(cell(page, 10, 10)).toHaveAccessibleName('マス (10, 10) 味方1（味方・移動力5）')
+  await expect(page.getByRole('button', { pressed: true })).toHaveCount(0)
+})
