@@ -142,3 +142,7 @@ E2E は実際のアプリと domain 処理を使う。要素は role や表示�
 - PRには、対象SHA、ツールの版、コマンド・環境・実行時間、変異対象、状態別件数・スコア、HTML/JSONレポートの場所、Survived/NoCoverageと除外の判断・対応先を残す。対象や設定が違うスコアをそのまま比較しない。
 
 参考：[StrykerJSのVitest連携](https://stryker-mutator.io/docs/stryker-js/vitest-runner/)、[変異の状態と集計](https://stryker-mutator.io/docs/mutation-testing-elements/mutant-states-and-metrics/)、[等価な変異](https://stryker-mutator.io/docs/mutation-testing-elements/equivalent-mutants/)、[Playwright の推奨事項](https://playwright.dev/docs/best-practices)、[端末のエミュレーション](https://playwright.dev/docs/emulation)、[古典派とモックを使うテストの違い](https://martinfowler.com/articles/mocksArentStubs.html)。このリポジトリでの必須事項は上記の方針と Issue に従う。
+
+### CIでMarkdownだけの変更を省略する条件（#47）
+
+CIでは、全対象の成功記録から今回のcheckoutまでの差分がMarkdownだけ（または別SHAで差分なし）と確認できる場合に限り、ミューテーションを省略する。同じSHAの再実行は実行する。PRは以前の検証済みmerge SHAまたはbase側の成功push、main pushは直前SHAの先祖にある同ブランチの成功pushから比較する。省略成功を全対象成功に数えず、未検証のコードが残る場合・比較不能・記録なしは全対象を実行する。コードや設定が変わった場合の対象全体・型チェック・集計・失敗条件は維持する。対象SHA・比較範囲・理由と成功記録をCIに保存する（詳細はREADME）。

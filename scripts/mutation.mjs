@@ -56,6 +56,7 @@ log(`対象コミット: ${git.status === 0 ? git.stdout.trim() : '不明（git 
 log(`環境: Node ${process.version}・${os.platform()} ${os.arch()}・CPU ${os.availableParallelism()}`)
 
 const { default: config } = await import(pathToFileURL(path.join(root, 'stryker.config.mjs')).href)
+log(`StrykerJS: ${JSON.parse(await readFile(path.join(root, 'node_modules/@stryker-mutator/core/package.json'), 'utf8')).version}・concurrency: ${config.concurrency}・メモリ: ${(os.totalmem() / 1024 ** 3).toFixed(1)} GiB`)
 const expectedFiles = config.mutate
 const invalid = expectedFiles.filter((file) => /[*?[\]{}!:]/.test(file) || !existsSync(path.join(root, file)))
 log(`変異対象（${expectedFiles.length}件）: ${expectedFiles.join(', ')}`)

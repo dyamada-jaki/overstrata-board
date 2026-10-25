@@ -150,6 +150,13 @@ test('同じSHAの再実行は全対象を実行し、異なるSHAで同じtree�
   assert.match(result.reason, /差分なし/)
 })
 
+test('省略済みrun自体の再実行でも全対象を実行する', async (t) => {
+  const f = fixture(t)
+  f.write('README.md', 'docs\n'); f.commit()
+  f.context.attempt = 2
+  assert.equal((await f.decide()).run, true)
+})
+
 test('PRのbaseにコードの差分が入れば、前headが成功済みでも実行する', async (t) => {
   const f = fixture(t, 'pull_request')
   f.write('src/from-base.ts', 'base update\n'); f.write('README.md', 'docs\n'); f.commit()
