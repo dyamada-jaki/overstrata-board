@@ -37,7 +37,7 @@ export default {
     'dist', 'e2e-artifacts', 'mutation-artifacts', 'playwright-report', 'test-results',
   ],
   tempDirName: '.stryker-tmp',
-  // checker と test runner に分配する総数。既定2 = 各1、CI明示4 = 各2。
+  // checker と test runner に分配する総数。既定2 = 各1、明示4なら各2。CIの採用値はworkflowで指定する。
   // checker 完了後はその枠も test runner に回る。実際の割当は Stryker のログで確認する。
   concurrency,
   incremental: false,

@@ -175,7 +175,7 @@ test('別PR・別pushブランチ・失敗step・成功証明のないPRを成�
   }
 })
 
-test('手元は既定2、CI明示値は4（CI=trueだけでは変わらない）', () => {
+test('手元は既定2、明示値4を受け取りCI=trueだけでは変わらない', () => {
   const load = (env) => Number(execFileSync(process.execPath, ['--input-type=module', '-e', "import config from './stryker.config.mjs'; console.log(config.concurrency)"],
     { cwd: process.cwd(), env: { ...process.env, STRYKER_CONCURRENCY: '', ...env }, encoding: 'utf8' }).trim())
   assert.equal(load({}), 2)

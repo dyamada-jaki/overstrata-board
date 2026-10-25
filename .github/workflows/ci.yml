@@ -44,10 +44,10 @@ jobs:
   mutation:
     name: ミューテーションテスト（StrykerJS）
     runs-on: ubuntu-latest
-    # #47: 変更前のmain実測も踏まえ、短縮後の安定性を確認して上限を見直す。
+    # #47: 並列4はTimeout増加で不採用。mainの27〜36分の変動も踏まえて60分を維持する。
     timeout-minutes: 60
     env:
-      STRYKER_CONCURRENCY: '4'
+      STRYKER_CONCURRENCY: '2'
     steps:
       - uses: actions/checkout@v4
         with:
