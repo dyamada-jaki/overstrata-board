@@ -86,7 +86,10 @@ export async function decideMutation(context, { api = githubApi } = {}) {
 }
 
 function githubApi(endpoint) {
-  return JSON.parse(execFileSync('gh', ['api', endpoint], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }))
+  // 100件のrun一覧は既定の1MiBを超える。上限を超えた場合は引き続き全対象実行へ倒す。
+  return JSON.parse(execFileSync('gh', ['api', endpoint], {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 16 * 1024 * 1024,
+  }))
 }
 
 async function main() {
