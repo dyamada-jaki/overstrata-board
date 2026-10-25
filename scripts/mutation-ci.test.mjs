@@ -182,3 +182,18 @@ test('手元は既定2、CI明示値は4（CI=trueだけでは変わらない）
   assert.equal(load({ CI: 'true' }), 2)
   assert.equal(load({ STRYKER_CONCURRENCY: '4' }), 4)
 })
+
+test('より新しいbaseの成功runが先に並んでも、検証済みPRへのREADME追記は省略する', async (t) => {
+  const f = fixture(t, 'pull_request')
+  f.write('src/app.ts', 'verified PR code\n'); const verifiedHead = f.commit()
+  f.record.head_sha = verifiedHead
+  f.write('README.md', 'review docs\n'); const target = f.commit()
+  const baseRun = { ...f.record, id: 20, event: 'push', head_sha: f.verified, pull_requests: [] }
+  const api = async (endpoint) => {
+    if (endpoint.includes('/20/') && endpoint.includes('/jobs')) return { jobs: [{ name: 'ミューテーションテスト（StrykerJS）', conclusion: 'success', steps: [{ name: 'Run npm run test:mutation', conclusion: 'success' }] }] }
+    if (endpoint.includes('/jobs')) return { jobs: [{ name: 'ミューテーションテスト（StrykerJS）', conclusion: 'success', steps: [{ name: '全対象のミューテーションテスト', conclusion: 'success' }] }] }
+    if (endpoint.includes('/artifacts')) return { artifacts: [{ name: `mutation-verified-${verifiedHead}-1`, expired: false }] }
+    return { workflow_runs: [baseRun, f.record] }
+  }
+  assert.equal((await decideMutation({ ...f.context, target, head: target }, { api })).run, false)
+})
