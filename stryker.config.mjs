@@ -5,6 +5,7 @@ export default {
   // 初期の変異対象。glob を使わずファイルを明示し、scripts/mutation.mjs が全ファイルの計測を確かめる。
   mutate: [
     'src/domain/movement.ts', // 距離・移動力・移動範囲の境界と占有判定（spec.md 2.3・3.1・3.2）
+    'src/data/pieces.ts', // 同時数と番号上限（spec.md 2.2 / #33）。数値そのものは標準の変異対象外
     'src/data/movement.ts', // 移動力の基本値と装備補正
     'src/domain/board.ts', // 内部座標と表示座標の変換、盤面の座標一覧（spec.md 2.1）
     'src/data/board.ts', // 盤面サイズ

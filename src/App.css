@@ -134,3 +134,10 @@ button, input { font: inherit; }
 }
 .reset-dialog::backdrop { background: rgb(15 23 42 / 0.5); }
 .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; }
+
+.selected-piece { margin-bottom: 1rem; }
+.selected-piece-name { display: flex; align-items: center; gap: 0.5rem; font-weight: bold; }
+.selected-piece-name .board-token { width: 1.75rem; height: 1.75rem; margin: 0; }
+.addition-panel { margin-block: 0.75rem; }
+.addition-panel form { border-top: 1px solid #cbd5e1; margin-top: 0.75rem; padding-top: 0.75rem; }
+.addition-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }

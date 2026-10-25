@@ -1,0 +1,32 @@
+import { fireEvent, render, screen, within } from '@testing-library/react'
+// 上限の設定境界だけを差し替え、App・状態・domainは実物で接続する。
+vi.mock('./data/pieces.ts', () => ({ pieceLimits: { perSide: 2, maxNumber: 99 } }))
+import App from './App.tsx'
+
+it('共通の同時上限を2へ変えると最初の準備・追加の入力/案内/残数/生成がすべて揃う', () => {
+  render(<App />)
+  const input = (name: string, value: string) => fireEvent.change(screen.getByRole('textbox', { name }), { target: { value } })
+  const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
+  expect(screen.getByText('それぞれ0〜2体の整数を入力してください。')).toBeVisible()
+  input('味方の数', '3')
+  expect(screen.getByRole('textbox', { name: '味方の数' })).toHaveAccessibleDescription('0〜2の整数で入力してください')
+  expect(screen.getByRole('button', { name: '駒を用意する' })).toBeDisabled()
+  input('味方の数', '2')
+  expect(screen.getByRole('button', { name: '味方の数を増やす' })).toBeDisabled()
+  input('敵の数', '1')
+  click('駒を用意する')
+  expect(within(screen.getByRole('group', { name: '未配置の駒' })).getAllByRole('button')).toHaveLength(3)
+  click('駒を増やす')
+  expect(screen.getByText('味方：あと0体追加できます')).toBeVisible()
+  expect(screen.getByText('敵：あと1体追加できます')).toBeVisible()
+  input('敵の追加数', '2')
+  expect(screen.getByRole('textbox', { name: '敵の追加数' })).toHaveAccessibleDescription('0〜1の整数で入力してください')
+  expect(screen.getByRole('button', { name: '追加する' })).toBeDisabled()
+  input('敵の追加数', '1')
+  expect(screen.getByRole('button', { name: '敵の追加数を増やす' })).toBeDisabled()
+  click('追加する')
+  expect(within(screen.getByRole('group', { name: '未配置の駒' })).getAllByRole('button')).toHaveLength(4)
+  click('駒を増やす')
+  expect(screen.getByText('敵：あと0体追加できます')).toBeVisible()
+  expect(screen.getByRole('button', { name: '追加する' })).toBeDisabled()
+})

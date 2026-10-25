@@ -14,7 +14,7 @@ describe('承認された数の入力の解釈', () => {
 
 describe('戦闘準備の入口', () => {
   it('初期状態は数指定・0体・未選択', () => {
-    expect(createInitialBattle()).toEqual({ phase: 'counts', characters: [], selection: { kind: 'none' } })
+    expect(createInitialBattle()).toEqual({ phase: 'counts', characters: [], selection: { kind: 'none' }, issued: { ally: 0, enemy: 0 }, pendingIds: [] })
   })
   it.each([['0', '0'], ['11', '1'], ['1', '-1'], ['', '1']])('味方%s/敵%sは準備できない', (ally, enemy) => {
     expect(prepareBattle(ally, enemy)).toBeNull()
@@ -46,7 +46,7 @@ describe('戦闘準備の入口', () => {
     const placed = { ...state, ...tapPosition({ ...state, selection: { kind: 'character', id: state.characters[0]!.id } }, { x: 2, y: 3 }, size) }
     expect(canConfirmBattle(placed)).toBe(true)
     const selected = Object.freeze({ ...placed, selection: { kind: 'cell' as const, position: { x: 0, y: 0 } } })
-    expect(confirmBattle(selected)).toEqual({ phase: 'active', characters: placed.characters, selection: { kind: 'none' } })
+    expect(confirmBattle(selected)).toEqual({ phase: 'active', characters: placed.characters, selection: { kind: 'none' }, issued: { ally: 1, enemy: 0 }, pendingIds: [] })
     expect(selected.selection.kind).toBe('cell')
     const active = { ...confirmBattle(selected), selection: { kind: 'character' as const, id: state.characters[0]!.id } }
     expect(canConfirmBattle(active)).toBe(false)
