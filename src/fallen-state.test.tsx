@@ -43,6 +43,7 @@ it('未配置の両陣営で即時切替・復帰ができ、対象だけを変�
     expect(token(name)).toHaveAccessibleName(`未配置 ${name}（${name === '味方1' ? '味方' : '敵'}・移動力5・倒れた状態）`)
     expect(token(name)).toHaveAttribute('aria-pressed', 'true')
     expect(token(name).querySelector('.board-token')).toHaveClass('board-token-fallen')
+    expect(document.querySelector('.selected-piece .board-token')).toHaveClass('board-token-fallen')
     const other = name === '味方1' ? '敵1' : '味方1'
     expect(token(other)).not.toHaveAccessibleName(/倒れた状態/)
     click('通常に戻す')
@@ -50,6 +51,10 @@ it('未配置の両陣営で即時切替・復帰ができ、対象だけを変�
     expect(toggle).toHaveFocus()
     expect(token(name)).not.toHaveAccessibleName(/倒れた状態/)
     expect(token(name).querySelector('.board-token')).not.toHaveClass('board-token-fallen')
+    expect(document.querySelector('.selected-piece .board-token')).not.toHaveClass('board-token-fallen')
+    const sideClass = `board-token-${name === '味方1' ? 'ally' : 'enemy'}`
+    expect(token(name).querySelector('.board-token')).toHaveClass('board-token', sideClass)
+    expect(document.querySelector('.selected-piece .board-token')).toHaveClass('board-token', sideClass)
     expect(screen.getByText('状態：通常')).toBeVisible()
   }
 })
@@ -70,6 +75,7 @@ it.each(['準備中', '確定後'])('%sは倒れた駒の範囲内外移動だ�
   click('倒れた状態にする')
   expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力3・倒れた状態）')
   expect(cell(1, 1).querySelector('.board-token')).toHaveClass('board-token-fallen')
+  expect(document.querySelector('.selected-piece .board-token')).toHaveClass('board-token-fallen')
   expect(range()).toEqual(rangeOfThreeAtCorner)
   for (const [x, y] of [[2, 1], [10, 10]]) {
     fireEvent.click(cell(x!, y!))
@@ -90,6 +96,8 @@ it.each(['準備中', '確定後'])('%sは倒れた駒の範囲内外移動だ�
   expect(range()).toEqual(rangeOfThreeAtCorner)
   expect(pressed()).toEqual([cell(1, 1)])
   expect(cell(1, 1).querySelector('.board-token')).not.toHaveClass('board-token-fallen')
+  expect(document.querySelector('.selected-piece .board-token')).not.toHaveClass('board-token-fallen')
+  expect(document.querySelector('.selected-piece .board-token')).toHaveClass('board-token', 'board-token-ally')
   fireEvent.click(cell(2, 1))
   expect(cell(2, 1)).toHaveAccessibleName('マス (2, 1) 味方1（味方・移動力3）')
   expect(pressed()).toEqual([])
