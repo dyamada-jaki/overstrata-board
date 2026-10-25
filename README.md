@@ -318,6 +318,8 @@ PR を作ったときと main への push のときに、GitHub Actions（`.gith
 
 #47では、並列4をCIで2回測定しましたが、基準のTimeout4件が61・62件へ増えたため採用せず、2へ戻しました。ジョブ全体は基準2が27分04秒・35分58秒、候補4が34分19秒・38分24秒で、安定した短縮を確認できませんでした。上限はmainの実測と変動を踏まえ60分を維持し、A1（手元と直近mainのCI実測で上限を判断する）を続けます。状態別件数・staticの推定・次の判断材料は[PR #52](https://github.com/dyamada-jaki/overstrata-board/pull/52)に記録しています。
 
+採用値2の[PRでの全対象実行](https://github.com/dyamada-jaki/overstrata-board/actions/runs/40193779514)は、ジョブ27分23秒（Stryker1549.8秒）、860変異のKilled555・Timeout4・Survived39・CompileError262で基準と一致しました。比較の記録ではPRのhead SHAと、実際に検証したmerge SHAを区別します。Markdown追記の省略でも、この実merge SHAからの差分と成功記録をJob Summaryで確認できます。
+
 ミューテーションジョブだけは、過去の全対象成功地点から今回のcheckoutまでの差分が `.md` だけ（または別SHAで差分なし）と証明できれば省略します。同じSHAの再実行は全対象を実行します。通常チェック・E2E・本番イメージは毎回実行します。
 
 PRは同じPRの以前の検証済みmerge SHA、またはbaseの先祖にある成功したpush SHAと、今回のmerge SHAを比較します。mainへのpushは、直前SHAの先祖にある同じブランチの全対象成功SHAから比較します。成功したworkflow・mutationジョブ・全対象実行stepと、検証SHAを名前に含む `mutation-verified-<SHA>-<attempt>` artifactを照合します（保存14日）。旧workflowのpushだけは、全対象実行stepの成功とhead SHAを使えます。省略したジョブは全対象成功の記録として扱いません。
