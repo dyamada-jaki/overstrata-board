@@ -21,7 +21,6 @@ describe('倒れた状態の切り替え（spec.md 2.2 / #34）', () => {
     expect(downed.characters).toEqual(state.characters.map((c) => c.id === 'ally-1' ? { ...c, downed: true } : c))
     expect(downed).toMatchObject({ selection: state.selection, phase: state.phase, issued: state.issued, pendingIds: state.pendingIds })
     expect(find(state, 'ally-1').downed).toBe(false)
-    expect(getSelectedMovementRange(downed, size)).toEqual(getSelectedMovementRange(state, size))
     const restored = toggleDowned(downed, 'ally-1')
     expect(restored.characters).toEqual(state.characters)
   })
@@ -46,6 +45,33 @@ describe('倒れた状態の切り替え（spec.md 2.2 / #34）', () => {
     const confirmed = confirmAdditions({ ...addedDowned, characters: addedDowned.characters.map((c) => c.id === 'enemy-3' ? { ...c, position: { x: 0, y: 9 } } : c) })
     expect(confirmed.pendingIds).toEqual([])
     expect(confirmed.characters.filter((c) => c.downed).map((c) => c.id)).toEqual(['ally-1', 'enemy-3'])
+  })
+})
+
+describe('倒れた駒の移動範囲の目安（spec.md 2.3 / #50）', () => {
+  it('配置済みで倒れた駒は選択中でも目安を出さず、通常に戻すと同じ位置・移動力の目安に戻る', () => {
+    const state = select(battle(), 'ally-1')
+    const normal = getSelectedMovementRange(state, size)
+    expect(normal).toContainEqual({ x: 2, y: 1 })
+    const downed = toggleDowned(state, 'ally-1')
+    expect(getSelectedMovementRange(downed, size)).toEqual([])
+    expect(getSelectedMovementRange(toggleDowned(downed, 'ally-1'), size)).toEqual(normal)
+  })
+
+  it('未配置の駒は通常・倒れた状態とも目安を出さない', () => {
+    const state = select(battle(), 'ally-2')
+    expect(getSelectedMovementRange(state, size)).toEqual([])
+    expect(getSelectedMovementRange(toggleDowned(state, 'ally-2'), size)).toEqual([])
+  })
+
+  it('倒れた駒も占有に数え、隣の通常の駒の目安から倒れた駒のマスを除いたままにする', () => {
+    // 味方1 を敵1 (5, 5) の隣 (5, 4) へ置く。内部座標。
+    const base = battle()
+    const near: BattleState = { ...base, characters: base.characters.map((c) => c.id === 'ally-1' ? { ...c, position: { x: 4, y: 3 } } : c) }
+    const enemy = select(near, 'enemy-1')
+    const normal = getSelectedMovementRange(enemy, size)
+    expect(normal).not.toContainEqual({ x: 4, y: 3 })
+    expect(getSelectedMovementRange(toggleDowned(enemy, 'ally-1'), size)).toEqual(normal)
   })
 })
 
