@@ -118,8 +118,11 @@ describe('倒れた状態の切り替えと表示（spec.md 2.2 / #34）', () =>
     expect(range()).toEqual([])
 
     fireEvent.click(cell(1, 1))
+    // 解除で操作パネルが消えたため、再選択後のボタンは別の要素になる。
+    const again = toggle()
+    again.focus()
     click('通常に戻す')
-    expect(button).toHaveFocus()
+    expect(again).toHaveFocus()
     expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力5）')
     expect(circle(cell(1, 1))).not.toHaveClass('board-token-downed')
     expect(pressed()).toEqual([cell(1, 1)])
