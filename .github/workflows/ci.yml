@@ -43,25 +43,47 @@ jobs:
   mutation:
     name: ミューテーションテスト（StrykerJS）
     runs-on: ubuntu-latest
-    # #34 で CI の実測が36分（上限45分の80%）になったため60分にする。#47 の短縮後に見直す。
+    permissions:
+      contents: read
+      actions: read
+    # #47: 並列4はTimeout増加で不採用。mainの27〜36分の変動も踏まえて60分を維持する。
     timeout-minutes: 60
+    env:
+      STRYKER_CONCURRENCY: '2'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
+      - name: 検証済みの比較元から実行を判定
+        id: decision
+        run: node scripts/mutation-ci.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
       - run: npm ci
-      # 通常テスト・互換処理・Stryker・結果の検証のどこで失敗してもジョブを失敗にする。
-      # スコアでは不合格にせず、Job Summary とレポートで確認する。
-      - run: npm run test:mutation
-      - name: レポート・ログを保存
+        if: steps.decision.outputs.run != 'false'
+      # 通常テスト・互換処理・Stryker・結果検証の失敗はジョブを失敗にする。
+      - name: 全対象のミューテーションテスト
+        if: steps.decision.outputs.run != 'false'
+        run: npm run test:mutation
+      # 省略した成功ジョブを全対象の成功記録として再利用しない。
+      - name: 全対象の成功記録を保存
+        if: success() && steps.decision.outputs.run != 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-verified-${{ github.sha }}-${{ github.run_attempt }}
+          path: mutation-artifacts/ci-decision.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: 判定・レポート・ログを保存
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mutation-${{ github.run_id }}-${{ github.run_attempt }}
           path: mutation-artifacts/
-          # 起動前に失敗した場合も、本来の失敗を上書きしない。
           if-no-files-found: warn
           retention-days: 14
 

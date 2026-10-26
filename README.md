@@ -256,7 +256,7 @@ docker compose run --rm app npm run test:mutation   # 開発コンテナ
 4. JSON レポートの検証。対象ファイルの欠落・変異0件・テストで検証された変異0件・テストが1件も実行されないままの `Survived`・`Pending` は失敗にします
 
 - **対象**は `stryker.config.mjs` の `mutate` に明示した11ファイル（距離・移動力・移動範囲、移動力の定数、座標変換・盤面座標、盤面サイズ、マス・キャラの選択表示と座標ラベルの部品、駒の丸のクラスとアクセシブル名の共通処理、選択の状態変化と移動、過去サンプルの初期配置、数入力と準備・確定の処理、準備画面と確認付きリセット、駒の同時数と発行番号の上限）です。除外の理由も同じファイルに書いています。Playwright は変異ごとには実行しません
-- **並列度**は `concurrency: 2` に固定しています。所要時間は1分前後です（2026-10-17、Apple Silicon のホストで約53秒）
+- **並列度**は手元の既定値2、CIの採用値も `STRYKER_CONCURRENCY=2` です。checkerとtest runnerに分配され、開始時は2なら各1、候補4なら各2になります。checker完了後はその枠もtest runnerに回るため、実際の割当は `Creating ... checker process(es) and ... test runner process(es)` のログで確認します。対象全体を毎回検証し、`incremental: false` を維持します。
 - **スコアで不合格にはしません**（`thresholds.break: null`）。`Survived` / `NoCoverage` は1件ずつ分類します
 - 標準の変異には数値リテラルを変える種類がないため、`5` や `10` などの数値そのものは変異しません
 
@@ -313,3 +313,17 @@ PR を作ったときと main への push のときに、GitHub Actions（`.gith
 - 本番用イメージのビルド
 - Docker で Chromium E2E（幅375px・1280px）。失敗は CI の失敗となり、Actions の実行ページから `e2e-<run ID>-<attempt>` artifact を取得できます（保存14日）
 - ミューテーションテスト（`npm run test:mutation`）。通常テスト・互換処理・Stryker・結果の検証の失敗は CI の失敗になります。スコアでは失敗にしません。状態別件数は Job Summary に、`mutation-artifacts/` の記録は成功・失敗にかかわらず `mutation-<run ID>-<attempt>` artifact に保存します（保存14日）
+
+#### Markdownだけの変更でのCI省略
+
+#47では、並列4をCIで2回測定しましたが、基準のTimeout4件が61・62件へ増えたため採用せず、2へ戻しました。ジョブ全体は基準2が27分04秒・35分58秒、候補4が34分19秒・38分24秒で、安定した短縮を確認できませんでした。上限はmainの実測と変動を踏まえ60分を維持し、A1（手元と直近mainのCI実測で上限を判断する）を続けます。状態別件数・staticの推定・次の判断材料は[PR #52](https://github.com/dyamada-jaki/overstrata-board/pull/52)に記録しています。
+
+採用値2の[PRでの全対象実行](https://github.com/dyamada-jaki/overstrata-board/actions/runs/40193779514)は、ジョブ27分23秒（Stryker1549.8秒）、860変異のKilled555・Timeout4・Survived39・CompileError262で基準と一致しました。比較の記録ではPRのhead SHAと、実際に検証したmerge SHAを区別します。Markdown追記の省略でも、この実merge SHAからの差分と成功記録をJob Summaryで確認できます。
+
+ミューテーションジョブだけは、過去の全対象成功地点から今回のcheckoutまでの差分が `.md` だけ（または別SHAで差分なし）と証明できれば省略します。同じSHAの再実行は全対象を実行します。通常チェック・E2E・本番イメージは毎回実行します。
+
+この省略は、アプリ・テスト・ビルドが `.md` を読まないことが前提です。読むようになったら省略条件を見直してください。
+
+PRは同じPRの以前の検証済みmerge SHA、またはbaseの先祖にある成功したpush SHAと、今回のmerge SHAを比較します。mainへのpushは、直前SHAの先祖にある同じブランチの全対象成功SHAから比較します。成功したworkflow・mutationジョブ・全対象実行stepと、検証SHAを名前に含む `mutation-verified-<SHA>-<attempt>` artifactを照合します（保存14日）。旧workflowのpushだけは、全対象実行stepの成功とhead SHAを使えます。省略したジョブは全対象成功の記録として扱いません。
+
+改名は旧名・新名、削除は削除元も確認します。コード・テスト・依存・CI設定を含む差分、成功記録なし、履歴/API/差分の取得不能は全対象を実行します。最後のコミットだけがMarkdownでも、未検証のコード差分が前に残れば省略しません。検索する成功runは最新100件までで、証明できないときも実行します。対象SHA・比較範囲・成功記録URL・理由はJob Summaryと `mutation-<run ID>-<attempt>` artifact内の `ci-decision.json` に残ります。

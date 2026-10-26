@@ -1,5 +1,8 @@
 // ミューテーションテスト（StrykerJS）の設定。実行は `npm run test:mutation`（scripts/mutation.mjs）から行う。
 // 対象・除外の考え方は docs/testing.md 7章、結果の読み方は README を参照。
+const concurrency = process.env.STRYKER_CONCURRENCY ? Number(process.env.STRYKER_CONCURRENCY) : 2
+if (!Number.isSafeInteger(concurrency) || concurrency < 1) throw new Error('STRYKER_CONCURRENCY は正の整数にしてください')
+
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 export default {
   // 初期の変異対象。glob を使わずファイルを明示し、scripts/mutation.mjs が全ファイルの計測を確かめる。
@@ -34,8 +37,9 @@ export default {
     'dist', 'e2e-artifacts', 'mutation-artifacts', 'playwright-report', 'test-results',
   ],
   tempDirName: '.stryker-tmp',
-  // 他の作業と同時に動かすため、テスト実行プロセスを2つに固定する。
-  concurrency: 2,
+  // checker と test runner に分配する総数。既定2 = 各1、明示4なら各2。CIの採用値はworkflowで指定する。
+  // checker 完了後はその枠も test runner に回る。実際の割当は Stryker のログで確認する。
+  concurrency,
   incremental: false,
 
   reporters: ['html', 'json', 'clear-text', 'progress'],
