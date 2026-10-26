@@ -21,9 +21,10 @@ describe('倒れた状態の切り替え（spec.md 2.2 / #34）', () => {
     expect(downed.characters).toEqual(state.characters.map((c) => c.id === 'ally-1' ? { ...c, downed: true } : c))
     expect(downed).toMatchObject({ selection: state.selection, phase: state.phase, issued: state.issued, pendingIds: state.pendingIds })
     expect(find(state, 'ally-1').downed).toBe(false)
-    expect(getSelectedMovementRange(downed, size)).toEqual(getSelectedMovementRange(state, size))
+    expect(getSelectedMovementRange(downed, size)).toEqual([])
     const restored = toggleDowned(downed, 'ally-1')
     expect(restored.characters).toEqual(state.characters)
+    expect(getSelectedMovementRange(restored, size)).toEqual(getSelectedMovementRange(state, size))
   })
 
   it('未配置の駒も切り替えられ、存在しない id では何も変えない', () => {
@@ -46,6 +47,29 @@ describe('倒れた状態の切り替え（spec.md 2.2 / #34）', () => {
     const confirmed = confirmAdditions({ ...addedDowned, characters: addedDowned.characters.map((c) => c.id === 'enemy-3' ? { ...c, position: { x: 0, y: 9 } } : c) })
     expect(confirmed.pendingIds).toEqual([])
     expect(confirmed.characters.filter((c) => c.downed).map((c) => c.id)).toEqual(['ally-1', 'enemy-3'])
+  })
+})
+
+describe('選択した駒の目安（spec.md 2.3 / #50）', () => {
+  it('通常なら位置・移動力・占有から求め、倒れた状態・未配置・解除では表示せず、復帰で再表示する', () => {
+    const prepared = prepareBattle('1', '1')!
+    const state: BattleState = {
+      ...prepared,
+      characters: prepared.characters.map((c) => ({ ...c, movement: 1, position: c.side === 'ally' ? { x: 0, y: 0 } : { x: 1, y: 0 } })),
+      selection: { kind: 'character', id: 'ally-1' },
+    }
+    const board = { width: 3, height: 3 }
+    // 角から距離1以内の3マスのうち、敵のいる(1,0)を除外（内部座標）。
+    const expected = [{ x: 0, y: 1 }, { x: 1, y: 1 }]
+    expect(getSelectedMovementRange(state, board)).toEqual(expected)
+    const downed = toggleDowned(state, 'ally-1')
+    expect(getSelectedMovementRange(downed, board)).toEqual([])
+    expect(getSelectedMovementRange(toggleDowned(downed, 'ally-1'), board)).toEqual(expected)
+    for (const current of [state, downed]) {
+      const unplaced = { ...current, characters: current.characters.map((c) => c.id === 'ally-1' ? { ...c, position: null } : c) }
+      expect(getSelectedMovementRange(unplaced, board)).toEqual([])
+      expect(getSelectedMovementRange({ ...current, selection: { kind: 'none' } }, board)).toEqual([])
+    }
   })
 })
 
