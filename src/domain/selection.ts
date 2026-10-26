@@ -44,12 +44,12 @@ export function tapPosition(state: BoardState, position: Position, boardSize: Bo
   return { characters, selection: deselect ? none : { kind: 'cell', position } }
 }
 
-/** 未配置の駒・マス・未選択では範囲を出さない。占有と盤面外を除く。 */
+/** 配置済みの通常の駒だけ範囲を出す。占有と盤面外を除く（spec.md 2.3）。 */
 export function getSelectedMovementRange(state: BoardState, boardSize: BoardSize): Position[] {
   const { characters, selection } = state
   if (selection.kind !== 'character') return []
   const selected = characters.find((character) => character.id === selection.id)
-  if (!selected || selected.position === null) return []
+  if (!selected || selected.position === null || selected.downed) return []
   const others = characters.filter((character) => character.id !== selected.id)
     .flatMap((character) => character.position === null ? [] : [character.position])
   return getMovementRange(selected.position, selected.movement, others, boardSize)
