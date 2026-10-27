@@ -22,7 +22,7 @@ export function tapCharacter(state: BoardState, id: string): BoardState {
   return { characters: state.characters, selection: deselect ? none : { kind: 'character', id } }
 }
 
-/** 空きマスで選択駒を配置/移動。通常の駒は範囲外でも移動でき、直後は何も選択しない。 */
+/** 空きマスで選択駒を配置/移動。配置済みで倒れた駒なら、駒を動かさずそのマスを選択する。 */
 export function tapPosition(state: BoardState, position: Position, boardSize: BoardSize): BoardState {
   const { characters, selection } = state
   const tapped = characters.find((character) => character.position !== null && isSame(character.position, position))
@@ -32,9 +32,9 @@ export function tapPosition(state: BoardState, position: Position, boardSize: Bo
   if (!canMoveTo(position, occupied, boardSize)) return state
 
   if (selection.kind === 'character') {
-    // 配置済みで倒れた駒は範囲内外とも動かさない。未配置からの初回配置はできる（#34）。
+    // 配置済みで倒れた駒は選択だけをマスへ切り替える。未配置からの初回配置はできる（#50）。
     const selected = characters.find((character) => character.id === selection.id)
-    if (selected?.downed && selected.position !== null) return state
+    if (selected?.downed && selected.position !== null) return { characters, selection: { kind: 'cell', position } }
     return {
       characters: characters.map((character) => character.id === selection.id ? { ...character, position } : character),
       selection: none,
