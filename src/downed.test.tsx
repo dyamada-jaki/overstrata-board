@@ -138,6 +138,17 @@ describe('倒れた状態の切り替えと表示（spec.md 2.2・2.3 / #34・#5
       fireEvent.click(cell(1, 1))
     }
 
+    fireEvent.click(cell(2, 2))
+    fireEvent.click(cell(3, 1))
+    expect(pressed()).toEqual([cell(3, 1)])
+    expect(cell(2, 2)).toHaveAttribute('aria-pressed', 'false')
+    expect(cell(1, 1)).toHaveAccessibleName(`マス (1, 1) ${name}（味方・移動力1・倒れた状態）`)
+    expect(range()).toEqual([])
+    fireEvent.click(cell(3, 1))
+    expect(pressed()).toEqual([])
+    expect(range()).toEqual([])
+    fireEvent.click(cell(1, 1))
+
     fireEvent.click(cell(8, 8))
     expect(pressed()).toEqual([cell(8, 8)])
     expect(range()).toContain('マス (7, 8) 移動範囲')

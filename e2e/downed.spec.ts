@@ -51,6 +51,18 @@ test('倒れた状態に切り替えると見た目が変わって動かなく�
     await cell(page, 3, 3).click()
   }
 
+  await cell(page, 4, 3).click()
+  await cell(page, 5, 3).click()
+  await expect(cell(page, 4, 3)).toHaveAttribute('aria-pressed', 'false')
+  await expect(cell(page, 5, 3)).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { pressed: true })).toHaveCount(1)
+  await expect(cell(page, 3, 3)).toHaveAccessibleName('マス (3, 3) 味方1（味方・移動力5・倒れた状態）')
+  await expectNoRange(page)
+  await cell(page, 5, 3).click()
+  await expect(page.getByRole('button', { pressed: true })).toHaveCount(0)
+  await expectNoRange(page)
+  await cell(page, 3, 3).click()
+
   await cell(page, 8, 8).click()
   await expect(cell(page, 8, 8)).toHaveAttribute('aria-pressed', 'true')
   await expect(cell(page, 9, 8)).toHaveClass('board-cell board-cell-range')

@@ -85,6 +85,11 @@ describe('倒れた駒の移動とマス選択（spec.md 2.3 / #34・#50）', ()
     const deselected = tapPosition(next, position, size)
     expect(deselected).toEqual({ characters: state.characters, selection: { kind: 'none' } })
     expect(getSelectedMovementRange(deselected, size)).toEqual([])
+    const other = { x: 0, y: 9 }
+    const switched = tapPosition(next, other, size)
+    expect(switched).toEqual({ characters: state.characters, selection: { kind: 'cell', position: other } })
+    expect(getSelectedMovementRange(switched, size)).toEqual([])
+    expect(tapPosition(switched, other, size).selection).toEqual({ kind: 'none' })
   })
 
   it('倒れた駒を選択中でも、同じ駒で解除・別の駒へ切り替えはできる', () => {
