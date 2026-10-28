@@ -21,9 +21,10 @@ describe('倒れた状態の切り替え（spec.md 2.2 / #34）', () => {
     expect(downed.characters).toEqual(state.characters.map((c) => c.id === 'ally-1' ? { ...c, downed: true } : c))
     expect(downed).toMatchObject({ selection: state.selection, phase: state.phase, issued: state.issued, pendingIds: state.pendingIds })
     expect(find(state, 'ally-1').downed).toBe(false)
-    expect(getSelectedMovementRange(downed, size)).toEqual(getSelectedMovementRange(state, size))
+    expect(getSelectedMovementRange(downed, size)).toEqual([])
     const restored = toggleDowned(downed, 'ally-1')
     expect(restored.characters).toEqual(state.characters)
+    expect(getSelectedMovementRange(restored, size)).toEqual(getSelectedMovementRange(state, size))
   })
 
   it('未配置の駒も切り替えられ、存在しない id では何も変えない', () => {
@@ -49,11 +50,46 @@ describe('倒れた状態の切り替え（spec.md 2.2 / #34）', () => {
   })
 })
 
-describe('倒れた駒の移動（spec.md 2.3 / #34）', () => {
+describe('選択した駒の目安（spec.md 2.3 / #50）', () => {
+  it('通常なら位置・移動力・占有から求め、倒れた状態・未配置・解除では表示せず、復帰で再表示する', () => {
+    const prepared = prepareBattle('1', '1')!
+    const state: BattleState = {
+      ...prepared,
+      characters: prepared.characters.map((c) => ({ ...c, movement: 1, position: c.side === 'ally' ? { x: 0, y: 0 } : { x: 1, y: 0 } })),
+      selection: { kind: 'character', id: 'ally-1' },
+    }
+    const board = { width: 3, height: 3 }
+    // 角から距離1以内の3マスのうち、敵のいる(1,0)を除外（内部座標）。
+    const expected = [{ x: 0, y: 1 }, { x: 1, y: 1 }]
+    expect(getSelectedMovementRange(state, board)).toEqual(expected)
+    const downed = toggleDowned(state, 'ally-1')
+    expect(getSelectedMovementRange(downed, board)).toEqual([])
+    expect(getSelectedMovementRange(toggleDowned(downed, 'ally-1'), board)).toEqual(expected)
+    for (const current of [state, downed]) {
+      const unplaced = { ...current, characters: current.characters.map((c) => c.id === 'ally-1' ? { ...c, position: null } : c) }
+      expect(getSelectedMovementRange(unplaced, board)).toEqual([])
+      expect(getSelectedMovementRange({ ...current, selection: { kind: 'none' } }, board)).toEqual([])
+    }
+  })
+})
+
+describe('倒れた駒の移動とマス選択（spec.md 2.3 / #34・#50）', () => {
   // 味方1 (2, 2) の移動力5: (3, 2) は範囲内、(10, 10) は範囲外、(1, 1) は盤面の角。
-  it.each([[{ x: 2, y: 1 }, '範囲内'], [{ x: 9, y: 9 }, '範囲外'], [{ x: 0, y: 0 }, '盤面の角']])('配置済みで倒れた駒は空きマス %o（%s）へ動かず、選択も保つ', (position) => {
+  it.each([[{ x: 2, y: 1 }, '範囲内'], [{ x: 9, y: 9 }, '範囲外'], [{ x: 0, y: 0 }, '盤面の角']])('配置済みで倒れた駒は空きマス %o（%s）へ動かず、そのマスへ選択を切り替えて再タップで解除する', (position) => {
     const state = toggleDowned(select(battle(), 'ally-1'), 'ally-1')
-    expect(tapPosition(state, position, size)).toEqual(state)
+    const next = tapPosition(state, position, size)
+    expect(next).toEqual({ characters: state.characters, selection: { kind: 'cell', position } })
+    expect(next.characters).toBe(state.characters)
+    expect(state.selection).toEqual({ kind: 'character', id: 'ally-1' })
+    expect(getSelectedMovementRange(next, size)).toEqual([])
+    const deselected = tapPosition(next, position, size)
+    expect(deselected).toEqual({ characters: state.characters, selection: { kind: 'none' } })
+    expect(getSelectedMovementRange(deselected, size)).toEqual([])
+    const other = { x: 0, y: 9 }
+    const switched = tapPosition(next, other, size)
+    expect(switched).toEqual({ characters: state.characters, selection: { kind: 'cell', position: other } })
+    expect(getSelectedMovementRange(switched, size)).toEqual([])
+    expect(tapPosition(switched, other, size).selection).toEqual({ kind: 'none' })
   })
 
   it('倒れた駒を選択中でも、同じ駒で解除・別の駒へ切り替えはできる', () => {
@@ -69,7 +105,9 @@ describe('倒れた駒の移動（spec.md 2.3 / #34）', () => {
     expect(find(next, 'ally-2')).toMatchObject({ position: { x: 9, y: 9 }, downed: true })
     expect(next.selection).toEqual({ kind: 'none' })
     const reselected = select(next, 'ally-2')
-    expect(tapPosition(reselected, { x: 8, y: 9 }, size)).toEqual(reselected)
+    expect(tapPosition(reselected, { x: 8, y: 9 }, size)).toEqual({
+      characters: reselected.characters, selection: { kind: 'cell', position: { x: 8, y: 9 } },
+    })
   })
 
   it('通常に戻すと範囲外の空きマスへも動ける。倒れた駒のマスには他の駒を置けない', () => {
