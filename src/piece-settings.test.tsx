@@ -252,3 +252,18 @@ it.each(['Enter', ' '])('長押しを閉じた直後も%sで駒の通常の選�
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   } finally { vi.useRealTimers() }
 })
+
+it('長押しの待機中に準備をやり直して駒が消えたら、再準備した駒の設定を勝手に開かない', () => {
+  vi.useFakeTimers()
+  try {
+    prepare()
+    pointer(token('味方1'), 'pointerdown')
+    click('準備をやり直す')
+    click('やり直す')
+    act(() => vi.advanceTimersByTime(600))
+    fireEvent.change(screen.getByRole('textbox', { name: '味方の数' }), { target: { value: '1' } })
+    click('駒を用意する')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(token('味方1')).toHaveAttribute('aria-pressed', 'false')
+  } finally { vi.useRealTimers() }
+})
