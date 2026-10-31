@@ -96,3 +96,10 @@
 .board-token-downed {
   filter: grayscale(1) brightness(0.7);
 }
+
+/* 駒の長押しで iOS のメニューや文字選択を出さない（#45）。 */
+.board-cell[data-piece-id], .unplaced-token {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}

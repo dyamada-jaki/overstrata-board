@@ -46,8 +46,9 @@ jobs:
     permissions:
       contents: read
       actions: read
-    # #47: 並列4はTimeout増加で不採用。mainの27〜36分の変動も踏まえて60分を維持する。
-    timeout-minutes: 60
+    # #47: 並列4はTimeout増加で不採用。mainの27〜36分の変動も踏まえて60分を維持した。
+    # #45: 変異が865→1102件に増え、mainの35〜40分からの見積もり46〜51分が60分の70%を超えるため、1.5倍以上の80分にする。
+    timeout-minutes: 80
     env:
       STRYKER_CONCURRENCY: '2'
     steps:

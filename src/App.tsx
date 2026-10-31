@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Board } from './components/Board.tsx'
+import { PieceSettings } from './components/PieceSettings.tsx'
 import { pieceDetails, tokenClass } from './components/piece.ts'
+import { useLongPress } from './components/useLongPress.ts'
 import { pieceLimits } from './data/pieces.ts'
 import { boardSize } from './data/board.ts'
 import { movementSetting } from './data/movement.ts'
 import type { Character } from './domain/character.ts'
-import { addPieces, canConfirmAdditions, canEditMovement, confirmAdditions, getAdditionCapacity, removePiece, toggleDowned, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement, stepMovement } from './domain/preparation.ts'
-import { tapCharacter, tapPosition } from './domain/selection.ts'
+import { addPieces, canConfirmAdditions, canEditMovement, confirmAdditions, getAdditionCapacity, removePiece, toggleDowned, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement } from './domain/preparation.ts'
+import { selectCharacter, tapCharacter, tapPosition } from './domain/selection.ts'
 import './App.css'
 
 function CountInput({ side, value, onChange, autoFocus = false, maximum = pieceLimits.perSide, adding = false }: { side: '味方' | '敵'; value: string; onChange: (value: string) => void; autoFocus?: boolean; maximum?: number; adding?: boolean }) {
@@ -33,26 +35,26 @@ function CountInput({ side, value, onChange, autoFocus = false, maximum = pieceL
   )
 }
 
-function MovementSetting({ character, onChange }: { character: Character; onChange: (movement: number) => void }) {
-  const decrement = stepMovement(character.movement, -1)
-  const increment = stepMovement(character.movement, 1)
-  const name = `${character.name}の移動力`
-  return (
-    <div role="group" aria-label={name} className="movement-setting">
-      <p className="movement-setting-title">
-        <span className={tokenClass(character)} aria-hidden="true">{character.number}</span>
-        <span>{name}</span>
-      </p>
-      <div className="count-controls">
-        <button type="button" aria-label={`${name}を減らす`} disabled={decrement === null}
-          onClick={() => { if (decrement !== null) onChange(decrement) }}>−</button>
-        <output className="movement-value">{character.movement}</output>
-        <button type="button" aria-label={`${name}を増やす`} disabled={increment === null}
-          onClick={() => { if (increment !== null) onChange(increment) }}>＋</button>
-        <span>マス</span>
-      </div>
-    </div>
-  )
+/** 0/0 の案内。消えても表示領域の高さを残し、押している「＋」の位置を変えない（#45）。 */
+function CountGuidance({ visible }: { visible: boolean }) {
+  // 高さを保つため要素は残し、文だけを visibility で隠す（読み上げの対象からも外れる）。
+  return <p style={visible ? undefined : { visibility: 'hidden' }}>味方か敵を1体以上にしてください</p>
+}
+
+/** 「設定」から開くとき、選択中の駒が画面内にあればその近くに、なければボタンの近くに出す。 */
+function settingsAnchor(id: string, button: HTMLElement) {
+  const piece = document.querySelector<HTMLElement>(`[data-piece-id="${id}"]`)
+  const rect = piece?.getBoundingClientRect()
+  return piece && rect && rect.bottom > 0 && rect.top < window.innerHeight ? piece : button
+}
+
+const settingsHelp = '駒を長押し（PCは右クリック）か「設定」で、移動力・状態・削除を扱えます。'
+
+interface SettingsTarget {
+  readonly id: string
+  readonly anchor: HTMLElement
+  readonly returnFocus: HTMLElement
+  readonly focus: 'close' | 'delete'
 }
 
 function App() {
@@ -65,6 +67,7 @@ function App() {
   const [resetOpen, setResetOpen] = useState(false)
   const [deleting, setDeleting] = useState<Character | null>(null)
   const [focusCounts, setFocusCounts] = useState(false)
+  const [settings, setSettings] = useState<SettingsTarget | null>(null)
   const prepared = prepareBattle(allyCount, enemyCount)
   const addition = adding ? addPieces(battle, allyAddition, enemyAddition) : null
   const allyCapacity = getAdditionCapacity(battle, 'ally')
@@ -73,6 +76,13 @@ function App() {
   const { selection } = battle
   const selected = selection.kind === 'character'
     ? battle.characters.find((character) => character.id === selection.id) : undefined
+  const settingsCharacter = settings && battle.characters.find((character) => character.id === settings.id)
+  // 長押し・右クリック・「設定」で、その駒を選択して（選択中なら保って）設定を開く。
+  const openSettings = (id: string, anchor: HTMLElement, returnFocus: HTMLElement) => {
+    setBattle((current) => ({ ...current, ...selectCharacter(current, id) }))
+    setSettings({ id, anchor, returnFocus, focus: 'close' })
+  }
+  const tokenHandlers = useLongPress((id, element) => openSettings(id, element, element))
   const reset = () => {
     setBattle(createInitialBattle())
     setAllyCount('0')
@@ -94,8 +104,9 @@ function App() {
       <div className="battle-layout">
         <div>
           <Board size={boardSize} state={battle}
-            onTap={(position) => setBattle((current) => ({ ...current, ...tapPosition(current, position, boardSize) }))} />
-          <p className="legend"><span className="ally-label">● 味方</span> <span className="enemy-label">● 敵</span> 移動力の初期値は{movementSetting.initial}マス（準備中・追加分の確定前に駒を選ぶと変更できます）</p>
+            onTap={(position) => setBattle((current) => ({ ...current, ...tapPosition(current, position, boardSize) }))}
+            onOpenSettings={(id, element) => openSettings(id, element, element)} />
+          <p className="legend"><span className="ally-label">● 味方</span> <span className="enemy-label">● 敵</span> 移動力の初期値は{movementSetting.initial}マス（準備中・追加分の確定前に、駒の設定で変更できます）</p>
         </div>
         {battle.phase === 'counts' ? (
           <section aria-label="駒の数の指定" className="preparation-panel">
@@ -106,29 +117,26 @@ function App() {
                 <CountInput side="味方" value={allyCount} onChange={setAllyCount} autoFocus={focusCounts} />
                 <CountInput side="敵" value={enemyCount} onChange={setEnemyCount} />
               </div>
-              {areBothCountsZero(allyCount, enemyCount) && <p>味方か敵を1体以上にしてください</p>}
+              <CountGuidance visible={areBothCountsZero(allyCount, enemyCount)} />
               <button className="primary" type="submit" disabled={prepared === null}>駒を用意する</button>
             </form>
           </section>
         ) : (
           <section aria-label={battle.phase === 'preparing' ? '配置の準備' : '戦闘中'} className="preparation-panel">
-            <h2>{battle.phase === 'preparing' ? '駒を配置' : '準備完了'}</h2>
-            {battle.phase === 'preparing'
-              ? <p>一覧から駒を選び、盤面の空きマスに置いてください。確定するまで位置を修正できます。選んだ駒の移動力は −・＋ で変更できます。</p>
-              : <p>駒を選んで動かせます。移動範囲の外にも自由に動かせます。</p>}
-            {selected && <div className="selected-piece">
-              {canEditMovement(battle, selected.id)
-                ? <MovementSetting character={selected} onChange={(movement) => setBattle((current) => setMovement(current, selected.id, movement))} />
-                : <p className="selected-piece-name"><span className={tokenClass(selected)} aria-hidden="true">{selected.number}</span>{selected.name}</p>}
-              <p className="piece-status">状態：{selected.downed ? '倒れている' : '通常'}</p>
-              <div className="selected-piece-actions">
-                {/* 文言だけを変える同じボタンなので、切り替え後もフォーカスが残る。 */}
-                <button className="downed-toggle" type="button" onClick={() => setBattle((current) => toggleDowned(current, selected.id))}>
-                  {selected.downed ? '通常に戻す' : '倒れた状態にする'}
-                </button>
-                <button className="reset" type="button" onClick={(event) => { event.currentTarget.focus(); setDeleting(selected) }}>この駒を削除</button>
+            {/* 見出しの横に、選択の有無で高さを変えない「選択中」と「設定」を置く。選択で下の一覧がずれないようにする（#45）。 */}
+            <div className="panel-header">
+              <h2>{battle.phase === 'preparing' ? '駒を配置' : '準備完了'}</h2>
+              <div className="settings-bar">
+                <p className="selected-line">選択中：{selected
+                  ? <><span className={tokenClass(selected)} aria-hidden="true">{selected.number}</span>{selected.name}</>
+                  : 'なし'}</p>
+                <button type="button" disabled={!selected}
+                  onClick={(event) => { if (selected) openSettings(selected.id, settingsAnchor(selected.id, event.currentTarget), event.currentTarget) }}>設定</button>
               </div>
-            </div>}
+            </div>
+            {battle.phase === 'preparing'
+              ? <p>一覧から駒を選び、盤面の空きマスに置いてください。確定するまで位置を修正できます。{settingsHelp}</p>
+              : <p>駒を選んで動かせます。移動範囲の外にも自由に動かせます。{settingsHelp}</p>}
             {(battle.phase === 'preparing' || battle.pendingIds.length > 0) && <div role="group" aria-label="未配置の駒">
               <h3>未配置：{unplaced.length}体</h3>
               {unplaced.length === 0 ? <p>{battle.characters.length === 0
@@ -142,7 +150,8 @@ function App() {
                         <button key={character.id} type="button" className="unplaced-token"
                           aria-label={`未配置 ${character.name}（${pieceDetails(character)}）`}
                           aria-pressed={selection.kind === 'character' && selection.id === character.id}
-                          onClick={() => setBattle((current) => ({ ...current, ...tapCharacter(current, character.id) }))}>
+                          data-piece-id={character.id}
+                          {...tokenHandlers(character.id, () => setBattle((current) => ({ ...current, ...tapCharacter(current, character.id) })))}>
                           <span className={tokenClass(character)} aria-hidden="true">{character.number}</span>
                           <span>{character.name}</span>
                         </button>
@@ -168,7 +177,7 @@ function App() {
                   <CountInput side="味方" adding maximum={allyCapacity} value={allyAddition} onChange={setAllyAddition} />
                   <CountInput side="敵" adding maximum={enemyCapacity} value={enemyAddition} onChange={setEnemyAddition} />
                 </div>
-                {areBothCountsZero(allyAddition, enemyAddition) && <p>味方か敵を1体以上にしてください</p>}
+                <CountGuidance visible={areBothCountsZero(allyAddition, enemyAddition)} />
                 <div className="addition-actions">
                   <button type="button" onClick={() => setAdding(false)}>キャンセル</button>
                   <button className="primary" type="submit" disabled={addition === null}>追加する</button>
@@ -180,11 +189,22 @@ function App() {
           </section>
         )}
       </div>
+      {settings && settingsCharacter && !deleting && <PieceSettings character={settingsCharacter}
+        editable={canEditMovement(battle, settings.id)} anchor={settings.anchor} returnFocus={settings.returnFocus} initialFocus={settings.focus}
+        onMovement={(movement) => setBattle((current) => setMovement(current, settings.id, movement))}
+        onToggleDowned={() => setBattle((current) => toggleDowned(current, settings.id))}
+        onDelete={() => {
+          // 確認の取消では同じ駒のポップアップへ戻り、「この駒を削除」にフォーカスを置く。
+          setSettings({ ...settings, focus: 'delete' })
+          setDeleting(settingsCharacter)
+        }}
+        onClose={() => setSettings(null)} />}
       {resetOpen && battle.phase !== 'counts' && <ConfirmationDialog text={resetTexts[battle.phase]} onConfirm={reset} onCancel={() => setResetOpen(false)} />}
       {deleting && <ConfirmationDialog text={{ title: '駒を削除', body: `${deleting.name}を削除しますか？`, action: '削除する' }}
         onCancel={() => setDeleting(null)} onConfirm={() => {
           setBattle((current) => removePiece(current, deleting.id))
           setDeleting(null)
+          setSettings(null)
         }} />}
     </main>
   )

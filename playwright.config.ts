@@ -23,7 +23,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'chromium-mobile', use: { viewport: { width: 375, height: 667 } } },
+    // #45 の長押し（タッチ）を実ブラウザで確かめるため、スマホ幅はタッチを有効にする。
+    { name: 'chromium-mobile', use: { viewport: { width: 375, height: 667 }, hasTouch: true } },
     { name: 'chromium-desktop', use: { viewport: { width: 1280, height: 720 } } },
   ],
 })

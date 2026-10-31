@@ -1,6 +1,6 @@
 import { sampleCharacters } from '../data/characters.ts'
 import { getMovementRange } from './movement.ts'
-import { getSelectedMovementRange, tapPosition, type BoardState } from './selection.ts'
+import { getSelectedMovementRange, selectCharacter, tapPosition, type BoardState } from './selection.ts'
 
 // spec.md 2.2 のサンプルと同じ配置（内部座標）。
 const [ally1, ally2, enemy1] = sampleCharacters
@@ -55,6 +55,26 @@ describe('tapPosition（spec.md 2.1・2.3 の選択と移動）', () => {
   it('キャラ選択中に盤面外を指定しても、位置も選択も変えない', () => {
     const state = stateOf({ kind: 'character', id: 'ally-1' })
     expect(tapPosition(state, { x: 10, y: 0 }, size)).toEqual(state)
+  })
+})
+
+describe('selectCharacter（#45 長押し・右クリックで開くときの選択）', () => {
+  it.each([
+    { label: '未選択', selection: { kind: 'none' } as const },
+    { label: 'マス選択中', selection: { kind: 'cell', position: { x: 0, y: 0 } } as const },
+    { label: '別の駒を選択中', selection: { kind: 'character', id: 'enemy-1' } as const },
+  ])('$label なら、誰も動かさずその駒だけを選択する', ({ selection }) => {
+    expect(selectCharacter(stateOf(selection), 'ally-1')).toEqual({ characters, selection: { kind: 'character', id: 'ally-1' } })
+  })
+
+  it('選択中の同じ駒は解除せず保つ', () => {
+    const state = stateOf({ kind: 'character', id: 'ally-1' })
+    expect(selectCharacter(state, 'ally-1')).toEqual(state)
+  })
+
+  it('存在しない駒では選択を変えない', () => {
+    const state = stateOf({ kind: 'cell', position: { x: 0, y: 0 } })
+    expect(selectCharacter(state, 'enemy-9')).toEqual(state)
   })
 })
 
