@@ -71,11 +71,8 @@ export function PieceSettings({ character, editable, anchor, returnFocus, initia
         pressedOutside.current = false
         if (outside) close()
       }}
-      onContextMenu={(event) => {
-        if (event.target !== event.currentTarget) return
-        event.preventDefault()
-        close()
-      }}
+      // Android は長押しで contextmenu を出す。タイマーで開いた後に backdrop へ届くので、閉じずに既定のメニューだけ止める。
+      onContextMenu={(event) => { if (event.target === event.currentTarget) event.preventDefault() }}
       onKeyDown={(event) => {
         if (event.key !== 'Tab') return
         const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
