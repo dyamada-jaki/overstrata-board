@@ -24,8 +24,9 @@ export function tapCharacter(state: BoardState, id: string): BoardState {
 
 /** 長押し・右クリックで設定を開くときの選択。同じ駒なら保ち、解除しない（#45）。 */
 export function selectCharacter(state: BoardState, id: string): BoardState {
-  void id // 未実装の枠（#45 のテスト先行）
-  return state
+  if (!state.characters.some((character) => character.id === id)) return state
+  if (state.selection.kind === 'character' && state.selection.id === id) return state
+  return { characters: state.characters, selection: { kind: 'character', id } }
 }
 
 /** 空きマスで選択駒を配置/移動。配置済みで倒れた駒なら、駒を動かさずそのマスを選択する。 */

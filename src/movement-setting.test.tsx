@@ -42,7 +42,8 @@ describe('準備中の駒ごとの移動力（#37）', () => {
     expect(value('味方1')).toHaveTextContent(/^5$/)
     expect(within(setting('味方1')).queryByRole('textbox')).not.toBeInTheDocument()
     expect(within(setting('味方1')).queryByRole('spinbutton')).not.toBeInTheDocument()
-    expect(within(setting('味方1')).getByText('1')).toBeVisible() // 陣営色の丸の番号
+    // #45: 陣営色の丸の番号は、ポップアップの見出しで対象を示す。
+    expect(within(screen.getByRole('dialog', { name: '味方1の設定' })).getByText('1')).toBeVisible()
     fireEvent.click(plus('味方1'))
     expect(value('味方1')).toHaveTextContent(/^6$/)
     expect(token('味方1')).toHaveAccessibleName('未配置 味方1（味方・移動力6）')

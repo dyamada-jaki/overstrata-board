@@ -163,11 +163,12 @@ test('外側のタップ／クリックは閉じるだけで、駒の移動・�
   await prepare(page, '1', '0')
   await place(page, '味方1', 1, 1)
   await cell(page, 1, 1).click()
-  await button(page, '設定').click()
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await openByGesture(page, cell(page, 1, 1), testInfo.project.name)
   const dialog = popup(page, '味方1')
   await expect(dialog).toBeVisible()
   await expect(button(page, '閉じる')).toBeFocused()
-  // ポップアップから離れた空きマス（盤面の右上）を外側として押す。
+  // ポップアップから離れた、画面内の空きマス（盤面の右上）を外側として押す。
   const target = cell(page, 10, 1)
   const point = await center(target)
   const area = await box(dialog)
@@ -178,12 +179,14 @@ test('外側のタップ／クリックは閉じるだけで、駒の移動・�
   await expect(target).toHaveAccessibleName('マス (10, 1)')
   await expect(cell(page, 1, 1)).toHaveAccessibleName(/^マス \(1, 1\) 味方1（/)
   await expect(cell(page, 1, 1)).toHaveAttribute('aria-pressed', 'true')
-  await expect(button(page, '設定')).toBeFocused()
+  await expect(cell(page, 1, 1)).toBeFocused()
 
-  // 外側の位置にある「駒を増やす」も動作しない。
+  // 外側の位置にある「駒を増やす」も動作しない。「設定」から開くと、駒が画面外ならボタンの近くに出る。
   await button(page, '駒を増やす').scrollIntoViewIfNeeded()
   await button(page, '設定').click()
   await expect(dialog).toBeVisible()
+  await expect(button(page, '閉じる')).toBeFocused()
+  await expectInViewport(page, dialog)
   const addPoint = await center(button(page, '駒を増やす'))
   const addArea = await box(dialog)
   expect(addPoint.x < addArea.x || addPoint.x > addArea.x + addArea.width || addPoint.y < addArea.y || addPoint.y > addArea.y + addArea.height).toBe(true)
@@ -191,6 +194,7 @@ test('外側のタップ／クリックは閉じるだけで、駒の移動・�
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('group', { name: '駒の追加数' })).toHaveCount(0)
   await expect(cell(page, 1, 1)).toHaveAttribute('aria-pressed', 'true')
+  await expect(button(page, '設定')).toBeFocused()
 })
 
 test('ポップアップで移動力・状態・削除を扱い、削除の取消で同じ駒のポップアップへ戻る', async ({ page }, testInfo) => {
