@@ -4,6 +4,12 @@ const cell = (page: Page, x: number, y: number) => page.getByRole('button', { na
 const token = (page: Page, name: string) => page.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
 const pressed = (page: Page) => page.getByRole('button', { pressed: true })
 const range = (page: Page) => page.getByRole('button', { name: / 移動範囲$/ })
+// #45 で選択中の駒の設定はポップアップへ移った。「設定」で開き、背後を操作する前に「×」で閉じる。
+const openSettings = (page: Page) => page.getByRole('button', { name: '設定', exact: true }).click()
+const closeSettings = async (page: Page) => {
+  await page.getByRole('button', { name: '閉じる', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+}
 async function prepare(page: Page, ally: string, enemy: string) {
   await page.getByRole('textbox', { name: '味方の数' }).fill(ally)
   await page.getByRole('textbox', { name: '敵の数' }).fill(enemy)
@@ -92,6 +98,7 @@ test('準備中に選んだ駒の移動力を±で変えると範囲がすぐ変
   await place(page, '味方1', 1, 1)
   await place(page, '敵1', 2, 1)
   await cell(page, 1, 1).click()
+  await openSettings(page)
   const setting = page.getByRole('group', { name: '味方1の移動力' })
   await expect(setting.getByRole('status')).toHaveText('5')
   await expect(cell(page, 7, 1)).toHaveAccessibleName('マス (7, 1)')
@@ -110,11 +117,13 @@ test('準備中に選んだ駒の移動力を±で変えると範囲がすぐ変
   await expect(minus).toBeDisabled()
   await expect(range(page)).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width)
+  await closeSettings(page)
   await cell(page, 10, 10).click()
   await expect(cell(page, 10, 10)).toHaveAccessibleName('マス (10, 10) 味方1（味方・移動力0）')
   await page.getByRole('button', { name: '確定', exact: true }).click()
   await cell(page, 10, 10).click()
   await expect(cell(page, 10, 10)).toHaveAttribute('aria-pressed', 'true')
+  await openSettings(page)
   await expect(page.getByRole('group', { name: /の移動力$/ })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /の移動力を(?:増や|減ら)す$/ })).toHaveCount(0)
 })

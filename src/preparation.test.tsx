@@ -50,12 +50,12 @@ describe('数の指定（承認された入力仕様）', () => {
     expect(screen.getByRole('button', { name: '味方の数を減らす' })).toBeDisabled()
     click('味方の数を増やす')
     expect(field('味方')).toHaveValue('1')
-    expect(screen.queryByText('味方か敵を1体以上にしてください')).not.toBeInTheDocument()
+    expect(screen.getByText('味方か敵を1体以上にしてください')).not.toBeVisible() // #45: 表示領域を残して文だけ隠す
     expect(field('敵')).toHaveValue('0')
     click('味方の数を減らす')
     expect(field('味方')).toHaveValue('0')
     input('敵', '9')
-    expect(screen.queryByText('味方か敵を1体以上にしてください')).not.toBeInTheDocument()
+    expect(screen.getByText('味方か敵を1体以上にしてください')).not.toBeVisible() // #45: 表示領域を残して文だけ隠す
     click('敵の数を増やす')
     expect(field('敵')).toHaveValue('10')
     expect(screen.getByRole('button', { name: '敵の数を増やす' })).toBeDisabled()
@@ -78,7 +78,7 @@ describe('数の指定（承認された入力仕様）', () => {
     expect(field('味方')).not.toHaveAttribute('aria-invalid', 'true')
     expect(screen.queryByText('0〜10の整数で入力してください')).not.toBeInTheDocument()
     expect(field('味方')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
-    expect(screen.queryByText('味方か敵を1体以上にしてください')).not.toBeInTheDocument()
+    expect(screen.getByText('味方か敵を1体以上にしてください')).not.toBeVisible() // #45: 表示領域を残して文だけ隠す
     expect(screen.getByRole('button', { name: '駒を用意する' })).toBeEnabled()
   })
 

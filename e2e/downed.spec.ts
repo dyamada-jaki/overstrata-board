@@ -4,6 +4,12 @@ const button = (page: Page, name: string) => page.getByRole('button', { name, ex
 const cell = (page: Page, x: number, y: number) => page.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
 const token = (page: Page, name: string) => page.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
 const filterOf = (page: Page, x: number, y: number) => cell(page, x, y).locator('.board-token').evaluate((el) => getComputedStyle(el).filter)
+// #45 で選択中の駒の設定はポップアップへ移った。「設定」で開き、背後を操作する前に「×」で閉じる。
+const openSettings = (page: Page) => page.getByRole('button', { name: '設定', exact: true }).click()
+const closeSettings = async (page: Page) => {
+  await page.getByRole('button', { name: '閉じる', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+}
 const range = (page: Page) => page.getByRole('button', { name: / 移動範囲$/ })
 async function expectNoRange(page: Page) {
   await expect(range(page)).toHaveCount(0)
@@ -25,6 +31,7 @@ test('倒れた状態に切り替えると見た目が変わって動かなく�
   await cell(page, 3, 3).click()
   await expect(cell(page, 4, 3)).toHaveClass('board-cell board-cell-range')
   const normalLabels = await range(page).evaluateAll((buttons) => buttons.map((el) => el.getAttribute('aria-label')))
+  await openSettings(page)
   await button(page, '倒れた状態にする').click()
   await expect(button(page, '通常に戻す')).toBeFocused()
   await expect(page.getByText('状態：倒れている')).toBeVisible()
@@ -34,6 +41,7 @@ test('倒れた状態に切り替えると見た目が変わって動かなく�
   expect(await filterOf(page, 8, 8)).toBe(normal)
   await expectNoRange(page)
   await testInfo.attach('倒れた状態の味方1を選択中', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+  await closeSettings(page)
 
   // 範囲内・範囲外とも、位置や状態を保って空きマスへ選択を切り替える。
   for (const [x, y] of [[4, 3], [10, 10]] as const) {
@@ -76,12 +84,14 @@ test('倒れた状態に切り替えると見た目が変わって動かなく�
   await cell(page, 3, 3).click()
   await expectNoRange(page)
 
+  await openSettings(page)
   await button(page, '通常に戻す').click()
   await expect(button(page, '倒れた状態にする')).toBeFocused()
   expect(await filterOf(page, 3, 3)).toBe(normal)
   await expect(range(page)).toHaveCount(normalLabels.length)
   expect(await range(page).evaluateAll((buttons) => buttons.map((el) => el.getAttribute('aria-label')))).toEqual(normalLabels)
   await expect(cell(page, 4, 3)).toHaveClass('board-cell board-cell-range')
+  await closeSettings(page)
   await cell(page, 10, 10).click()
   await expect(cell(page, 10, 10)).toHaveAccessibleName('マス (10, 10) 味方1（味方・移動力5）')
   await expect(page.getByRole('button', { pressed: true })).toHaveCount(0)
@@ -94,11 +104,13 @@ test('未配置では状態を問わず目安がなく、倒れたまま初回�
   await button(page, '駒を用意する').click()
   await token(page, '味方1').click()
   await expectNoRange(page)
+  await openSettings(page)
   await button(page, '倒れた状態にする').click()
   await expectNoRange(page)
   await button(page, '通常に戻す').click()
   await expectNoRange(page)
   await button(page, '倒れた状態にする').click()
+  await closeSettings(page)
   await cell(page, 3, 3).click()
   await expect(cell(page, 3, 3)).toHaveAccessibleName('マス (3, 3) 味方1（味方・移動力5・倒れた状態）')
   await expect(page.getByRole('button', { pressed: true })).toHaveCount(0)
@@ -115,8 +127,10 @@ test('未配置では状態を問わず目安がなく、倒れたまま初回�
   await expect(page.getByRole('button', { pressed: true })).toHaveCount(0)
   await expectNoRange(page)
   await cell(page, 3, 3).click()
+  await openSettings(page)
   await button(page, '通常に戻す').click()
   await expect(cell(page, 4, 3)).toHaveClass('board-cell board-cell-range')
+  await closeSettings(page)
   await cell(page, 4, 3).click()
   await expect(cell(page, 4, 3)).toHaveAccessibleName('マス (4, 3) 味方1（味方・移動力5）')
   await expect(page.getByRole('button', { pressed: true })).toHaveCount(0)
