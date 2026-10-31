@@ -113,7 +113,8 @@ export function PieceSettings({ character, editable, anchor, returnFocus, initia
           <button className="downed-toggle" type="button" onClick={onToggleDowned}>
             {character.downed ? '通常に戻す' : '倒れた状態にする'}
           </button>
-          <button ref={deleteRef} className="reset" type="button" onClick={(event) => { event.currentTarget.focus(); onDelete() }}>この駒を削除</button>
+          {/* 確認の取消後は、開き直したポップアップが initialFocus で「この駒を削除」へフォーカスを戻す。 */}
+          <button ref={deleteRef} className="reset" type="button" onClick={onDelete}>この駒を削除</button>
         </div>
       </div>
     </dialog>
