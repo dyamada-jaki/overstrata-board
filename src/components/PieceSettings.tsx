@@ -33,7 +33,7 @@ export function PieceSettings({ character, target, children, onClose, deleting =
   }, [target])
   const outside = (x: number, y: number) => {
     const rect = ref.current!.getBoundingClientRect()
-    return x < rect.left || x > rect.right || y < rect.top || y > rect.bottom
+    return x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom
   }
   return <dialog ref={ref} className="piece-settings selected-piece" aria-labelledby="piece-settings-title"
     onCancel={(event) => { event.preventDefault(); onClose() }}
