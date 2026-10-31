@@ -160,6 +160,16 @@ describe('長押しで開く（#45。時刻だけ偽のタイマーにする）'
     expect(popup('味方1')).toBeInTheDocument()
   })
 
+  it('長押しで開いた後に Android が出す contextmenu（backdrop に届く）では閉じず、既定のメニューも出さない', () => {
+    render(<App />)
+    prepare('1', '0')
+    touch(token('味方1'), 'pointerDown')
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(fireEvent.contextMenu(popup('味方1'))).toBe(false)
+    expect(popup('味方1')).toBeInTheDocument()
+    expect(token('味方1')).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('500ms前に指を離せば通常のタップとして選択し、開かない', () => {
     render(<App />)
     prepare('1', '0')
