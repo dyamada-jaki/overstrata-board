@@ -43,6 +43,7 @@ it('右クリックは対象を選択し、閉じても選択を保ち同じ対�
 it('設定ボタンとキーボードから開き、Tabは設定内を循環する', () => {
   prepare()
   fireEvent.click(token('味方1'))
+  expect(screen.getByText('味方1・移動力5・通常')).toBeVisible()
   const opener = screen.getByRole('button', { name: '設定' })
   opener.focus()
   fireEvent.click(opener)
