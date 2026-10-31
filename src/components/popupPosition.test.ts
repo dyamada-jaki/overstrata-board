@@ -15,6 +15,7 @@ it.each([
   [{ left: 79, top: 100, bottom: 140 }, { left: 79, top: 148 }],
   [{ left: 30, top: -400, bottom: -360 }, { left: 30, top: 8 }],
   [{ left: 30, top: 1000, bottom: 1040 }, { left: 30, top: 409 }],
+  [{ left: 30, top: 675, bottom: 715 }, { left: 30, top: 409 }],
 ])('画面端と上下の空きに従って配置する: %j', (anchor, expected) => {
   expect(getPopupPosition(anchor, popup, viewport)).toEqual(expected)
 })
@@ -22,6 +23,11 @@ it.each([
 it('上下とも空きが足りない場合も画面内へ収める', () => {
   expect(getPopupPosition({ left: 30, top: 100, bottom: 140 }, popup, { width: 375, height: 300 }))
     .toEqual({ left: 30, top: 42 })
+})
+
+it('上側の余白が8pxちょうどなら上に表示する', () => {
+  expect(getPopupPosition({ left: 30, top: 266, bottom: 306 }, popup, { width: 375, height: 400 }))
+    .toEqual({ left: 30, top: 8 })
 })
 
 it('画面より高い内容は余白を残した内部スクロール領域の位置に置く', () => {
