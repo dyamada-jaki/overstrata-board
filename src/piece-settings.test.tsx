@@ -134,7 +134,7 @@ function pressPopup(x: number, y: number, endX = x, endY = y) {
   fireEvent.click(popup(), { clientX: endX, clientY: endY })
 }
 
-it.each([[99, 250], [389, 250], [250, 99], [250, 401]])('外側(%i,%i)で閉じ、選択を保つ', (x, y) => {
+it.each([[99, 250], [388, 250], [250, 99], [250, 400]])('外側(%i,%i)で閉じ、選択を保つ', (x, y) => {
   prepare()
   fireEvent.contextMenu(token('味方1'))
   try {
@@ -150,7 +150,8 @@ it('枠を含む内側や、内外へドラッグしただけでは閉じない'
   fireEvent.contextMenu(token('味方1'))
   try {
     popupFrame()
-    for (const [x, y] of [[100, 250], [388, 250], [250, 100], [250, 400], [250, 250]]) {
+    // 矩形は左・上を含み、右・下の外周は次のピクセル側になる。
+    for (const [x, y] of [[100, 250], [387, 250], [250, 100], [250, 399], [250, 250]]) {
       pressPopup(x!, y!)
       expect(popup()).toBeVisible()
     }
