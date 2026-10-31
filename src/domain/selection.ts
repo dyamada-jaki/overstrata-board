@@ -15,6 +15,11 @@ export interface BoardState {
 const none: Selection = { kind: 'none' }
 const isSame = (a: Position, b: Position): boolean => a.x === b.x && a.y === b.y
 
+/** 設定を開く対象の選択（実装前のテスト用の枠）。 */
+export function selectCharacter(state: BoardState, _id: string): BoardState {
+  return state
+}
+
 /** 未配置・配置済み共通の選択。別の駒では選択だけを切り替える。 */
 export function tapCharacter(state: BoardState, id: string): BoardState {
   if (!state.characters.some((character) => character.id === id)) return state
