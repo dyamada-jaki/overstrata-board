@@ -55,6 +55,8 @@ export function PieceButton({ character, onOpenSettings, onClick, children, ...p
       if (!suppressClick.current) onOpenSettings(character, event.currentTarget)
     }}
     onKeyDown={(event) => {
+      // 長押し後の互換clickだけを抑え、復帰後の通常のキーボード選択は受け付ける。
+      if (event.key === 'Enter' || event.key === ' ') suppressClick.current = false
       if (character && onOpenSettings && (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))) {
         event.preventDefault()
         onOpenSettings(character, event.currentTarget)

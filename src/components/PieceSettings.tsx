@@ -39,8 +39,10 @@ export function PieceSettings({ character, target, children, onClose, deleting =
     onCancel={(event) => { event.preventDefault(); onClose() }}
     onPointerDown={(event) => { outsidePress.current = outside(event.clientX, event.clientY) }}
     onPointerUp={(event) => { outsidePress.current = outsidePress.current && outside(event.clientX, event.clientY) }}
+    onPointerCancel={() => { outsidePress.current = false }}
     onClick={(event) => {
-      if (!outside(event.clientX, event.clientY)) return
+      // キーボード由来の内側のclickは座標(0,0)でも外側の操作ではない。
+      if (event.target !== event.currentTarget || !outside(event.clientX, event.clientY)) return
       event.preventDefault()
       event.stopPropagation()
       if (outsidePress.current) onClose()
