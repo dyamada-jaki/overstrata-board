@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
 
-const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
+const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
 const token = (name: string) => screen.getByRole('button', { name: new RegExp(`^未配置 ${name}（`) })
 const popup = () => screen.getByRole('dialog', { name: /の設定$/ })
 function prepare() {
@@ -12,13 +12,13 @@ function prepare() {
 
 it('通常の選択・切替・解除は設定を開かず、設定ボタンは常設で未選択時だけ無効', () => {
   prepare()
-  expect(screen.getByRole('button', { name: '設定', exact: true })).toBeDisabled()
+  expect(screen.getByRole('button', { name: '設定' })).toBeDisabled()
   for (const name of ['味方1', '味方2', '味方2']) {
     fireEvent.click(token(name))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: /の移動力$/ })).not.toBeInTheDocument()
   }
-  expect(screen.getByRole('button', { name: '設定', exact: true })).toBeDisabled()
+  expect(screen.getByRole('button', { name: '設定' })).toBeDisabled()
 })
 
 it('右クリックは対象を選択し、閉じても選択を保ち同じ対象で再度開ける', () => {
@@ -35,7 +35,7 @@ it('右クリックは対象を選択し、閉じても選択を保ち同じ対�
   expect(token('味方2')).toHaveAttribute('aria-pressed', 'true')
   fireEvent.contextMenu(token('味方2'))
   expect(token('味方2')).toHaveAttribute('aria-pressed', 'true')
-  fireEvent.cancel(popup())
+  fireEvent(popup(), new Event('cancel', { cancelable: true }))
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(token('味方2')).toHaveFocus()
 })
@@ -43,7 +43,7 @@ it('右クリックは対象を選択し、閉じても選択を保ち同じ対�
 it('設定ボタンとキーボードから開き、Tabは設定内を循環する', () => {
   prepare()
   fireEvent.click(token('味方1'))
-  const opener = screen.getByRole('button', { name: '設定', exact: true })
+  const opener = screen.getByRole('button', { name: '設定' })
   opener.focus()
   fireEvent.click(opener)
   fireEvent.keyDown(screen.getByRole('button', { name: '設定を閉じる' }), { key: 'Tab', shiftKey: true })

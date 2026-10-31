@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
+import { clickWithSettings as click, openSettings, selectAndOpen } from './test/piece-settings.ts'
 
-const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
 const token = (name: string) => {
   const group = screen.queryByRole('group', { name: '未配置の駒' })
@@ -14,7 +14,7 @@ const pending = () => within(screen.getByRole('group', { name: '未配置の駒'
 const pressed = () => screen.queryAllByRole('button', { pressed: true })
 const range = () => screen.queryAllByRole('button', { name: / 移動範囲$/ })
 const settings = () => screen.queryAllByRole('group', { name: /の移動力$/ })
-const value = (name: string) => within(screen.getByRole('group', { name: `${name}の移動力` })).getByRole('status')
+const value = (name: string) => { openSettings(); return within(screen.getByRole('group', { name: `${name}の移動力` })).getByRole('status') }
 function prepare(ally = '0', enemy = '1') {
   input('味方の数', ally)
   input('敵の数', enemy)
@@ -28,13 +28,13 @@ function add(ally = '0', enemy = '1') {
   expect(screen.queryByRole('group', { name: '駒の追加数' })).not.toBeInTheDocument()
 }
 function place(name: string, x: number, y: number) {
-  fireEvent.click(token(name))
-  fireEvent.click(cell(x, y))
+  selectAndOpen(token(name))
+  selectAndOpen(cell(x, y))
 }
 function remove(name: string) {
-  fireEvent.click(token(name))
+  selectAndOpen(token(name))
   fireEvent.click(screen.getByText('この駒を削除', { selector: 'button' }))
-  const dialog = screen.getByRole('dialog')
+  const dialog = screen.getByRole('dialog', { name: /^(駒を削除|準備をやり直す|新しい戦闘を始める)$/ })
   expect(dialog).toHaveTextContent(`${name}を削除しますか？`)
   fireEvent.click(within(dialog).getByRole('button', { name: '削除する' }))
 }
@@ -44,7 +44,7 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     render(<App />)
     prepare('0', '3')
     place('敵1', 1, 1)
-    fireEvent.click(token('敵1'))
+    selectAndOpen(token('敵1'))
     click('敵1の移動力を減らす')
     click('駒を増やす')
     expect(within(form()).getByRole('textbox', { name: '味方の追加数' })).toHaveValue('0')
@@ -68,7 +68,7 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     expect(pressed()).toEqual([cell(1, 1)])
     expect(value('敵1')).toHaveTextContent(/^4$/)
     place('敵4', 2, 2)
-    fireEvent.click(token('敵4'))
+    selectAndOpen(token('敵4'))
     click('敵4の移動力を増やす')
     expect(cell(2, 2)).toHaveAccessibleName('マス (2, 2) 敵4（敵・移動力6）')
   })
@@ -106,13 +106,13 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     place('味方1', 5, 5)
     place('敵1', 1, 1)
     for (const name of ['敵2', '敵1']) {
-      fireEvent.click(token(name))
+      selectAndOpen(token(name))
       const selected = pressed()
       const before = range().map((el) => el.getAttribute('aria-label'))
       click('この駒を削除')
       expect(screen.getByRole('button', { name: 'キャンセル' })).toHaveFocus()
       click('キャンセル')
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: '駒を削除' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'この駒を削除' })).toHaveFocus()
       expect(pressed()).toEqual(selected)
       expect(range().map((el) => el.getAttribute('aria-label'))).toEqual(before)
@@ -135,7 +135,7 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     prepare()
     if (adding) click('駒を増やす')
     remove('敵1')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '駒を削除' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '駒を増やす' })).not.toHaveFocus()
     if (adding) expect(screen.getByRole('textbox', { name: '味方の追加数' })).not.toHaveFocus()
     else expect(screen.queryByRole('textbox', { name: '味方の追加数' })).not.toBeInTheDocument()
@@ -162,22 +162,22 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
   it('戦闘中の追加分は配置後も±0〜9で設定でき、再追加とまとめて明示確定。既存の駒は編集不可', () => {
     render(<App />)
     prepare('1', '0')
-    fireEvent.click(token('味方1'))
+    selectAndOpen(token('味方1'))
     click('味方1の移動力を減らす')
-    fireEvent.click(cell(1, 1))
+    selectAndOpen(cell(1, 1))
     click('確定')
-    fireEvent.click(token('味方1'))
+    selectAndOpen(token('味方1'))
     add()
     expect(pressed()).toEqual([cell(1, 1)])
     expect(settings()).toEqual([])
     expect(screen.getByRole('button', { name: '追加分を確定' })).toBeDisabled()
-    fireEvent.click(token('敵1'))
+    selectAndOpen(token('敵1'))
     expect(value('敵1')).toHaveTextContent(/^5$/)
     for (let i = 0; i < 5; i += 1) click('敵1の移動力を減らす')
     expect(value('敵1')).toHaveTextContent(/^0$/)
     expect(screen.getByRole('button', { name: '敵1の移動力を減らす' })).toBeDisabled()
-    fireEvent.click(cell(2, 1))
-    fireEvent.click(token('敵1'))
+    selectAndOpen(cell(2, 1))
+    selectAndOpen(token('敵1'))
     expect(value('敵1')).toHaveTextContent(/^0$/)
     expect(range()).toEqual([])
     for (let i = 0; i < 9; i += 1) click('敵1の移動力を増やす')
@@ -190,21 +190,21 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     expect(value('敵1')).toHaveTextContent(/^9$/)
     expect(screen.getByRole('button', { name: '追加分を確定' })).toBeDisabled()
     place('敵2', 3, 1)
-    fireEvent.click(token('味方1'))
+    selectAndOpen(token('味方1'))
     expect(settings()).toEqual([])
     expect(cell(1, 1)).toHaveAccessibleName('マス (1, 1) 味方1（味方・移動力4）')
-    fireEvent.click(token('敵1'))
+    selectAndOpen(token('敵1'))
     click('追加分を確定')
     expect(pressed()).toEqual([])
     expect(range()).toEqual([])
     expect(screen.queryByRole('button', { name: '追加分を確定' })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: '未配置の駒' })).not.toBeInTheDocument()
     for (const name of ['敵1', '敵2']) {
-      fireEvent.click(token(name))
+      selectAndOpen(token(name))
       expect(settings()).toEqual([])
     }
     expect(cell(2, 1)).toHaveAccessibleName('マス (2, 1) 敵1（敵・移動力9）')
-    fireEvent.click(cell(10, 10)) // 敵2の範囲外へ移動してもよい
+    selectAndOpen(cell(10, 10)) // 敵2の範囲外へ移動してもよい
     expect(cell(10, 10)).toHaveAccessibleName('マス (10, 10) 敵2（敵・移動力5）')
   })
 
@@ -240,7 +240,7 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     click('確定')
     add()
     place('敵1', 2, 1)
-    fireEvent.click(cell(10, 10))
+    selectAndOpen(cell(10, 10))
     expect(pressed()).toEqual([cell(10, 10)])
     click('追加分を確定')
     expect(pressed()).toEqual([])
@@ -252,7 +252,7 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     click('駒を増やす')
     input('敵の追加数', '2')
     click('準備をやり直す')
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'キャンセル' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: /^(駒を削除|準備をやり直す|新しい戦闘を始める)$/ })).getByRole('button', { name: 'キャンセル' }))
     expect(screen.getByRole('textbox', { name: '敵の追加数' })).toHaveValue('2')
     click('準備をやり直す')
     click('やり直す')
