@@ -82,7 +82,7 @@ describe('準備中/戦闘途中の追加・削除（#33）', () => {
     expect(screen.getByRole('textbox', { name: '敵の追加数' })).toHaveAccessibleDescription('0〜2体の整数を入力してください。')
     expect(screen.getByRole('button', { name: '敵の追加数を減らす' })).toBeDisabled()
     input('味方の追加数', '1')
-    expect(within(form()).queryByText('味方か敵を1体以上にしてください')).not.toBeInTheDocument()
+    expect(within(form()).queryByText('味方か敵を1体以上にしてください')).not.toBeVisible()
     input('敵の追加数', invalid)
     expect(screen.getByRole('textbox', { name: '敵の追加数' })).toHaveAccessibleDescription('0〜2の整数で入力してください')
     expect(screen.getByRole('button', { name: '敵の追加数を増やす' })).toBeDisabled()

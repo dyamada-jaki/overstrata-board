@@ -62,9 +62,8 @@ test('選択と右クリック・設定開閉で位置を保ち、外側の操�
   await token(page, '味方2').click()
   await token(page, '味方1').click()
   expect(await box(token(page, '味方1'))).toEqual(before)
-  for (const target of [token(page, '味方2'), button(page, '駒を増やす')]) {
-    await target.scrollIntoViewIfNeeded()
-    const targetBox = await box(target)
+  for (const targetKind of ['token', 'control']) {
+    await page.evaluate(() => scrollTo(0, document.body.scrollHeight))
     const anchor = await box(token(page, '味方1'))
     const board = await box(page.getByRole('group', { name: '戦闘盤面', includeHidden: true }))
     const scroll = await page.evaluate(() => scrollY)
@@ -75,9 +74,21 @@ test('選択と右クリック・設定開閉で位置を保ち、外側の操�
     expect(await box(page.getByRole('group', { name: '戦闘盤面', includeHidden: true }))).toEqual(board)
     expect(await page.evaluate(() => scrollY)).toBe(scroll)
     // 背景の部品がpopupに重ならない場所を使用。
-    const point = { x: targetBox.x + targetBox.width - 2, y: targetBox.y + targetBox.height - 2 }
     const dialogBox = await box(popup(page))
-    expect(point.y < dialogBox.y || point.y > dialogBox.y + dialogBox.height || point.x < dialogBox.x || point.x > dialogBox.x + dialogBox.width).toBe(true)
+    const candidates = targetKind === 'token' ? [token(page, '味方2')]
+      : [button(page, '設定'), button(page, '駒を増やす'), button(page, '準備をやり直す')]
+    let point: { x: number; y: number } | undefined
+    for (const candidate of candidates) {
+      const rect = await box(candidate)
+      const p = { x: rect.x + rect.width - 2, y: rect.y + rect.height - 2 }
+      if (p.y >= 0 && p.y < page.viewportSize()!.height
+        && (p.y < dialogBox.y || p.y > dialogBox.y + dialogBox.height || p.x < dialogBox.x || p.x > dialogBox.x + dialogBox.width)) {
+        point = p
+        break
+      }
+    }
+    expect(point, 'popupと重ならない背景の駒/操作ボタンを実座標で押す').toBeDefined()
+    if (!point) throw new Error('外側の操作対象が見つからない')
     await page.mouse.click(point.x, point.y)
     await expect(popup(page)).toHaveCount(0)
     await expect(token(page, '味方1')).toHaveAttribute('aria-pressed', 'true')
@@ -127,7 +138,8 @@ test('画面端の配置済み駒でも設定が収まり、外の空きマス�
   const empty = await box(cell(page, 2, 1))
   await page.mouse.click(empty.x + empty.width / 2, empty.y + empty.height / 2)
   await expect(cell(page, 10, 10)).toHaveAccessibleName(/味方4/)
-  await expect(cell(page, 2, 1)).toHaveAccessibleName('マス (2, 1) 移動範囲')
+  // (10,10)から(2,1)は移動力5の範囲外。選択は味方4のまま。
+  await expect(cell(page, 2, 1)).toHaveAccessibleName('マス (2, 1)')
   await expect(cell(page, 10, 10)).toHaveAttribute('aria-pressed', 'true')
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()!.width)
 })
@@ -157,6 +169,12 @@ test('実タッチの長押しで開き、短いタップ・10px超の移動・�
   await expect(popup(page)).toHaveAccessibleName('味方2の設定')
   await expect(token(page, '味方2')).toHaveAttribute('aria-pressed', 'true')
   await testInfo.attach('タッチ長押し', { body: await page.screenshot(), contentType: 'image/png' })
+  const other = await box(token(page, '味方1'))
+  await page.touchscreen.tap(other.x + other.width / 2, other.y + other.height / 2)
+  await expect(popup(page)).toHaveCount(0)
+  await expect(token(page, '味方2')).toHaveAttribute('aria-pressed', 'true')
+  await expect(token(page, '味方1')).toHaveAttribute('aria-pressed', 'false')
+  await button(page, '設定').tap()
   await button(page, '設定を閉じる').tap()
   const point = await start()
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: point.x + 11, y: point.y }] })

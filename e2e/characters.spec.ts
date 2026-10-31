@@ -198,7 +198,7 @@ test('確認中のキーボードとポインターは背後へ届かず、取�
     const opener = page.getByRole('button', { name: phase === 'preparing' ? '準備をやり直す' : '新しい戦闘を始める' })
     for (const cancel of ['キャンセル', 'Escape']) {
       await opener.click()
-      const dialog = page.getByRole('dialog', { name: '駒を削除' })
+      const dialog = page.getByRole('dialog', { name: phase === 'preparing' ? '準備をやり直す' : '新しい戦闘を始める' })
       await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeFocused()
       await expect(dialog).toHaveJSProperty('open', true)
       // show() や open 属性だけではモーダルにも inert にもならない。

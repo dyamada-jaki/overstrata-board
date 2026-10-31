@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
 
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
@@ -75,4 +75,47 @@ it('削除の取消は同じ設定と変更済みの移動力・状態を保ち�
   expect(screen.queryByRole('button', { name: /^未配置 味方1/ })).not.toBeInTheDocument()
   expect(token('味方2')).toBeVisible()
   expect(document.body).toHaveFocus()
+})
+
+function pointer(target: HTMLElement, type: string, props: Record<string, unknown> = {}) {
+  fireEvent(target, Object.assign(new Event(type, { bubbles: true }), {
+    pointerType: 'touch', isPrimary: true, clientX: 20, clientY: 20, ...props,
+  }))
+}
+
+it('499msでは開かず500msで選択して開く。10px以内の移動を許し、直後のclickで解除しない', () => {
+  vi.useFakeTimers()
+  try {
+    prepare()
+    pointer(token('味方1'), 'pointerdown')
+    pointer(token('味方1'), 'pointermove', { clientX: 26, clientY: 28 }) // 距離10
+    act(() => vi.advanceTimersByTime(499))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(1))
+    expect(popup()).toHaveAccessibleName('味方1の設定')
+    pointer(token('味方1'), 'pointerup')
+    fireEvent.click(token('味方1'))
+    expect(token('味方1')).toHaveAttribute('aria-pressed', 'true')
+    click('設定を閉じる')
+    // 新しい通常タップは抑制し続けない。
+    pointer(token('味方1'), 'pointerdown')
+    pointer(token('味方1'), 'pointerup')
+    fireEvent.click(token('味方1'))
+    expect(token('味方1')).toHaveAttribute('aria-pressed', 'false')
+  } finally { vi.useRealTimers() }
+})
+
+it.each(['move', 'up', 'cancel', 'scroll', 'mouse', 'secondary'] as const)('%sでは長押しを開かない', (operation) => {
+  vi.useFakeTimers()
+  try {
+    prepare()
+    pointer(token('味方1'), 'pointerdown', operation === 'mouse' ? { pointerType: 'mouse' }
+      : operation === 'secondary' ? { isPrimary: false } : {})
+    if (operation === 'move') pointer(token('味方1'), 'pointermove', { clientX: 31 })
+    if (operation === 'up') pointer(token('味方1'), 'pointerup')
+    if (operation === 'cancel') pointer(token('味方1'), 'pointercancel')
+    if (operation === 'scroll') fireEvent.scroll(window)
+    act(() => vi.advanceTimersByTime(600))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  } finally { vi.useRealTimers() }
 })

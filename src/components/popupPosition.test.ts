@@ -13,6 +13,8 @@ it.each([
   [{ left: 350, top: 100, bottom: 140 }, { left: 79, top: 148 }],
   [{ left: 8, top: 100, bottom: 140 }, { left: 8, top: 148 }],
   [{ left: 79, top: 100, bottom: 140 }, { left: 79, top: 148 }],
+  [{ left: 30, top: -400, bottom: -360 }, { left: 30, top: 8 }],
+  [{ left: 30, top: 1000, bottom: 1040 }, { left: 30, top: 409 }],
 ])('画面端と上下の空きに従って配置する: %j', (anchor, expected) => {
   expect(getPopupPosition(anchor, popup, viewport)).toEqual(expected)
 })

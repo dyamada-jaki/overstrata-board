@@ -2,14 +2,16 @@ import { formatPosition, getBoardPositions } from '../domain/board.ts'
 import type { BoardSize, Position } from '../domain/movement.ts'
 import { getSelectedMovementRange, type BoardState } from '../domain/selection.ts'
 import { pieceDetails, tokenClass } from './piece.ts'
+import { PieceButton, type OpenPieceSettings } from './PieceButton.tsx'
 import './Board.css'
 
 const keyOf = (position: Position) => `${position.x},${position.y}`
 
-export function Board({ size, state, onTap }: {
+export function Board({ size, state, onTap, onOpenSettings }: {
   size: BoardSize
   state: BoardState
   onTap: (position: Position) => void
+  onOpenSettings?: OpenPieceSettings
 }) {
   const { selection } = state
   const occupants = new Map(state.characters.flatMap((character) => character.position === null
@@ -40,11 +42,11 @@ export function Board({ size, state, onTap }: {
             inRange && '移動範囲',
           ].filter(Boolean).join(' ')
           return (
-            <button key={key} type="button"
+            <PieceButton key={key} type="button" character={occupant} onOpenSettings={onOpenSettings}
               className={inRange ? 'board-cell board-cell-range' : 'board-cell'}
               aria-label={label} aria-pressed={selected} onClick={() => onTap(position)}>
               {occupant && <span className={tokenClass(occupant)}>{occupant.number}</span>}
-            </button>
+            </PieceButton>
           )
         })}
       </div>
