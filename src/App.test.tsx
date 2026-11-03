@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
+import { setCount } from './test/counts.ts'
 import { Board } from './components/Board.tsx'
 import { formatPosition } from './domain/board.ts'
 import { getMovementRange, type Position } from './domain/movement.ts'
@@ -124,7 +125,7 @@ describe('App', () => {
 function renderPreparedSamples() {
   render(<App />)
   for (const side of ['味方', '敵']) {
-    fireEvent.change(screen.getByRole('textbox', { name: `${side}の数` }), { target: { value: '2' } })
+    setCount(`${side}の数`, 2)
   }
   fireEvent.click(screen.getByRole('button', { name: '駒を用意する' }))
   for (const [name, position] of [

@@ -14,8 +14,8 @@ export default {
     'src/data/board.ts', // 盤面サイズ
     'src/components/Board.tsx', // マス・キャラの選択表示、移動範囲の表示、座標ラベル（spec.md 2.1・2.3）
     'src/components/piece.ts', // 駒の丸のクラスとアクセシブル名。倒れた状態の表示の分岐（spec.md 2.2 / #34）
-    'src/domain/preparation.ts', // 数入力の境界・未配置の生成・確定の条件（spec.md 2.2と計画承認）
-    'src/App.tsx', // 数入力と±の有効条件・準備/確定/確認付きリセットの画面操作
+    'src/domain/preparation.ts', // 駒数の±の境界・未配置の生成・確定の条件（spec.md 2.2）
+    'src/App.tsx', // 駒数の±の有効条件・準備/確定/確認付きリセットの画面操作とフォーカス
     'src/domain/selection.ts', // 未選択・マス・キャラの選択の状態変化と移動（spec.md 2.1・2.3）
     // #45 駒の設定ポップアップ: 長押しの判定時間・移動量・取り消し、外側で閉じる条件、駒の近くへの配置の境界（spec.md 2.2）。
     'src/components/useLongPress.ts',

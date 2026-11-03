@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
+import { setCount } from './test/counts.ts'
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
@@ -19,8 +20,8 @@ const times = (button: () => HTMLElement, count: number) => {
   for (let i = 0; i < count; i += 1) fireEvent.click(button())
 }
 function prepare(ally: string, enemy: string) {
-  fireEvent.change(screen.getByRole('textbox', { name: '味方の数' }), { target: { value: ally } })
-  fireEvent.change(screen.getByRole('textbox', { name: '敵の数' }), { target: { value: enemy } })
+  setCount('味方の数', Number(ally))
+  setCount('敵の数', Number(enemy))
   click('駒を用意する')
 }
 function place(name: string, x: number, y: number) {

@@ -10,23 +10,18 @@ export interface BattleState extends BoardState {
   readonly pendingIds: readonly string[]
 }
 
-/** 承認された入力仕様: 前後空白を除く半角数字のみ、指定上限まで。 */
-export function parseCount(input: string, maximum = pieceLimits.perSide): number | null {
-  const trimmed = input.trim()
-  if (!/^[0-9]+$/.test(trimmed)) return null
-  const count = Number(trimmed)
-  return count <= maximum ? count : null
+/** 駒数として指定できるか: 0〜上限の整数（#46 で数は「−」「＋」だけで指定する）。 */
+const isCount = (count: number, maximum: number): boolean => Number.isInteger(count) && count >= 0 && count <= maximum
+
+/** ±の操作後の数。0未満や上限を超える操作はできない（spec.md 2.2 #46）。 */
+export function stepTokenCount(count: number, delta: -1 | 1, maximum = pieceLimits.perSide): number | null {
+  const next = count + delta
+  return isCount(next, maximum) ? next : null
 }
 
-/** ±の操作後の数。不正な入力や上限を超える操作はできない。 */
-export function stepTokenCount(input: string, delta: -1 | 1, maximum = pieceLimits.perSide): number | null {
-  const count = parseCount(input, maximum)
-  return count === null ? null : parseCount(String(count + delta), maximum)
-}
-
-/** 双方0体の案内は、不正な入力への案内とは区別する。 */
-export function areBothCountsZero(allyInput: string, enemyInput: string): boolean {
-  return parseCount(allyInput) === 0 && parseCount(enemyInput) === 0
+/** 双方0体では進めず、案内を出す。 */
+export function areBothCountsZero(ally: number, enemy: number): boolean {
+  return ally === 0 && enemy === 0
 }
 
 export function createInitialBattle(): BattleState {
@@ -34,8 +29,8 @@ export function createInitialBattle(): BattleState {
 }
 
 /** 数指定から、移動力が初期値・未配置の駒を用意する（spec.md 2.2）。 */
-export function prepareBattle(allyInput: string, enemyInput: string): BattleState | null {
-  return addPieces({ ...createInitialBattle(), phase: 'preparing' }, allyInput, enemyInput)
+export function prepareBattle(ally: number, enemy: number): BattleState | null {
+  return addPieces({ ...createInitialBattle(), phase: 'preparing' }, ally, enemy)
 }
 
 export function canConfirmBattle(state: BattleState): boolean {
@@ -72,11 +67,10 @@ export function getAdditionCapacity(state: BattleState, side: Side): number {
 }
 
 /** 発行履歴を進め、既存の配置・移動力・選択を保って未配置の駒を加える。 */
-export function addPieces(state: BattleState, allyInput: string, enemyInput: string): BattleState | null {
+export function addPieces(state: BattleState, ally: number, enemy: number): BattleState | null {
   if (state.phase === 'counts') return null
-  const ally = parseCount(allyInput, getAdditionCapacity(state, 'ally'))
-  const enemy = parseCount(enemyInput, getAdditionCapacity(state, 'enemy'))
-  if (ally === null || enemy === null || ally + enemy === 0) return null
+  if (!isCount(ally, getAdditionCapacity(state, 'ally')) || !isCount(enemy, getAdditionCapacity(state, 'enemy'))) return null
+  if (areBothCountsZero(ally, enemy)) return null
   const make = (side: Side, count: number): Character[] => Array.from({ length: count }, (_, index) => {
     const number = state.issued[side] + index + 1
     return {

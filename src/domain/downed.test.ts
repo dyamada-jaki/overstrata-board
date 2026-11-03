@@ -4,7 +4,7 @@ import { getSelectedMovementRange, tapPosition, type BoardState } from './select
 const size = { width: 10, height: 10 }
 // 味方1 (2, 2)・味方2 未配置・敵1 (5, 5)。内部座標。
 function battle(): BattleState {
-  const prepared = prepareBattle('2', '1')!
+  const prepared = prepareBattle(2, 1)!
   return Object.freeze({
     ...prepared,
     characters: Object.freeze(prepared.characters.map((c) => c.id === 'ally-1' ? { ...c, position: { x: 1, y: 1 } }
@@ -35,15 +35,15 @@ describe('倒れた状態の切り替え（spec.md 2.2 / #34）', () => {
 
   it('新しく用意・追加する駒は通常で始まり、確定・追加・削除で他の駒の状態を保つ', () => {
     const state = toggleDowned({ ...battle(), characters: battle().characters.map((c) => ({ ...c, position: c.position ?? { x: 9, y: 9 } })) }, 'ally-1')
-    expect(prepareBattle('1', '1')!.characters.map((c) => c.downed)).toEqual([false, false])
+    expect(prepareBattle(1, 1)!.characters.map((c) => c.downed)).toEqual([false, false])
     const active = confirmBattle(state)
     expect(find(active, 'ally-1').downed).toBe(true)
-    const added = addPieces(active, '0', '1')!
+    const added = addPieces(active, 0, 1)!
     expect(find(added, 'enemy-2').downed).toBe(false)
     expect(find(added, 'ally-1').downed).toBe(true)
     const removed = removePiece(added, 'enemy-2')
     expect(find(removed, 'ally-1').downed).toBe(true)
-    const addedDowned = toggleDowned(addPieces(removed, '0', '1')!, 'enemy-3')
+    const addedDowned = toggleDowned(addPieces(removed, 0, 1)!, 'enemy-3')
     const confirmed = confirmAdditions({ ...addedDowned, characters: addedDowned.characters.map((c) => c.id === 'enemy-3' ? { ...c, position: { x: 0, y: 9 } } : c) })
     expect(confirmed.pendingIds).toEqual([])
     expect(confirmed.characters.filter((c) => c.downed).map((c) => c.id)).toEqual(['ally-1', 'enemy-3'])
@@ -52,7 +52,7 @@ describe('倒れた状態の切り替え（spec.md 2.2 / #34）', () => {
 
 describe('選択した駒の目安（spec.md 2.3 / #50）', () => {
   it('通常なら位置・移動力・占有から求め、倒れた状態・未配置・解除では表示せず、復帰で再表示する', () => {
-    const prepared = prepareBattle('1', '1')!
+    const prepared = prepareBattle(1, 1)!
     const state: BattleState = {
       ...prepared,
       characters: prepared.characters.map((c) => ({ ...c, movement: 1, position: c.side === 'ally' ? { x: 0, y: 0 } : { x: 1, y: 0 } })),

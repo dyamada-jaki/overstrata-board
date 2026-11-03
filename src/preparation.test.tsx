@@ -1,9 +1,12 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
+import { countText, countValue, setCount } from './test/counts.ts'
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
-const field = (side: '味方' | '敵') => screen.getByRole('textbox', { name: `${side}の数` })
-const input = (side: '味方' | '敵', value: string) => fireEvent.change(field(side), { target: { value } })
+const button = (name: string) => screen.getByRole('button', { name })
+const group = (side: '味方' | '敵') => screen.getByRole('group', { name: `${side}の数` })
+const count = (side: '味方' | '敵') => countText(`${side}の数`)
+const input = (side: '味方' | '敵', value: string) => setCount(`${side}の数`, Number(value))
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
 const token = (name: string) => screen.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
 const pressed = () => screen.queryAllByRole('button', { pressed: true })
@@ -23,8 +26,9 @@ function place(name: string, x: number, y: number) {
   fireEvent.click(cell(x, y))
 }
 function expectInitial() {
-  expect(field('味方')).toHaveValue('0')
-  expect(field('敵')).toHaveValue('0')
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  expect(count('味方')).toBe('0')
+  expect(count('敵')).toBe('0')
   expect(occupants()).toEqual([])
   expect(pressed()).toEqual([])
   expect(range()).toEqual([])
@@ -33,70 +37,64 @@ function expectInitial() {
   expect(screen.queryByRole('button', { name: '確定' })).not.toBeInTheDocument()
 }
 
-describe('数の指定（承認された入力仕様）', () => {
-  it('空の100マス・0/0・案内から始まり、初期段階ではやり直しも確定も出さない', () => {
+describe('数の指定（#46: 表示専用の数値と「−」「＋」）', () => {
+  it('空の100マス・0/0・案内から始まり、初期段階ではやり直しも確定も出さない。起動時はどこにもフォーカスを移さない', () => {
     render(<App />)
     expectInitial()
+    expect(document.body).toHaveFocus()
     expect(screen.getAllByRole('button', { name: /^マス / })).toHaveLength(100)
     expect(screen.getByText('味方か敵を1体以上にしてください')).toBeVisible()
     expect(screen.queryByRole('button', { name: '準備をやり直す' })).not.toBeInTheDocument()
-    expect(field('味方')).toHaveAttribute('inputmode', 'numeric')
-    expect(field('味方')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
-    expect(field('敵')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
+    expect(group('味方')).toHaveAccessibleDescription('それぞれ0〜10体まで「−」「＋」で指定します。')
+    expect(group('敵')).toHaveAccessibleDescription('それぞれ0〜10体まで「−」「＋」で指定します。')
   })
 
-  it('−/＋は1ずつ増減し、0と10の端では範囲を超えない', () => {
+  it('数値は表示だけで、フォーカスも文字入力も受けない', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: '味方の数を減らす' })).toBeDisabled()
-    click('味方の数を増やす')
-    expect(field('味方')).toHaveValue('1')
-    expect(screen.getByText('味方か敵を1体以上にしてください')).not.toBeVisible() // #45: 表示領域を残して文だけ隠す
-    expect(field('敵')).toHaveValue('0')
+    const value = countValue('味方の数')
+    value.focus()
+    expect(value).not.toHaveFocus()
+    expect(value).not.toHaveAttribute('contenteditable')
+    expect(within(group('味方')).getAllByRole('button').map((element) => element.getAttribute('aria-label')))
+      .toEqual(['味方の数を減らす', '味方の数を増やす'])
+  })
+
+  it('−/＋は1ずつ増減し、0の−と10の＋は押せず、端で押しても範囲を超えない', () => {
+    render(<App />)
+    expect(button('味方の数を減らす')).toBeDisabled()
     click('味方の数を減らす')
-    expect(field('味方')).toHaveValue('0')
-    input('敵', '9')
+    expect(count('味方')).toBe('0')
+    click('味方の数を増やす')
+    expect(count('味方')).toBe('1')
+    expect(button('味方の数を減らす')).toBeEnabled()
     expect(screen.getByText('味方か敵を1体以上にしてください')).not.toBeVisible() // #45: 表示領域を残して文だけ隠す
+    expect(count('敵')).toBe('0')
+    click('味方の数を減らす')
+    expect(count('味方')).toBe('0')
+    expect(screen.getByText('味方か敵を1体以上にしてください')).toBeVisible()
+    for (let i = 1; i <= 9; i += 1) click('敵の数を増やす')
+    expect(count('敵')).toBe('9')
+    expect(button('敵の数を増やす')).toBeEnabled()
     click('敵の数を増やす')
-    expect(field('敵')).toHaveValue('10')
-    expect(screen.getByRole('button', { name: '敵の数を増やす' })).toBeDisabled()
+    expect(count('敵')).toBe('10')
+    expect(button('敵の数を増やす')).toBeDisabled()
+    click('敵の数を増やす')
+    expect(count('敵')).toBe('10')
+    expect(button('味方の数を増やす')).toBeEnabled()
     click('敵の数を減らす')
-    expect(field('敵')).toHaveValue('9')
+    expect(count('敵')).toBe('9')
   })
 
-  it.each(['', '-1', '1.5', '11', 'a', '３', '1e1', '+1', '3 3'])('「%s」は欄の近くで案内し、用意とその欄の±を押せない', (value) => {
+  it('双方0体では用意できず、どちらかが1体以上なら用意できる。入力エラー行はどの値でも出ない', () => {
     render(<App />)
-    input('敵', '1')
-    input('味方', value)
-    expect(field('味方')).toHaveAttribute('aria-invalid', 'true')
-    expect(field('味方')).toHaveAccessibleDescription(/0〜10の整数で入力してください/)
-    expect(screen.getByText('0〜10の整数で入力してください')).toBeVisible()
-    expect(screen.getByRole('button', { name: '駒を用意する' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '味方の数を減らす' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '味方の数を増やす' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '敵の数を増やす' })).toBeEnabled()
-    input('味方', ' 3 ')
-    expect(field('味方')).not.toHaveAttribute('aria-invalid', 'true')
-    expect(screen.queryByText('0〜10の整数で入力してください')).not.toBeInTheDocument()
-    expect(field('味方')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
-    expect(screen.getByText('味方か敵を1体以上にしてください')).not.toBeVisible() // #45: 表示領域を残して文だけ隠す
-    expect(screen.getByRole('button', { name: '駒を用意する' })).toBeEnabled()
-  })
-
-  it('敵の欄だけが不正なら、敵の欄の下に案内し、敵の±と用意を押せず味方の欄は案内しない', () => {
-    render(<App />)
-    input('味方', '2')
-    input('敵', '11')
-    expect(field('敵')).toHaveAttribute('aria-invalid', 'true')
-    expect(field('敵')).toHaveAccessibleDescription('0〜10の整数で入力してください')
-    expect(field('敵').closest('.count-field')).toContainElement(screen.getByText('0〜10の整数で入力してください'))
-    expect(field('味方')).toHaveAttribute('aria-invalid', 'false')
-    expect(field('味方')).toHaveAccessibleDescription('それぞれ0〜10体の整数を入力してください。')
-    expect(within(field('味方').closest('.count-field') as HTMLElement).queryByText('0〜10の整数で入力してください')).not.toBeInTheDocument()
-    for (const action of ['敵の数を減らす', '敵の数を増やす', '駒を用意する']) {
-      expect(screen.getByRole('button', { name: action })).toBeDisabled()
+    expect(button('駒を用意する')).toBeDisabled()
+    for (const [ally, enemy] of [[1, 0], [0, 1], [10, 10], [0, 0]] as const) {
+      input('味方', String(ally))
+      input('敵', String(enemy))
+      expect(button('駒を用意する'))[ally + enemy > 0 ? 'toBeEnabled' : 'toBeDisabled']()
+      expect(screen.queryByText(/整数で入力してください/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     }
-    expect(screen.getByRole('button', { name: '味方の数を減らす' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: '味方の数を増やす' })).toBeEnabled()
   })
 
   it.each([['0', '1', '敵1'], ['1', '0', '味方1']])('片側だけ（味方%s/敵%s）でも用意する', (ally, enemy, name) => {
@@ -108,9 +106,9 @@ describe('数の指定（承認された入力仕様）', () => {
     expect(screen.getByRole('button', { name: '確定' })).toBeDisabled()
   })
 
-  it('先頭0と前後空白を許し、指定数の駒を用意する', () => {
+  it('±で指定した数の駒を用意する', () => {
     render(<App />)
-    prepare('05', ' 3 ')
+    prepare('5', '3')
     expect(within(unplaced()).getAllByRole('button')).toHaveLength(8)
     expect(token('味方5')).toBeVisible()
     expect(token('敵3')).toBeVisible()
@@ -298,7 +296,8 @@ describe('確認付きの全体やり直し', () => {
     click('準備をやり直す')
     click('やり直す')
     expectInitial()
-    expect(field('味方')).toHaveFocus()
+    // #46: 実行後は特定の入力欄・ボタンへ自動でフォーカスを移さない。
+    expect(document.body).toHaveFocus()
     prepare('0', '1')
     expect(token('敵1')).toBeVisible()
   })
@@ -326,7 +325,8 @@ describe('確認付きの全体やり直し', () => {
     click('新しい戦闘を始める')
     click('始める')
     expectInitial()
-    expect(field('味方')).toHaveFocus()
+    // #46: 実行後は特定の入力欄・ボタンへ自動でフォーカスを移さない。
+    expect(document.body).toHaveFocus()
     prepare('1', '0')
     place('味方1', 1, 1)
     click('確定')
@@ -338,7 +338,7 @@ describe('確認付きの全体やり直し', () => {
 it('入力フォームの送信では画面遷移を防ぎ、指定した駒を用意する', () => {
   render(<App />)
   input('味方', '1')
-  const form = field('味方').closest('form')!
+  const form = group('味方').closest('form')!
   const submit = new Event('submit', { bubbles: true, cancelable: true })
   fireEvent(form, submit)
   expect(submit.defaultPrevented).toBe(true)

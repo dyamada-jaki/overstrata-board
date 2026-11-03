@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { countValue, setCount } from './counts.ts'
 
 // #45: 操作中の部品の位置と、駒の設定ポップアップ（長押し・右クリック・外側で閉じる）を実ブラウザで確かめる。
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
@@ -19,8 +20,8 @@ async function center(locator: Locator) {
   return { x: x + width / 2, y: y + height / 2 }
 }
 async function prepare(page: Page, ally: string, enemy: string) {
-  await page.getByRole('textbox', { name: '味方の数' }).fill(ally)
-  await page.getByRole('textbox', { name: '敵の数' }).fill(enemy)
+  await setCount(page, '味方の数', Number(ally))
+  await setCount(page, '敵の数', Number(enemy))
   await button(page, '駒を用意する').click()
 }
 async function place(page: Page, name: string, x: number, y: number) {
@@ -73,7 +74,7 @@ test('場面1：画面下端までスクロールして0→1にしても、「�
   await expectStays(page, minus, () => minus.click())
   await expectStays(page, minus, () => minus.click())
   await expect(guidance(page)).toBeVisible()
-  await expect(page.getByRole('textbox', { name: '味方の数' })).toHaveValue('0')
+  await expect(countValue(page, '味方の数')).toHaveText('0')
 })
 
 test('追加数のエリアでも、下端で0→1にして「＋」の位置を保つ（受け入れ条件8でPOと確定）', async ({ page }) => {
@@ -227,4 +228,26 @@ test('ポップアップで移動力・状態・削除を扱い、削除の取�
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(cell(page, 2, 2)).toHaveAccessibleName('マス (2, 2)')
   await expect(page.locator('body')).toBeFocused()
+})
+
+test('#46 (b)：直接入力の欄と入力エラー行がなく、下端で0→10→0と押しても「＋」「−」の位置を保つ', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('textbox')).toHaveCount(0)
+  await scrollToBottom(page)
+  const plus = button(page, '味方の数を増やす')
+  const minus = button(page, '味方の数を減らす')
+  const start = { plus: (await box(plus)).x, minus: (await box(minus)).x }
+  for (let n = 1; n <= 10; n += 1) {
+    await expectStays(page, plus, () => plus.click())
+    await expect(countValue(page, '味方の数')).toHaveText(String(n))
+  }
+  await expect(plus).toBeDisabled()
+  // 9→10で数値の桁が増えても、「＋」が横にずれない。
+  expect((await box(plus)).x).toBe(start.plus)
+  for (let n = 9; n >= 0; n -= 1) {
+    await expectStays(page, minus, () => minus.click())
+    await expect(countValue(page, '味方の数')).toHaveText(String(n))
+  }
+  expect((await box(minus)).x).toBe(start.minus)
+  await expect(page.getByText(/整数で入力してください/)).toHaveCount(0)
 })

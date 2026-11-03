@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { countValue, setCount } from './counts.ts'
 
 const cell = (page: Page, x: number, y: number) => page.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
 const token = (page: Page, name: string) => page.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
@@ -11,8 +12,8 @@ const closeSettings = async (page: Page) => {
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
 async function prepare(page: Page, ally: string, enemy: string) {
-  await page.getByRole('textbox', { name: '味方の数' }).fill(ally)
-  await page.getByRole('textbox', { name: '敵の数' }).fill(enemy)
+  await setCount(page, '味方の数', Number(ally))
+  await setCount(page, '敵の数', Number(enemy))
   await page.getByRole('button', { name: '駒を用意する' }).click()
 }
 async function place(page: Page, name: string, x: number, y: number) {
@@ -25,16 +26,17 @@ async function confirmReset(page: Page, button: string, accept: boolean) {
   await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeFocused()
   await dialog.getByRole('button', { name: accept ? (button === '準備をやり直す' ? 'やり直す' : '始める') : 'キャンセル', exact: true }).click()
   await expect(dialog).not.toBeVisible()
-  if (accept) await expect(page.getByRole('textbox', { name: '味方の数' })).toBeFocused()
+  // #46: 実行後は特定の入力欄・ボタンへ自動でフォーカスを移さない。
+  if (accept) await expect(page.locator('body')).toBeFocused()
 }
 
 test('数指定→配置と選択切替→確定→範囲内外の移動→新戦闘→再準備まで使える', async ({ page }, testInfo) => {
   await page.goto('/')
   await expect(page.getByRole('button', { name: '駒を用意する' })).toBeDisabled()
   await page.getByRole('button', { name: '味方の数を増やす' }).click()
-  await expect(page.getByRole('textbox', { name: '味方の数' })).toHaveValue('1')
-  await page.getByRole('textbox', { name: '敵の数' }).fill('11')
-  await expect(page.getByText('0〜10の整数で入力してください')).toBeVisible()
+  await expect(countValue(page, '味方の数')).toHaveText('1')
+  await expect(page.getByRole('textbox')).toHaveCount(0)
+  await page.getByRole('button', { name: '味方の数を減らす' }).click()
   await expect(page.getByRole('button', { name: '駒を用意する' })).toBeDisabled()
   await prepare(page, '1', '1')
   await expect(page.getByRole('button', { name: '確定', exact: true })).toBeDisabled()
@@ -82,8 +84,8 @@ test('数指定→配置と選択切替→確定→範囲内外の移動→新�
   await expect(cell(page, 10, 10)).toHaveAttribute('aria-pressed', 'true')
   await expect(range(page).first()).toBeVisible()
   await confirmReset(page, '新しい戦闘を始める', true)
-  await expect(page.getByRole('textbox', { name: '味方の数' })).toHaveValue('0')
-  await expect(page.getByRole('textbox', { name: '敵の数' })).toHaveValue('0')
+  await expect(countValue(page, '味方の数')).toHaveText('0')
+  await expect(countValue(page, '敵の数')).toHaveText('0')
   await expect(pressed(page)).toHaveCount(0)
   await expect(range(page)).toHaveCount(0)
   await prepare(page, '0', '1')
@@ -168,7 +170,7 @@ test('20体の一覧と番号10を表示し、陣営色が異なり横スクロ�
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width)
   await testInfo.attach('番号10と未配置一覧', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
   await confirmReset(page, '準備をやり直す', true)
-  await expect(page.getByRole('textbox', { name: '味方の数' })).toHaveValue('0')
+  await expect(countValue(page, '味方の数')).toHaveText('0')
   await expect(page.getByRole('button', { name: /^マス .*（/ })).toHaveCount(0)
 })
 
@@ -227,4 +229,63 @@ test('確認中のキーボードとポインターは背後へ届かず、取�
       await cell(page, 3, 4).click()
     }
   }
+})
+
+// #46: 起動時は自動でフォーカスせず、数はキーボードの「−」「＋」で指定して準備・追加できる。数値には止まらない。
+test('起動時はフォーカスを移さず、Tab と Enter/Space で数の指定・用意・追加ができる', async ({ page }, testInfo) => {
+  await page.goto('/')
+  await expect(page.locator('body')).toBeFocused()
+  await expect(page.getByRole('textbox')).toHaveCount(0)
+  const allyPlus = page.getByRole('button', { name: '味方の数を増やす' })
+  await allyPlus.focus()
+  await page.keyboard.press('Enter')
+  await expect(countValue(page, '味方の数')).toHaveText('1')
+  await page.keyboard.press('Space')
+  await expect(countValue(page, '味方の数')).toHaveText('2')
+  // 敵の「−」は0で押せないので飛ばし、数値の表示にも止まらず、敵の「＋」へ進む。
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: '敵の数を増やす' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(countValue(page, '敵の数')).toHaveText('1')
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.getByRole('button', { name: '敵の数を減らす' })).toBeFocused()
+  await page.keyboard.press('Shift+Tab')
+  await expect(allyPlus).toBeFocused()
+  // 上限まで押して「＋」が押せなくなった後も、プログラムでは別のボタンへ移さない（標準の disabled のまま）。
+  for (let n = 3; n <= 10; n += 1) await page.keyboard.press('Enter')
+  await expect(countValue(page, '味方の数')).toHaveText('10')
+  await expect(allyPlus).toBeDisabled()
+  const describeFocus = () => page.evaluate(() => {
+    const focused = document.activeElement
+    return focused === document.body ? 'body' : focused?.getAttribute('aria-label') ?? focused?.textContent ?? ''
+  })
+  const afterDisabled = await describeFocus()
+  await page.keyboard.press('Tab')
+  const nextTab = await describeFocus()
+  await testInfo.attach('上限で＋が押せなくなった直後のフォーカスと次のTab', {
+    body: JSON.stringify({ afterDisabled, nextTab }), contentType: 'application/json',
+  })
+  // 次の Tab は文書の先頭へ戻らず、押せなくなった「＋」の直後の有効な部品へ進む（Chromium で確認）。
+  expect(nextTab).toBe('敵の数を減らす')
+  await page.getByRole('button', { name: '駒を用意する' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('region', { name: '配置の準備' })).toBeVisible()
+  await expect(token(page, '味方10')).toBeVisible()
+  // 追加数のエリアも、押せない「−」「＋」を飛ばして Tab で進み、Enter で追加できる。
+  await page.getByRole('button', { name: '駒を増やす' }).focus()
+  await page.keyboard.press('Enter')
+  // 味方は10体で追加できないので、味方の追加数の「−」「＋」は両方押せず、Tab でも止まらない。
+  await expect(page.getByRole('button', { name: '味方の追加数を減らす' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '味方の追加数を増やす' })).toBeDisabled()
+  await page.getByRole('button', { name: 'キャンセル' }).focus()
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.getByRole('button', { name: '敵の追加数を増やす' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(countValue(page, '敵の追加数')).toHaveText('1')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: '追加する' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(token(page, '敵2')).toBeVisible()
+  await expect(page.getByRole('textbox')).toHaveCount(0)
 })

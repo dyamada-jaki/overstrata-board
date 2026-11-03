@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
+import { setCount } from './test/counts.ts'
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
@@ -8,7 +9,7 @@ const token = (name: string) => {
   return (group && within(group).queryByRole('button', { name: new RegExp(`^未配置 ${name}（`) }))
     || screen.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
 }
-const input = (name: string, value: string) => fireEvent.change(screen.getByRole('textbox', { name }), { target: { value } })
+const input = (name: string, value: string) => setCount(name, Number(value))
 const pressed = () => screen.queryAllByRole('button', { pressed: true })
 const range = () => screen.queryAllByRole('button', { name: / 移動範囲$/ }).map((button) => button.getAttribute('aria-label'))
 const circle = (element: HTMLElement) => element.querySelector('.board-token')!
@@ -100,6 +101,7 @@ describe('倒れた状態の切り替えと表示（spec.md 2.2・2.3 / #34・#5
     expect(range()).toEqual([])
   })
 
+  // ミューテーションのジョブ（計測つきで遅い）で最大 3.0秒（既定の上限 5秒の60%）を観測したため、上限を余裕のある値にする（#46）。
   it.each(['準備中', '確定後', '追加分'])('%sでも、倒れると目安だけが消え、選び替え・解除で残らず、通常に戻すと保持した移動力の目安と移動が復帰する', (phase) => {
     render(<App />)
     prepare('1', '1')
@@ -198,7 +200,7 @@ describe('倒れた状態の切り替えと表示（spec.md 2.2・2.3 / #34・#5
     expect(cell(10, 10)).toHaveAccessibleName(`マス (10, 10) ${name}（味方・移動力1）`)
     expect(pressed()).toEqual([])
     expect(range()).toEqual([])
-  })
+  }, 15000)
 
   it('倒れた駒も1マスを占有し、他の駒を選んでそのマスを押すと選択だけが切り替わる', () => {
     render(<App />)
