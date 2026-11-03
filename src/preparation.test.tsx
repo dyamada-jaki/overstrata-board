@@ -326,3 +326,16 @@ it('入力フォームの送信では画面遷移を防ぎ、指定した駒を�
   expect(submit.defaultPrevented).toBe(true)
   expect(token('味方1')).toBeVisible()
 })
+
+it.each(['準備中', '確定後'])('%sの全体リセット実行後は入力欄やボタンへ自動フォーカスしない', (phase) => {
+  render(<App />)
+  // 表示専用の実装前にも、このフォーカスの違いを独立して再現できる操作だけを使う。
+  click('味方の数を増やす')
+  click('駒を用意する')
+  place('味方1', 1, 1)
+  if (phase === '確定後') click('確定')
+  click(phase === '準備中' ? '準備をやり直す' : '新しい戦闘を始める')
+  click(phase === '準備中' ? 'やり直す' : '始める')
+  expect(document.body).toHaveFocus()
+  expect(screen.getByRole('button', { name: '駒を用意する' })).toBeDisabled()
+})
