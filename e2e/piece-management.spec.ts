@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { setCount } from './counts.ts'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const cell = (page: Page, x: number, y: number) => page.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
@@ -11,13 +12,13 @@ const closeSettings = async (page: Page) => {
 }
 async function add(page: Page) {
   await button(page, '駒を増やす').click()
-  await page.getByRole('textbox', { name: '敵の追加数' }).fill('1')
+  await setCount(page, '敵の追加数', 1)
   await button(page, '追加する').click()
 }
 
 test('戦闘途中の追加→配置後の設定→再追加→まとめて確定→移動と削除を使える', async ({ page }, testInfo) => {
   await page.goto('/')
-  await page.getByRole('textbox', { name: '味方の数' }).fill('1')
+  await setCount(page, '味方の数', 1)
   await button(page, '駒を用意する').click()
   await token(page, '味方1').click()
   await cell(page, 1, 1).click()
@@ -80,13 +81,13 @@ test('戦闘途中の追加→配置後の設定→再追加→まとめて確�
 
 test('追加取消と未配置削除は番号を消費/再利用せず、追加分全削除で準備が終わる', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('textbox', { name: '敵の数' }).fill('1')
+  await setCount(page, '敵の数', 1)
   await button(page, '駒を用意する').click()
   await token(page, '敵1').click()
   await cell(page, 1, 1).click()
   await button(page, '確定').click()
   await button(page, '駒を増やす').click()
-  await page.getByRole('textbox', { name: '敵の追加数' }).fill('2')
+  await setCount(page, '敵の追加数', 2)
   await button(page, 'キャンセル').click()
   await add(page)
   await expect(token(page, '敵2')).toBeVisible()

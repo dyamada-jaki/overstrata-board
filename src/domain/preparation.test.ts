@@ -1,25 +1,16 @@
-import { areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement, stepMovement } from './preparation.ts'
+import { areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, prepareBattle, setMovement, stepMovement } from './preparation.ts'
 import { getSelectedMovementRange, tapPosition } from './selection.ts'
 
 const size = { width: 10, height: 10 }
-
-describe('承認された数の入力の解釈', () => {
-  it.each([['0', 0], ['1', 1], ['9', 9], ['10', 10], ['05', 5], [' 3 ', 3], ['\t10\n', 10]])('「%s」は%d体', (input, count) => {
-    expect(parseCount(input)).toBe(count)
-  })
-  it.each(['', ' ', '-1', '1.5', '11', '100', 'a', '３', '1e1', '+1', '3 3', 'Infinity'])('「%s」は不正', (input) => {
-    expect(parseCount(input)).toBeNull()
-  })
-})
 
 describe('戦闘準備の入口', () => {
   it('初期状態は数指定・0体・未選択', () => {
     expect(createInitialBattle()).toEqual({ phase: 'counts', characters: [], selection: { kind: 'none' }, issued: { ally: 0, enemy: 0 }, pendingIds: [] })
   })
-  it.each([['0', '0'], ['11', '1'], ['1', '-1'], ['', '1']])('味方%s/敵%sは準備できない', (ally, enemy) => {
+  it.each([[0, 0], [11, 1], [1, -1], [1.5, 1], [0, 11]])('味方%s/敵%sは準備できない', (ally, enemy) => {
     expect(prepareBattle(ally, enemy)).toBeNull()
   })
-  it.each([['1', '0', 1], ['0', '1', 1], ['10', '10', 20]])('味方%s/敵%sは%d体を未配置・移動力5で作る', (ally, enemy, count) => {
+  it.each([[1, 0, 1], [0, 1, 1], [10, 10, 20]])('味方%s/敵%sは%d体を未配置・移動力5で作る', (ally, enemy, count) => {
     const state = prepareBattle(ally, enemy)!
     expect(state.phase).toBe('preparing')
     expect(state.selection).toEqual({ kind: 'none' })
@@ -42,7 +33,7 @@ describe('戦闘準備の入口', () => {
     const emptyPreparation = { ...initial, phase: 'preparing' as const }
     expect(canConfirmBattle(emptyPreparation)).toBe(false)
     expect(confirmBattle(emptyPreparation)).toEqual(emptyPreparation)
-    const state = prepareBattle('1', '0')!
+    const state = prepareBattle(1, 0)!
     const placed = { ...state, ...tapPosition({ ...state, selection: { kind: 'character', id: state.characters[0]!.id } }, { x: 2, y: 3 }, size) }
     expect(canConfirmBattle(placed)).toBe(true)
     const selected = Object.freeze({ ...placed, selection: { kind: 'cell' as const, position: { x: 0, y: 0 } } })
@@ -53,7 +44,7 @@ describe('戦闘準備の入口', () => {
     expect(confirmBattle(active)).toEqual(active)
   })
   it('未配置選択中は範囲を出さず、盤面外への配置では入力状態を変更しない', () => {
-    const state = prepareBattle('1', '0')!
+    const state = prepareBattle(1, 0)!
     const selected = Object.freeze({ ...state, selection: { kind: 'character' as const, id: state.characters[0]!.id } })
     expect(getSelectedMovementRange(selected, size)).toEqual([])
     expect(tapPosition(selected, { x: 10, y: 0 }, size)).toEqual(selected)
@@ -64,18 +55,20 @@ describe('戦闘準備の入口', () => {
   })
 })
 
-describe('数の操作と双方0体の案内', () => {
+describe('数の±と双方0体の案内（#46）', () => {
   it.each([
-    ['0', -1, null], ['0', 1, 1], ['1', -1, 0], ['9', 1, 10],
-    ['10', 1, null], ['10', -1, 9], [' 05 ', -1, 4],
-    ['', 1, null], ['11', -1, null], ['-1', 1, null], ['1.5', -1, null],
-  ] as const)('「%s」を%dすると%s', (input, delta, expected) => {
-    expect(stepTokenCount(input, delta)).toBe(expected)
+    [0, -1, 10, null], [0, 1, 10, 1], [1, -1, 10, 0], [9, 1, 10, 10],
+    [10, 1, 10, null], [10, -1, 10, 9],
+    // 途中の追加数は、その時点の追加可能数が上限になる。
+    [1, 1, 2, 2], [2, 1, 2, null], [2, -1, 2, 1], [0, 1, 0, null], [0, -1, 0, null],
+  ] as const)('%dを%d（上限%d）すると%s', (count, delta, maximum, expected) => {
+    expect(stepTokenCount(count, delta, maximum)).toBe(expected)
   })
-  it.each([
-    ['0', '0', true], [' 00 ', '0', true], ['1', '0', false], ['0', '1', false],
-    ['10', '10', false], ['', '0', false], ['0', '11', false],
-  ])('味方%s/敵%sの双方0体案内は%s', (ally, enemy, expected) => {
+  it('上限を省くと同時数の上限（10）を使う', () => {
+    expect(stepTokenCount(9, 1)).toBe(10)
+    expect(stepTokenCount(10, 1)).toBeNull()
+  })
+  it.each([[0, 0, true], [1, 0, false], [0, 1, false], [10, 10, false]])('味方%d/敵%dの双方0体案内は%s', (ally, enemy, expected) => {
     expect(areBothCountsZero(ally, enemy)).toBe(expected)
   })
 })
@@ -88,7 +81,7 @@ describe('準備中の移動力の変更（#37）', () => {
   })
 
   it('対象の駒だけを書き換え、選択・位置・段階は保ち、元の状態を変更しない', () => {
-    const prepared = prepareBattle('2', '1')!
+    const prepared = prepareBattle(2, 1)!
     const state = Object.freeze({ ...prepared, selection: { kind: 'character' as const, id: 'ally-2' } })
     const next = setMovement(state, 'ally-2', 9)
     expect(next.characters.map((character) => [character.id, character.movement])).toEqual([['ally-1', 5], ['ally-2', 9], ['enemy-1', 5]])
@@ -100,12 +93,12 @@ describe('準備中の移動力の変更（#37）', () => {
   })
 
   it.each([-1, 10, 1.5])('%sは設定せず、状態を変えない', (movement) => {
-    const state = prepareBattle('1', '0')!
+    const state = prepareBattle(1, 0)!
     expect(setMovement(state, 'ally-1', movement)).toBe(state)
   })
 
   it('確定後・数指定の段階・存在しない駒では状態を変えない', () => {
-    const state = prepareBattle('1', '0')!
+    const state = prepareBattle(1, 0)!
     const active = { ...state, phase: 'active' as const }
     expect(setMovement(active, 'ally-1', 3)).toBe(active)
     const counts = createInitialBattle()
