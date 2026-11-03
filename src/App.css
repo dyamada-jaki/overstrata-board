@@ -54,7 +54,7 @@ p {
 h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
 h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
 
-button, input { font: inherit; }
+button { font: inherit; }
 
 .preparation-panel button, .reset-dialog button, .piece-settings button {
   min-height: 2.75rem;
@@ -72,7 +72,7 @@ button, input { font: inherit; }
   cursor: default;
 }
 
-.preparation-panel button:focus-visible, .reset-dialog button:focus-visible, .piece-settings button:focus-visible, input:focus-visible {
+.preparation-panel button:focus-visible, .reset-dialog button:focus-visible, .piece-settings button:focus-visible {
   outline: 3px solid #f59e0b;
   outline-offset: 2px;
 }
@@ -81,9 +81,8 @@ button, input { font: inherit; }
 .count-field label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
 .count-controls { display: flex; gap: 0.4rem; align-items: center; }
 .count-controls button { flex: 0 0 2.75rem; background: #f1f5f9; color: #1e293b; }
-.count-controls input { width: 4rem; min-width: 0; min-height: 2.75rem; text-align: center; border: 1px solid #64748b; border-radius: 0.35rem; }
-.count-controls input[aria-invalid='true'] { border-color: #b91c1c; }
-.input-error { color: #b91c1c; margin: 0.25rem 0 0; }
+/* 2桁の「10」でも幅を保ち、隣の＋を動かさない。文字入力の枠は付けない。 */
+.count-value { flex: 0 0 4rem; text-align: center; font-size: 1.25rem; font-weight: bold; }
 .preparation-panel .primary { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
 .preparation-panel .reset, .reset-dialog .reset, .piece-settings .reset { background: #fff; color: #9a3412; border-color: #9a3412; }
 .reset-help { margin: 1rem 0 0.5rem; }

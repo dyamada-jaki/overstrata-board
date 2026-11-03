@@ -7,12 +7,11 @@ import { pieceLimits } from './data/pieces.ts'
 import { boardSize } from './data/board.ts'
 import { movementSetting } from './data/movement.ts'
 import type { Character } from './domain/character.ts'
-import { addPieces, canConfirmAdditions, canEditMovement, confirmAdditions, getAdditionCapacity, removePiece, toggleDowned, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, parseCount, prepareBattle, setMovement } from './domain/preparation.ts'
+import { addPieces, canConfirmAdditions, canEditMovement, confirmAdditions, getAdditionCapacity, removePiece, toggleDowned, areBothCountsZero, stepTokenCount, canConfirmBattle, confirmBattle, createInitialBattle, prepareBattle, setMovement } from './domain/preparation.ts'
 import { selectCharacter, tapCharacter, tapPosition } from './domain/selection.ts'
 import './App.css'
 
-function CountInput({ side, value, onChange, autoFocus = false, maximum = pieceLimits.perSide, adding = false }: { side: '味方' | '敵'; value: string; onChange: (value: string) => void; autoFocus?: boolean; maximum?: number; adding?: boolean }) {
-  const count = parseCount(value, maximum)
+function CountControl({ side, value, onChange, maximum = pieceLimits.perSide, adding = false }: { side: '味方' | '敵'; value: string; onChange: (value: string) => void; maximum?: number; adding?: boolean }) {
   const decrement = stepTokenCount(value, -1, maximum)
   const increment = stepTokenCount(value, 1, maximum)
   const id = `${side === '味方' ? 'ally' : 'enemy'}-${adding ? 'addition' : 'count'}`
@@ -23,14 +22,11 @@ function CountInput({ side, value, onChange, autoFocus = false, maximum = pieceL
       <div className="count-controls">
         <button type="button" aria-label={`${label}を減らす`} disabled={decrement === null}
           onClick={() => { if (decrement !== null) onChange(String(decrement)) }}>−</button>
-        <input id={id} type="text" inputMode="numeric" value={value} autoFocus={autoFocus}
-          aria-invalid={count === null} aria-describedby={count === null ? `${id}-error` : adding ? `${id}-help` : 'count-help'}
-          onChange={(event) => onChange(event.target.value)} />
+        <output id={id} className="count-value" aria-describedby={adding ? `${id}-help` : 'count-help'}>{value}</output>
         <button type="button" aria-label={`${label}を増やす`} disabled={increment === null}
           onClick={() => { if (increment !== null) onChange(String(increment)) }}>＋</button>
       </div>
-      {adding && <p id={`${id}-help`}>0〜{maximum}体の整数を入力してください。</p>}
-      {count === null && <p className="input-error" id={`${id}-error`}>0〜{maximum}の整数で入力してください</p>}
+      {adding && <p id={`${id}-help`}>「−」「＋」で、0〜{maximum}体を指定してください。</p>}
     </div>
   )
 }
@@ -66,7 +62,6 @@ function App() {
   const [enemyAddition, setEnemyAddition] = useState('0')
   const [resetOpen, setResetOpen] = useState(false)
   const [deleting, setDeleting] = useState<Character | null>(null)
-  const [focusCounts, setFocusCounts] = useState(false)
   const [settings, setSettings] = useState<SettingsTarget | null>(null)
   const prepared = prepareBattle(allyCount, enemyCount)
   const addition = adding ? addPieces(battle, allyAddition, enemyAddition) : null
@@ -89,7 +84,6 @@ function App() {
     setEnemyCount('0')
     setAdding(false)
     setResetOpen(false)
-    setFocusCounts(true)
   }
   const openAddition = () => {
     setAllyAddition('0')
@@ -111,11 +105,11 @@ function App() {
         {battle.phase === 'counts' ? (
           <section aria-label="駒の数の指定" className="preparation-panel">
             <h2>駒の準備</h2>
-            <p id="count-help">それぞれ0〜{pieceLimits.perSide}体の整数を入力してください。</p>
+            <p id="count-help">「−」「＋」で、それぞれ0〜{pieceLimits.perSide}体を指定してください。</p>
             <form onSubmit={(event) => { event.preventDefault(); if (prepared) setBattle(prepared) }}>
               <div className="count-fields">
-                <CountInput side="味方" value={allyCount} onChange={setAllyCount} autoFocus={focusCounts} />
-                <CountInput side="敵" value={enemyCount} onChange={setEnemyCount} />
+                <CountControl side="味方" value={allyCount} onChange={setAllyCount} />
+                <CountControl side="敵" value={enemyCount} onChange={setEnemyCount} />
               </div>
               <CountGuidance visible={areBothCountsZero(allyCount, enemyCount)} />
               <button className="primary" type="submit" disabled={prepared === null}>駒を用意する</button>
@@ -174,8 +168,8 @@ function App() {
                 <p>味方：あと{allyCapacity}体追加できます</p>
                 <p>敵：あと{enemyCapacity}体追加できます</p>
                 <div className="count-fields">
-                  <CountInput side="味方" adding maximum={allyCapacity} value={allyAddition} onChange={setAllyAddition} />
-                  <CountInput side="敵" adding maximum={enemyCapacity} value={enemyAddition} onChange={setEnemyAddition} />
+                  <CountControl side="味方" adding maximum={allyCapacity} value={allyAddition} onChange={setAllyAddition} />
+                  <CountControl side="敵" adding maximum={enemyCapacity} value={enemyAddition} onChange={setEnemyAddition} />
                 </div>
                 <CountGuidance visible={areBothCountsZero(allyAddition, enemyAddition)} />
                 <div className="addition-actions">
