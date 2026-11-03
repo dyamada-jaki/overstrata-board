@@ -265,6 +265,8 @@ test('起動時はフォーカスを移さず、Tab と Enter/Space で数の指
   await testInfo.attach('上限で＋が押せなくなった直後のフォーカスと次のTab', {
     body: JSON.stringify({ afterDisabled, nextTab }), contentType: 'application/json',
   })
+  // 次の Tab は文書の先頭へ戻らず、押せなくなった「＋」の直後の有効な部品へ進む（Chromium で確認）。
+  expect(nextTab).toBe('敵の数を減らす')
   await page.getByRole('button', { name: '駒を用意する' }).focus()
   await page.keyboard.press('Enter')
   await expect(page.getByRole('region', { name: '配置の準備' })).toBeVisible()
