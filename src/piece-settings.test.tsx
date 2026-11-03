@@ -1,10 +1,11 @@
+import { setCount } from './test/counts.ts'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
 const token = (name: string) => screen.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
-const input = (name: string, value: string) => fireEvent.change(screen.getByRole('textbox', { name }), { target: { value } })
+const input = setCount
 const pressed = () => screen.queryAllByRole('button', { pressed: true })
 const range = () => screen.queryAllByRole('button', { name: / 移動範囲$/ })
 const settingsButton = () => screen.getByRole('button', { name: '設定' })

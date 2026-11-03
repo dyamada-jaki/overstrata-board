@@ -1,3 +1,4 @@
+import { setCount } from './counts.ts'
 import { expect, test, type Page } from '@playwright/test'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
@@ -18,8 +19,8 @@ async function expectNoRange(page: Page) {
 
 test('倒れた状態に切り替えると見た目が変わって動かなくなり、通常に戻すと元の見た目で動ける', async ({ page }, testInfo) => {
   await page.goto('/')
-  await page.getByRole('textbox', { name: '味方の数' }).fill('1')
-  await page.getByRole('textbox', { name: '敵の数' }).fill('1')
+  await setCount(page, '味方の数', '1')
+  await setCount(page, '敵の数', '1')
   await button(page, '駒を用意する').click()
   await token(page, '味方1').click()
   await cell(page, 3, 3).click()
@@ -100,7 +101,7 @@ test('倒れた状態に切り替えると見た目が変わって動かなく�
 
 test('未配置では状態を問わず目安がなく、倒れたまま初回配置できるが、配置後は通常に戻すまで動かせない', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('textbox', { name: '味方の数' }).fill('1')
+  await setCount(page, '味方の数', '1')
   await button(page, '駒を用意する').click()
   await token(page, '味方1').click()
   await expectNoRange(page)

@@ -1,3 +1,4 @@
+import { setCount } from './counts.ts'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 // #45: 操作中の部品の位置と、駒の設定ポップアップ（長押し・右クリック・外側で閉じる）を実ブラウザで確かめる。
@@ -19,8 +20,8 @@ async function center(locator: Locator) {
   return { x: x + width / 2, y: y + height / 2 }
 }
 async function prepare(page: Page, ally: string, enemy: string) {
-  await page.getByRole('textbox', { name: '味方の数' }).fill(ally)
-  await page.getByRole('textbox', { name: '敵の数' }).fill(enemy)
+  await setCount(page, '味方の数', ally)
+  await setCount(page, '敵の数', enemy)
   await button(page, '駒を用意する').click()
 }
 async function place(page: Page, name: string, x: number, y: number) {
@@ -73,7 +74,7 @@ test('場面1：画面下端までスクロールして0→1にしても、「�
   await expectStays(page, minus, () => minus.click())
   await expectStays(page, minus, () => minus.click())
   await expect(guidance(page)).toBeVisible()
-  await expect(page.getByRole('textbox', { name: '味方の数' })).toHaveValue('0')
+  await expect(page.getByRole('status', { name: '味方の数' })).toHaveText('0')
 })
 
 test('追加数のエリアでも、下端で0→1にして「＋」の位置を保つ（受け入れ条件8でPOと確定）', async ({ page }) => {

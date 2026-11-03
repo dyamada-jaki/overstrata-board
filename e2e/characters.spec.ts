@@ -1,3 +1,4 @@
+import { setCount } from './counts.ts'
 import { expect, test, type Page } from '@playwright/test'
 
 const cell = (page: Page, x: number, y: number) => page.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
@@ -11,8 +12,8 @@ const closeSettings = async (page: Page) => {
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
 async function prepare(page: Page, ally: string, enemy: string) {
-  await page.getByRole('textbox', { name: '味方の数' }).fill(ally)
-  await page.getByRole('textbox', { name: '敵の数' }).fill(enemy)
+  await setCount(page, '味方の数', ally)
+  await setCount(page, '敵の数', enemy)
   await page.getByRole('button', { name: '駒を用意する' }).click()
 }
 async function place(page: Page, name: string, x: number, y: number) {
@@ -25,17 +26,15 @@ async function confirmReset(page: Page, button: string, accept: boolean) {
   await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeFocused()
   await dialog.getByRole('button', { name: accept ? (button === '準備をやり直す' ? 'やり直す' : '始める') : 'キャンセル', exact: true }).click()
   await expect(dialog).not.toBeVisible()
-  if (accept) await expect(page.getByRole('textbox', { name: '味方の数' })).toBeFocused()
+  if (accept) await expect(page.locator('body')).toBeFocused()
 }
 
 test('数指定→配置と選択切替→確定→範囲内外の移動→新戦闘→再準備まで使える', async ({ page }, testInfo) => {
   await page.goto('/')
   await expect(page.getByRole('button', { name: '駒を用意する' })).toBeDisabled()
   await page.getByRole('button', { name: '味方の数を増やす' }).click()
-  await expect(page.getByRole('textbox', { name: '味方の数' })).toHaveValue('1')
-  await page.getByRole('textbox', { name: '敵の数' }).fill('11')
-  await expect(page.getByText('0〜10の整数で入力してください')).toBeVisible()
-  await expect(page.getByRole('button', { name: '駒を用意する' })).toBeDisabled()
+  await expect(page.getByRole('status', { name: '味方の数' })).toHaveText('1')
+  await expect(page.getByRole('textbox')).toHaveCount(0)
   await prepare(page, '1', '1')
   await expect(page.getByRole('button', { name: '確定', exact: true })).toBeDisabled()
   await token(page, '味方1').click()
@@ -82,8 +81,8 @@ test('数指定→配置と選択切替→確定→範囲内外の移動→新�
   await expect(cell(page, 10, 10)).toHaveAttribute('aria-pressed', 'true')
   await expect(range(page).first()).toBeVisible()
   await confirmReset(page, '新しい戦闘を始める', true)
-  await expect(page.getByRole('textbox', { name: '味方の数' })).toHaveValue('0')
-  await expect(page.getByRole('textbox', { name: '敵の数' })).toHaveValue('0')
+  await expect(page.getByRole('status', { name: '味方の数' })).toHaveText('0')
+  await expect(page.getByRole('status', { name: '敵の数' })).toHaveText('0')
   await expect(pressed(page)).toHaveCount(0)
   await expect(range(page)).toHaveCount(0)
   await prepare(page, '0', '1')
@@ -168,7 +167,7 @@ test('20体の一覧と番号10を表示し、陣営色が異なり横スクロ�
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width)
   await testInfo.attach('番号10と未配置一覧', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
   await confirmReset(page, '準備をやり直す', true)
-  await expect(page.getByRole('textbox', { name: '味方の数' })).toHaveValue('0')
+  await expect(page.getByRole('status', { name: '味方の数' })).toHaveText('0')
   await expect(page.getByRole('button', { name: /^マス .*（/ })).toHaveCount(0)
 })
 
