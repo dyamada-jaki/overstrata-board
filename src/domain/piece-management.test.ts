@@ -6,7 +6,7 @@ const placed = (state: BattleState): BattleState => ({ ...state, characters: sta
 describe('途中の増減の境界と状態（spec.md 2.2 / #33）', () => {
   it('敵3に2体追加し既存・選択を保つ。入力状態を書き換えず初期値5で未配置にする', () => {
     const state = Object.freeze({ ...setMovement(prepared(), 'enemy-1', 3), selection: { kind: 'character' as const, id: 'enemy-1' } })
-    const next = addPieces(state, 0, 02)!
+    const next = addPieces(state, 0, 2)!
     expect(next).toMatchObject({ phase: 'preparing', selection: state.selection, issued: { ally: 1, enemy: 5 }, pendingIds: [] })
     expect(next.characters.slice(0, 4)).toEqual(state.characters)
     expect(next.characters.slice(4)).toEqual([4, 5].map((n) => ({ id: `enemy-${n}`, side: 'enemy', number: n, name: `敵${n}`, position: null, movement: 5, downed: false })))
