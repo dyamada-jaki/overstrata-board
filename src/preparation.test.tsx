@@ -180,8 +180,9 @@ describe('未配置から配置・確定・移動まで', () => {
     place('味方1', 1, 1)
     place('敵1', 2, 1)
     fireEvent.click(cell(1, 1))
-    expect(cell(6, 1)).toHaveAccessibleName('マス (6, 1) 移動範囲')
-    expect(cell(7, 1)).toHaveAccessibleName('マス (7, 1)')
+    // #60: 敵1 (2, 1) を避けて (2, 2) を回るため、1行目は (k, 1) に k 必要（spec.md 2.3・3.1）。
+    expect(cell(5, 1)).toHaveAccessibleName('マス (5, 1) 移動範囲')
+    expect(cell(6, 1)).toHaveAccessibleName('マス (6, 1)')
     expect(cell(4, 4)).toHaveAccessibleName('マス (4, 4) 移動範囲')
     expect(cell(5, 5)).toHaveAccessibleName('マス (5, 5)')
     expect(cell(2, 1)).toHaveAccessibleName('マス (2, 1) 敵1（敵・移動力5）')

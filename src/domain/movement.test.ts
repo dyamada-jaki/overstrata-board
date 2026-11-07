@@ -103,10 +103,11 @@ describe('getMovementRange', () => {
     ])
   })
 
+  // #60: 脇の2マスが通常の駒だと斜めを通れなくなった（spec.md 2.3）ため、斜めを塞がない配置で占有の除外を確かめる。
   it('範囲内の他キャラのマスをすべて除く', () => {
-    const others = [{ x: 1, y: 0 }, { x: 0, y: 1 }]
+    const others = [{ x: 1, y: 0 }, { x: 1, y: 1 }]
     expect(getMovementRange({ x: 0, y: 0 }, 1, { normal: others, downed: [] }, boardSize)).toEqual([
-      { x: 1, y: 1 },
+      { x: 0, y: 1 },
     ])
   })
 
