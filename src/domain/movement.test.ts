@@ -142,7 +142,7 @@ describe('getMovementRange', () => {
       { a: 'downed', b: 'normal', passes: true },
       { a: 'downed', b: 'downed', passes: true },
       { a: 'empty', b: 'empty', passes: true },
-    ])(`斜め(${dx}, ${dy})の両脇が$a/$bなら通過=$passes`, ({ a, b, passes }) => {
+    ])(`斜め(${dx}, ${dy})の両脇: $a / $b → $passes`, ({ a, b, passes }) => {
       const pieces = [
         ...(a === 'empty' ? [] : [{ position: { x: 2 + dx, y: 2 }, downed: a === 'downed' }]),
         ...(b === 'empty' ? [] : [{ position: { x: 2, y: 2 + dy }, downed: b === 'downed' }]),
@@ -175,6 +175,24 @@ describe('getMovementRange', () => {
     expect(getMovementRange({ x: 0, y: 0 }, 2, [pieces[0]!, { ...pieces[1]!, downed: true }], size)).toEqual([
       { x: 2, y: 0 }, { x: 0, y: 1 }, { x: 2, y: 1 },
     ])
+  })
+
+  it('同じマスへ同じコストで着いても斜めの偶奇が違う経路を捨てない（反転・縦横交換）', () => {
+    // (0,0)→(0,1)→(1,2)→(2,3) は4、斜め2回。
+    // (0,0)→(0,1)→(0,2)→(1,3)→(2,3) も4、斜め1回。
+    // (3,2)への最後の斜めは前者なら1、後者なら2。最少5で、4では届かない。
+    for (const flipX of [false, true]) for (const flipY of [false, true]) for (const swap of [false, true]) {
+      const transform = ({ x, y }: Position) => {
+        const a = flipX ? 4 - x : x
+        const b = flipY ? 4 - y : y
+        return swap ? { x: b, y: a } : { x: a, y: b }
+      }
+      const origin = transform({ x: 0, y: 0 })
+      const target = transform({ x: 3, y: 2 })
+      const pieces = occupied([{ x: 3, y: 1 }, { x: 2, y: 2 }].map(transform))
+      expect(getMovementRange(origin, 4, pieces, boardSize)).not.toContainEqual(target)
+      expect(getMovementRange(origin, 5, pieces, boardSize)).toContainEqual(target)
+    }
   })
 
   it('縦横を挟んでも斜めの1/2は戻らず、障害物なしでは従来の距離と一致する', () => {
