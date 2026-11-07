@@ -3,7 +3,7 @@ import App from './App.tsx'
 import { setCount } from './test/counts.ts'
 
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
-const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
+const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
 const select = (x: number, y: number) => fireEvent.click(cell(x, y))
 const range = () => screen.queryAllByRole('button', { name: / 移動範囲$/ })
 const noSelection = () => {
@@ -28,8 +28,8 @@ function movement(name: string, value: number) {
 }
 function toggleDowned() {
   click('設定')
-  const button = screen.queryByRole('button', { name: '倒れた状態にする', exact: true })
-    ?? screen.getByRole('button', { name: '通常に戻す', exact: true })
+  const button = screen.queryByRole('button', { name: '倒れた状態にする' })
+    ?? screen.getByRole('button', { name: '通常に戻す' })
   fireEvent.click(button)
   click('閉じる')
 }
