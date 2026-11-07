@@ -173,8 +173,11 @@ describe('getMovementRange', () => {
     const size = { width: 4, height: 2 }
     expect(getMovementRange({ x: 0, y: 0 }, 9, pieces, size)).toEqual([{ x: 0, y: 1 }])
     expect(getMovementRange({ x: 0, y: 0 }, 2, [pieces[0]!, { ...pieces[1]!, downed: true }], size)).toEqual([
-      { x: 2, y: 0 }, { x: 0, y: 1 }, { x: 2, y: 1 },
+      { x: 0, y: 1 }, { x: 2, y: 1 },
     ])
+    // (0,0)→(1,1)→(2,0) は斜め2回で3。2の一覧には含めない。
+    expect(getMovementRange({ x: 0, y: 0 }, 3, [pieces[0]!, { ...pieces[1]!, downed: true }], size))
+      .toContainEqual({ x: 2, y: 0 })
   })
 
   it('同じマスへ同じコストで着いても斜めの偶奇が違う経路を捨てない（反転・縦横交換）', () => {
