@@ -25,18 +25,25 @@ export function getMovement(armor: Armor): number {
   return movementRules.base + movementRules.armorModifiers[armor]
 }
 
+/** 移動する駒以外の配置済みの駒の位置を、通常状態と倒れた状態に分けたもの（spec.md 2.3）。 */
+export interface OtherPieces {
+  readonly normal: readonly Position[]
+  readonly downed: readonly Position[]
+}
+
 /**
  * 範囲表示用のマス一覧を上の行から左→右の順に返す。
- * 盤面内の現在地と移動力、他キャラの位置、盤面サイズを受け取る。
+ * 盤面内の現在地と移動力、他の駒の位置、盤面サイズを受け取る。
  * 現在地・他キャラのマスは除外し、通り道は判定しない。
  * 実際の移動先の可否とは別で、移動操作を制限するためには使わない。
  */
 export function getMovementRange(
   origin: Position,
   movement: number,
-  otherPositions: readonly Position[],
+  others: OtherPieces,
   boardSize: BoardSize,
 ): Position[] {
+  const otherPositions = [...others.normal, ...others.downed]
   const range: Position[] = []
 
   for (let y = 0; y < boardSize.height; y += 1) {

@@ -58,6 +58,8 @@ export function getSelectedMovementRange(state: BoardState, boardSize: BoardSize
   const selected = characters.find((character) => character.id === selection.id)
   if (!selected || selected.position === null || selected.downed) return []
   const others = characters.filter((character) => character.id !== selected.id)
-    .flatMap((character) => character.position === null ? [] : [character.position])
-  return getMovementRange(selected.position, selected.movement, others, boardSize)
+  const positionsOf = (downed: boolean) => others
+    .flatMap((character) => character.position === null || character.downed !== downed ? [] : [character.position])
+  return getMovementRange(selected.position, selected.movement,
+    { normal: positionsOf(false), downed: positionsOf(true) }, boardSize)
 }
