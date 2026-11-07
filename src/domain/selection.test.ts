@@ -87,12 +87,36 @@ describe('getSelectedMovementRange', () => {
   it('選択中のキャラの装備による移動力で、他キャラのマスを除いた #7 の範囲を返す', () => {
     // 味方2は重装で移動力3。
     expect(getSelectedMovementRange(stateOf({ kind: 'character', id: 'ally-2' }), size))
-      .toEqual(getMovementRange(ally2.position!, 3, [ally1.position!, enemy1.position!], size))
+      .toEqual(getMovementRange(ally2.position!, 3, { normal: [ally1.position!, enemy1.position!], downed: [] }, size))
     // 味方1から敵1までは距離5だが、敵1のマスは含まない。
     const range = getSelectedMovementRange(stateOf({ kind: 'character', id: 'ally-1' }), size)
     expect(range).toContainEqual({ x: 2, y: 2 })
     expect(range).not.toContainEqual(enemy1.position!)
     expect(range).not.toContainEqual(ally1.position!)
+  })
+})
+
+describe('getSelectedMovementRange の通り道（spec.md 2.3 / #60）', () => {
+  const piece = (id: string, side: 'ally' | 'enemy', position: { x: number; y: number } | null, downed = false) =>
+    ({ id, name: id, side, number: 1, movement: 1, position, downed })
+  const select = (pieces: ReturnType<typeof piece>[]) =>
+    getSelectedMovementRange({ characters: pieces, selection: { kind: 'character', id: 'me' } }, size)
+
+  it('味方・敵とも通常状態の駒は通れず、倒れた状態にした駒は通過だけできる', () => {
+    const me = piece('me', 'ally', { x: 0, y: 0 })
+    expect(select([me, piece('a', 'ally', { x: 1, y: 0 }), piece('e', 'enemy', { x: 0, y: 1 })])).toEqual([])
+    expect(select([me, piece('a', 'ally', { x: 1, y: 0 }, true), piece('e', 'enemy', { x: 0, y: 1 })]))
+      .toEqual([{ x: 1, y: 1 }])
+    expect(select([me, piece('a', 'ally', { x: 1, y: 0 }), piece('e', 'enemy', { x: 0, y: 1 }, true)]))
+      .toEqual([{ x: 1, y: 1 }])
+  })
+
+  it('未配置の駒は通常・倒れた状態とも通り道を妨げない', () => {
+    const me = piece('me', 'enemy', { x: 0, y: 0 })
+    const blocker = piece('e', 'enemy', { x: 1, y: 0 })
+    const expected = [{ x: 0, y: 1 }, { x: 1, y: 1 }]
+    expect(select([me, blocker, piece('u', 'ally', null)])).toEqual(expected)
+    expect(select([me, blocker, piece('u', 'ally', null, true)])).toEqual(expected)
   })
 })
 
