@@ -1,4 +1,4 @@
-import { canMoveTo, getDistance, getMovement, getMovementRange } from './movement.ts'
+import { canMoveTo, getDistance, getMovement, getMovementRange, type Position } from './movement.ts'
 
 describe('getDistance', () => {
   const examples = [
@@ -47,6 +47,7 @@ describe('getMovement', () => {
 
 describe('getMovementRange', () => {
   const boardSize = { width: 5, height: 5 }
+  const occupied = (positions: readonly Position[], downed = false) => positions.map((position) => ({ position, downed }))
 
   it('移動力1では斜めを含む隣接8マスを返し、現在地を除く', () => {
     expect(getMovementRange({ x: 2, y: 2 }, 1, [], boardSize)).toEqual([
@@ -102,18 +103,93 @@ describe('getMovementRange', () => {
     ])
   })
 
-  it('範囲内の他キャラのマスをすべて除く', () => {
+  it('通常の駒が両脇にいると斜めにも進めず、盤面外を回り込まない', () => {
     const others = [{ x: 1, y: 0 }, { x: 0, y: 1 }]
-    expect(getMovementRange({ x: 0, y: 0 }, 1, others, boardSize)).toEqual([
-      { x: 1, y: 1 },
+    expect(getMovementRange({ x: 0, y: 0 }, 1, occupied(others), boardSize)).toEqual([])
+  })
+
+  it('通常の駒に囲まれた先には移動力が十分でも到達できない', () => {
+    const others = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }]
+    expect(getMovementRange({ x: 0, y: 0 }, 9, occupied(others), boardSize)).toEqual([])
+  })
+
+
+  // spec.md 2.3 の具体例。すべて内部座標（表示座標から1を引く）。
+  it.each([
+    { label: '両脇が通常', origin: { x: 0, y: 0 }, pieces: [{ position: { x: 1, y: 0 }, downed: false }, { position: { x: 0, y: 1 }, downed: false }], target: { x: 1, y: 1 }, cost: null },
+    { label: '片脇が空き', origin: { x: 0, y: 0 }, pieces: [{ position: { x: 1, y: 0 }, downed: false }], target: { x: 1, y: 1 }, cost: 1 },
+    { label: '片脇が倒れた駒', origin: { x: 0, y: 0 }, pieces: [{ position: { x: 1, y: 0 }, downed: false }, { position: { x: 0, y: 1 }, downed: true }], target: { x: 1, y: 1 }, cost: 1 },
+    { label: '通常の駒を迂回', origin: { x: 0, y: 1 }, pieces: [{ position: { x: 1, y: 1 }, downed: false }], target: { x: 2, y: 1 }, cost: 3 },
+    { label: '倒れた駒を直進して通過', origin: { x: 0, y: 1 }, pieces: [{ position: { x: 1, y: 1 }, downed: true }], target: { x: 2, y: 1 }, cost: 2 },
+  ])('仕様例: $label', ({ origin, pieces, target, cost }) => {
+    if (cost === null) {
+      expect(getMovementRange(origin, 9, pieces, boardSize)).toEqual([])
+    } else {
+      expect(getMovementRange(origin, cost - 1, pieces, boardSize)).not.toContainEqual(target)
+      const range = getMovementRange(origin, cost, pieces, boardSize)
+      expect(range).toContainEqual(target)
+      expect(range).not.toContainEqual(origin)
+      for (const { position } of pieces) expect(range).not.toContainEqual(position)
+    }
+  })
+
+  for (const dx of [-1, 1]) for (const dy of [-1, 1]) {
+    it.each([
+      { a: 'normal', b: 'normal', passes: false },
+      { a: 'normal', b: 'empty', passes: true },
+      { a: 'empty', b: 'normal', passes: true },
+      { a: 'normal', b: 'downed', passes: true },
+      { a: 'downed', b: 'normal', passes: true },
+      { a: 'downed', b: 'downed', passes: true },
+      { a: 'empty', b: 'empty', passes: true },
+    ])(`斜め(${dx}, ${dy})の両脇が$a/$bなら通過=$passes`, ({ a, b, passes }) => {
+      const pieces = [
+        ...(a === 'empty' ? [] : [{ position: { x: 2 + dx, y: 2 }, downed: a === 'downed' }]),
+        ...(b === 'empty' ? [] : [{ position: { x: 2, y: 2 + dy }, downed: b === 'downed' }]),
+      ]
+      const range = getMovementRange({ x: 2, y: 2 }, 1, pieces, boardSize)
+      expect(range.some(({ x, y }) => x === 2 + dx && y === 2 + dy)).toBe(passes)
+      for (const { position } of pieces) expect(range).not.toContainEqual(position)
+    })
+
+    it.each([false, true])(`斜め(${dx}, ${dy})の進む先は、倒れた駒=%sのときだけ通過できる`, (downed) => {
+      // 一方の脇は空き。もう一方と盤面の残りを塞ぎ、斜め先を通る一本道にする。
+      const origin = { x: dx === 1 ? 0 : 2, y: dy === 1 ? 0 : 2 }
+      const target = { x: origin.x + 2 * dx, y: origin.y + 2 * dy }
+      const middle = { x: origin.x + dx, y: origin.y + dy }
+      const pieces = []
+      for (let y = 0; y < 3; y += 1) for (let x = 0; x < 3; x += 1) {
+        if ((x === origin.x && y === origin.y) || (x === target.x && y === target.y)) continue
+        // 右隣と中央の下だけ倒れた駒にする。中央を通る斜め2回は3、迂回はできない。
+        pieces.push({ position: { x, y }, downed: (x === middle.x && y === middle.y) ? downed : (x === middle.x && (y === origin.y || y === target.y)) })
+      }
+      const range = getMovementRange(origin, 3, pieces, { width: 3, height: 3 })
+      expect(range).toEqual(downed ? [target] : [])
+    })
+  }
+
+  it('長方形を横切る通常の壁は盤面外へ迂回できず、倒れた駒の隙間からは通過できる', () => {
+    const pieces = occupied([{ x: 1, y: 0 }, { x: 1, y: 1 }])
+    const size = { width: 4, height: 2 }
+    expect(getMovementRange({ x: 0, y: 0 }, 9, pieces, size)).toEqual([{ x: 0, y: 1 }])
+    expect(getMovementRange({ x: 0, y: 0 }, 2, [pieces[0]!, { ...pieces[1]!, downed: true }], size)).toEqual([
+      { x: 2, y: 0 }, { x: 0, y: 1 }, { x: 2, y: 1 },
     ])
   })
 
-  it('他キャラに囲まれていてもその向こう側を範囲から除かない', () => {
-    const others = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }]
-    expect(getMovementRange({ x: 0, y: 0 }, 2, others, boardSize)).toEqual([
-      { x: 2, y: 0 }, { x: 2, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 },
-    ])
+  it('縦横を挟んでも斜めの1/2は戻らず、障害物なしでは従来の距離と一致する', () => {
+    // (1,1)→(2,2)→(3,2)→(4,3) は1+1+2=4、3では届かない。
+    expect(getMovementRange({ x: 0, y: 0 }, 3, [], boardSize)).not.toContainEqual({ x: 3, y: 2 })
+    for (const origin of [{ x: 0, y: 0 }, { x: 3, y: 2 }]) {
+      for (let movement = 0; movement <= 9; movement += 1) {
+        const expected = []
+        for (let y = 0; y < 4; y += 1) for (let x = 0; x < 6; x += 1) {
+          const distance = getDistance(origin, { x, y })
+          if (distance > 0 && distance <= movement) expected.push({ x, y })
+        }
+        expect(getMovementRange(origin, movement, [], { width: 6, height: 4 })).toEqual(expected)
+      }
+    }
   })
 
   it('サンプルの軽装キャラから距離5の敵マスも除く', () => {
@@ -123,7 +199,7 @@ describe('getMovementRange', () => {
     const movement = getMovement('light')
     expect(getDistance(origin, enemy)).toBe(5)
     expect(getMovementRange(origin, movement, [], sampleBoard)).toContainEqual(enemy)
-    expect(getMovementRange(origin, movement, [enemy], sampleBoard)).not.toContainEqual(enemy)
+    expect(getMovementRange(origin, movement, occupied([enemy]), sampleBoard)).not.toContainEqual(enemy)
   })
 
   it('移動力0では現在地も含めず空の一覧を返す', () => {
@@ -136,8 +212,8 @@ describe('getMovementRange', () => {
     const board = Object.freeze({ width: 3, height: 2 })
     const expected = [{ x: 0, y: 1 }, { x: 1, y: 1 }]
 
-    expect(getMovementRange(origin, 1, others, board)).toEqual(expected)
-    expect(getMovementRange(origin, 1, others, board)).toEqual(expected)
+    expect(getMovementRange(origin, 1, occupied(others), board)).toEqual(expected)
+    expect(getMovementRange(origin, 1, occupied(others), board)).toEqual(expected)
     expect(origin).toEqual({ x: 0, y: 0 })
     expect(others).toEqual([{ x: 1, y: 0 }])
     expect(board).toEqual({ width: 3, height: 2 })

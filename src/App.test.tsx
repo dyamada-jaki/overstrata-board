@@ -144,7 +144,7 @@ describe('キャラの選択と移動（spec.md 2.2・2.3）', () => {
   const occupiedNames = () => screen.getAllByRole('button', { name: /（/ }).map(nameOf)
   const character = (name: string) => screen.getByRole('button', { name: new RegExp(` ${name}（`) })
   const expectedRange = (origin: Position, movement: number, others: Position[]) =>
-    getMovementRange(origin, movement, others, { width: 10, height: 10 })
+    getMovementRange(origin, movement, others.map((position) => ({ position, downed: false })), { width: 10, height: 10 })
       .map((position) => `マス ${formatPosition(position)} 移動範囲`)
 
   // spec.md 2.2 の表（表示座標）と、それに対応する内部座標。

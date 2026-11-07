@@ -87,7 +87,7 @@ describe('getSelectedMovementRange', () => {
   it('選択中のキャラの装備による移動力で、他キャラのマスを除いた #7 の範囲を返す', () => {
     // 味方2は重装で移動力3。
     expect(getSelectedMovementRange(stateOf({ kind: 'character', id: 'ally-2' }), size))
-      .toEqual(getMovementRange(ally2.position!, 3, [ally1.position!, enemy1.position!], size))
+      .toEqual(getMovementRange(ally2.position!, 3, [ally1, enemy1].map((character) => ({ position: character.position!, downed: character.downed })), size))
     // 味方1から敵1までは距離5だが、敵1のマスは含まない。
     const range = getSelectedMovementRange(stateOf({ kind: 'character', id: 'ally-1' }), size)
     expect(range).toContainEqual({ x: 2, y: 2 })

@@ -12,6 +12,12 @@ export interface BoardSize {
   readonly height: number
 }
 
+/** 移動範囲を求める際の、配置済みの他の駒。 */
+export interface MovementOccupant {
+  readonly position: Position
+  readonly downed: boolean
+}
+
 export type Armor = keyof typeof movementRules.armorModifiers
 
 /** 縦横は1、斜めは1・2を交互に数える移動距離（spec.md 3.1）。 */
@@ -34,7 +40,7 @@ export function getMovement(armor: Armor): number {
 export function getMovementRange(
   origin: Position,
   movement: number,
-  otherPositions: readonly Position[],
+  otherPieces: readonly MovementOccupant[],
   boardSize: BoardSize,
 ): Position[] {
   const range: Position[] = []
@@ -42,7 +48,7 @@ export function getMovementRange(
   for (let y = 0; y < boardSize.height; y += 1) {
     for (let x = 0; x < boardSize.width; x += 1) {
       if (x === origin.x && y === origin.y) continue
-      if (otherPositions.some((position) => position.x === x && position.y === y)) {
+      if (otherPieces.some(({ position }) => position.x === x && position.y === y)) {
         continue
       }
 
