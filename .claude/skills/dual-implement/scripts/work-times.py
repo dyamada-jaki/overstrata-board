@@ -32,7 +32,8 @@ def orca(*args):
         exe = "/Applications/Orca.app/Contents/Resources/bin/orca"
     else:
         exe = "orca"
-    return json.loads(run([exe, *args, "--json"]))["result"]
+    # --full: 簡易表示には時刻・起動値・メッセージの時刻が出ないため、完全な記録を取る
+    return json.loads(run([exe, *args, "--json", "--full"]))["result"]
 
 
 def ts(s):
@@ -72,20 +73,22 @@ def main():
 
     # ワーカー: 起動から完了まで + 中の「作業:」の印
     tasks = {t["id"]: t for t in orca("orchestration", "task-list", "--run", run_id)["tasks"]}
-    workers = [w for w in orca("orchestration", "worker-list")["workers"] if w["runId"] == run_id]
-    messages = [m for m in orca("orchestration", "inbox", "--limit", "1000")["messages"] if m["run_id"] == run_id]
+    # worker-list は --run を付けないと Run を絞れず、各行に runId も無い（Orca 1.4.250）
+    workers = orca("orchestration", "worker-list", "--run", run_id)["workers"]
+    messages = [m for m in orca("orchestration", "inbox", "--terminal", f"run:{run_id}", "--limit", "1000")["messages"]
+                if m["run_id"] == run_id]
     for w in workers:
         d = orca("orchestration", "worker-show", "--dispatch", w["dispatchId"])
         start = ts(d["dispatch"]["createdAt"])
         end = ts(d["dispatch"]["completedAt"]) if d["dispatch"].get("completedAt") else None
         task = tasks.get(w["taskId"], {})
         title = task.get("task_title") or task.get("display_name") or w["dispatchId"]
-        launch = d["worker"]["startOptions"]["launch"]["effective"]
+        launch = d["worker"]["startOptions"]["launch"]["effective"]  # 実行値が無ければ null（未確認）
         who = f"{title}（{launch.get('model') or '既定'}・{launch.get('effort') or '既定'}）"
         rows.append((start, end, "（ワーカー全体）", who))
         marks = [(ts(m["created_at"]), m["subject"].split(":", 1)[1].strip())
                  for m in messages
-                 if m["type"] == "status" and m["from_handle"] == w["agentTerminalHandle"]
+                 if m["type"] == "status" and m["from_handle"] == d["worker"]["agentTerminalHandle"]
                  and m["subject"].startswith("作業:")]
         if marks:
             rows += segments([(start, "（印の前）")] + marks, who, end)
