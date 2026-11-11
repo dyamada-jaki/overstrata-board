@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Board } from './components/Board.tsx'
 import { PieceSettings } from './components/PieceSettings.tsx'
+import { initialView } from './components/boardView.ts'
 import { pieceDetails, tokenClass } from './components/piece.ts'
 import { useLongPress } from './components/useLongPress.ts'
 import { pieceLimits } from './data/pieces.ts'
@@ -41,11 +42,20 @@ function CountGuidance({ visible }: { visible: boolean }) {
   return <p style={visible ? undefined : { visibility: 'hidden' }}>味方か敵を1体以上にしてください</p>
 }
 
-/** 「設定」から開くとき、選択中の駒が画面内にあればその近くに、なければボタンの近くに出す。 */
+/**
+ * 「設定」から開くとき、選択中の駒が見えていればその近くに、なければボタンの近くに出す。
+ * 盤面の駒は、画面の中でも拡大で表示枠の外に隠れていれば見えていない扱いにする（#63）。
+ */
 function settingsAnchor(id: string, button: HTMLElement) {
   const piece = document.querySelector<HTMLElement>(`[data-piece-id="${id}"]`)
-  const rect = piece?.getBoundingClientRect()
-  return piece && rect && rect.bottom > 0 && rect.top < window.innerHeight ? piece : button
+  if (!piece) return button
+  const rect = piece.getBoundingClientRect()
+  const frame = piece.closest('.board-viewport')?.getBoundingClientRect()
+  const top = Math.max(0, frame?.top ?? 0)
+  const bottom = Math.min(window.innerHeight, frame?.bottom ?? Infinity)
+  const left = Math.max(0, frame?.left ?? 0)
+  const right = Math.min(window.innerWidth, frame?.right ?? Infinity)
+  return rect.bottom > top && rect.top < bottom && rect.right > left && rect.left < right ? piece : button
 }
 
 const settingsHelp = '駒を長押し（PCは右クリック）か「設定」で、移動力・状態・削除を扱えます。'
@@ -67,6 +77,8 @@ function App() {
   const [resetOpen, setResetOpen] = useState(false)
   const [deleting, setDeleting] = useState<Character | null>(null)
   const [settings, setSettings] = useState<SettingsTarget | null>(null)
+  // 盤面の倍率と表示位置（#63）。ゲームの状態（battle）には入れない一時的な表示の状態。
+  const [view, setView] = useState(initialView)
   const prepared = prepareBattle(allyCount, enemyCount)
   const addition = adding ? addPieces(battle, allyAddition, enemyAddition) : null
   const allyCapacity = getAdditionCapacity(battle, 'ally')
@@ -81,12 +93,14 @@ function App() {
     setBattle((current) => ({ ...current, ...selectCharacter(current, id) }))
     setSettings({ id, anchor, returnFocus, focus: 'close' })
   }
-  const tokenHandlers = useLongPress((id, element) => openSettings(id, element, element))
+  const { bind: tokenHandlers } = useLongPress((id, element) => openSettings(id, element, element))
   const reset = () => {
     setBattle(createInitialBattle())
     setAllyCount(0)
     setEnemyCount(0)
     setAdding(false)
+    // 表示も全体表示へ戻す（計画承認時の人間の決定）。
+    setView(initialView)
     // 開いたボタンは段階の切り替えで消えるので、確認画面の後始末でもフォーカスは戻らない。
     // 特定の部品へ自動でフォーカスを移さない（spec.md 2.2 #46）。
     setResetOpen(false)
@@ -105,7 +119,12 @@ function App() {
         <div>
           <Board size={boardSize} state={battle}
             onTap={(position) => setBattle((current) => ({ ...current, ...tapPosition(current, position, boardSize) }))}
-            onOpenSettings={(id, element) => openSettings(id, element, element)} />
+            onOpenSettings={(id, element) => openSettings(id, element, element)}
+            view={view} onViewChange={setView} />
+          <div className="board-view-bar">
+            <span>倍率 {view.scale.toFixed(1)}倍</span>
+            <button type="button" onClick={() => setView(initialView)}>全体を見る</button>
+          </div>
           <p className="legend"><span className="ally-label">● 味方</span> <span className="enemy-label">● 敵</span> 移動力の初期値は{movementSetting.initial}マス（準備中・追加分の確定前に、駒の設定で変更できます）</p>
         </div>
         {battle.phase === 'counts' ? (
