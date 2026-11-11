@@ -23,10 +23,11 @@ function place(name: string, x: number, y: number) {
   fireEvent.click(cell(x, y))
 }
 /** jsdom にはレイアウトが無いので、表示枠（盤面の外側）の大きさだけ与える。左上は画面の (0, 0)。 */
-function setFrame(width = 300, height = 300) {
+function setFrame(width = 300, height = 300, left = 0, top = 0) {
   const frame = board().parentElement!
   Object.defineProperty(frame, 'clientWidth', { configurable: true, value: width })
   Object.defineProperty(frame, 'clientHeight', { configurable: true, value: height })
+  frame.getBoundingClientRect = () => ({ left, top, right: left + width, bottom: top + height, width, height, x: left, y: top, toJSON: () => ({}) })
 }
 const wheel = (element: HTMLElement, deltaY: number, x = 150, y = 150) =>
   fireEvent.wheel(element, { deltaY, clientX: x, clientY: y })
@@ -332,5 +333,107 @@ describe('拡大後の駒の操作（受け入れ条件5）', () => {
     fireEvent.click(cell(5, 4))
     expect(cell(4, 4)).toHaveAccessibleName(/^マス \(4, 4\) 味方1（.*倒れた状態）$/)
     expect(zoom()).not.toBe('倍率 1.0倍')
+  })
+})
+
+describe('表示操作の続きと後始末（ミューテーションテストで見つけた検証不足の補強）', () => {
+  // 表示枠を画面の (20, 50) に置き、指・カーソルの位置を表示枠の左上からの座標に直すことも確かめる。
+  const at = (x: number, y: number) => [x + 20, y + 50] as const
+  function pinchTo3x() {
+    pointer(cell(3, 3), 'pointerDown', ...at(100, 100), { kind: 'touch', id: 1 })
+    pointer(cell(6, 6), 'pointerDown', ...at(120, 100), { kind: 'touch', id: 2 })
+    // 距離20→60で3倍。中点は (110, 100) → (130, 100)。1倍では表示位置を動かせないので、新しい中点 (130, 100) を基準に3倍にする。
+    pointer(cell(6, 6), 'pointerMove', ...at(160, 100), { kind: 'touch', id: 2 })
+    expect(board().style.transform).toBe('translate(-260px, -200px) scale(3)')
+  }
+
+  it('ピンチは2本指の中点を基準に拡大し、中点の移動で表示位置を同じ向きに動かす', () => {
+    render(<App />)
+    setFrame(300, 300, 20, 50)
+    pinchTo3x()
+    pointer(cell(6, 6), 'pointerUp', ...at(160, 100), { kind: 'touch', id: 2 })
+    pointer(cell(3, 3), 'pointerUp', ...at(100, 100), { kind: 'touch', id: 1 })
+    // 指の間隔を保ったまま2本とも右へ30px動かすと、倍率は3倍のまま、盤面も右へ30px動く。
+    pointer(cell(3, 3), 'pointerDown', ...at(100, 100), { kind: 'touch', id: 3 })
+    pointer(cell(6, 6), 'pointerDown', ...at(160, 100), { kind: 'touch', id: 4 })
+    pointer(cell(3, 3), 'pointerMove', ...at(130, 100), { kind: 'touch', id: 3 })
+    pointer(cell(6, 6), 'pointerMove', ...at(190, 100), { kind: 'touch', id: 4 })
+    expect(board().style.transform).toBe('translate(-230px, -200px) scale(3)')
+  })
+
+  it('ドラッグは指・マウスと同じ向きに同じ量だけ動かし、押した位置の近くへ戻すと表示も戻る', () => {
+    render(<App />)
+    setFrame(300, 300, 20, 50)
+    pinchTo3x()
+    pointer(cell(6, 6), 'pointerUp', ...at(160, 100), { kind: 'touch', id: 2 })
+    pointer(cell(3, 3), 'pointerUp', ...at(100, 100), { kind: 'touch', id: 1 })
+    pointer(cell(5, 5), 'pointerDown', 100, 100)
+    pointer(cell(5, 5), 'pointerMove', 60, 70)
+    expect(board().style.transform).toBe('translate(-300px, -230px) scale(3)')
+    pointer(cell(5, 5), 'pointerMove', 95, 100)
+    expect(board().style.transform).toBe('translate(-265px, -200px) scale(3)')
+  })
+
+  it('ピンチの片方の指を離すと、残りの指でそのまま表示位置を動かし、離した後の click で選択しない', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    setFrame(300, 300, 20, 50)
+    pinchTo3x()
+    pointer(cell(6, 6), 'pointerUp', ...at(160, 100), { kind: 'touch', id: 2 })
+    pointer(cell(3, 3), 'pointerMove', ...at(90, 95), { kind: 'touch', id: 1 })
+    expect(board().style.transform).toBe('translate(-270px, -205px) scale(3)')
+    pointer(cell(3, 3), 'pointerUp', ...at(90, 95), { kind: 'touch', id: 1 })
+    fireEvent.click(cell(3, 3), { detail: 1 })
+    expect(pressed()).toEqual([])
+  })
+
+  it.each(['pointerUp', 'pointerCancel'] as const)('ドラッグが click なしで終わっても（%s）、次のタップ・キーボードの操作は止めない', (last) => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    pointer(cell(5, 5), 'pointerDown', 100, 100, { kind: 'touch' })
+    pointer(cell(5, 5), 'pointerMove', 100, 140, { kind: 'touch' })
+    pointer(cell(5, 5), last, 100, 140, { kind: 'touch' })
+    // キーボードの Enter・Space（detail 0）は、直前のドラッグの click として止めない。
+    fireEvent.click(cell(3, 3), { detail: 0 })
+    expect(pressed()).toEqual([cell(3, 3)])
+    pointer(cell(6, 6), 'pointerDown', 100, 100, { kind: 'touch' })
+    pointer(cell(6, 6), 'pointerUp', 100, 100, { kind: 'touch' })
+    fireEvent.click(cell(6, 6), { detail: 1 })
+    expect(cell(6, 6)).toHaveAccessibleName(/^マス \(6, 6\) 味方1（/)
+  })
+
+  it('マウスの左クリック・右クリックの後でも、キーボードの contextmenu で開ける', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    pointer(cell(3, 3), 'pointerDown', 100, 100)
+    pointer(cell(3, 3), 'pointerUp', 100, 100)
+    fireEvent.click(cell(3, 3), { detail: 1 })
+    fireEvent.contextMenu(cell(3, 3))
+    expect(popups()).toHaveLength(1)
+    click('閉じる')
+    pointer(cell(3, 3), 'pointerDown', 100, 100, { button: 2 })
+    fireEvent.contextMenu(cell(3, 3), { button: 2 })
+    pointer(cell(3, 3), 'pointerUp', 100, 100, { button: 2 })
+    expect(popups()).toHaveLength(1)
+    click('閉じる')
+    fireEvent.contextMenu(cell(3, 3))
+    expect(popups()).toHaveLength(1)
+  })
+})
+
+describe('盤面の外の未配置の駒の長押し（#45 の条件。盤面のドラッグに頼らず取り消す）', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('未配置の駒を押して11px動かすと、長押しを取り消す', () => {
+    render(<App />)
+    prepare(1, 0)
+    pointer(token('味方1'), 'pointerDown', 100, 100, { kind: 'touch' })
+    pointer(token('味方1'), 'pointerMove', 100, 111, { kind: 'touch' })
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(popups()).toEqual([])
   })
 })

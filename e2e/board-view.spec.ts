@@ -251,9 +251,12 @@ test('拡大・移動した表示で押したマスに、駒の配置・移動�
 
 test('拡大中の駒の設定ポップアップは駒の近くに出て、開閉で盤面がずれない。表示枠の外に隠れた駒は「設定」ボタンの近くに出す', async ({ page }, testInfo) => {
   await page.goto('/')
+  // 味方2は、中心の拡大で表示枠の外に隠れるが、画面（window）の中には残る位置に置く。
+  // スマホは盤面の下の帯・凡例に重なる位置（縦）、PC は盤面の右のパネルに重なる位置（横）になる。
+  const [hx, hy] = isMobile(testInfo.project.name) ? [5, 8] : [10, 5]
   await prepare(page, 2, 0)
   await place(page, '味方1', 5, 5)
-  await place(page, '味方2', 10, 10)
+  await place(page, '味方2', hx, hy)
   await page.evaluate(() => window.scrollTo(0, 0))
   await zoomIn(page, testInfo.project.name)
 
@@ -277,17 +280,19 @@ test('拡大中の駒の設定ポップアップは駒の近くに出て、開�
   await button(page, '閉じる').click()
   expect(await box(piece)).toEqual(before)
 
-  // 右下の味方2は、中心の拡大で表示枠の外に隠れている。
-  const view = await frame(page)
-  const hidden = await box(cell(page, 10, 10))
-  expect(hidden.y >= view.y + view.height || hidden.x >= view.x + view.width).toBe(true)
   // 味方2を選ぶには盤面を全体表示に戻す必要があるので、選んでから拡大し直す。
   await button(page, '全体を見る').click()
-  await cell(page, 10, 10).click()
+  await cell(page, hx, hy).click()
   await page.evaluate(() => window.scrollTo(0, 0))
   await zoomIn(page, testInfo.project.name)
   const settings = button(page, '設定')
   await settings.scrollIntoViewIfNeeded()
+  // 押す直前に、味方2が表示枠の外にあり、画面の中には入っていることを確かめる（画面だけで判定すると駒の近くに出てしまう条件）。
+  const view = await frame(page)
+  const hidden = await box(cell(page, hx, hy))
+  const viewport = page.viewportSize()!
+  expect(hidden.y >= view.y + view.height || hidden.x >= view.x + view.width).toBe(true)
+  expect(hidden.y < viewport.height && hidden.x < viewport.width).toBe(true)
   await settings.click()
   const popup2 = page.getByRole('dialog', { name: '味方2の設定' })
   await expect(popup2).toBeVisible()
