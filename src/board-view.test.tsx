@@ -484,3 +484,57 @@ describe('盤面の外で離した操作・駒の外から始めた右ドラッ�
     expect(pressed()).toEqual([cell(3, 3)])
   })
 })
+
+describe('表示枠の大きさが変わったときの収め直し（PR #65 の相互レビューで見つけた不具合の再現）', () => {
+  /** 4倍に拡大し、左ドラッグで右下の端まで表示する。300×300 の枠では表示位置が (-900, -900) になる。 */
+  function zoomToBottomRight() {
+    for (let i = 0; i < 20; i += 1) wheel(cell(1, 1), -100, 0, 0)
+    mouseDrag(cell(1, 1), -2000, -2000)
+    expect(board().style.transform).toBe('translate(-900px, -900px) scale(4)')
+  }
+  function setUp() {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 5, 5)
+    fireEvent.click(cell(5, 5))
+    setFrame()
+    zoomToBottomRight()
+  }
+  function expectKept() {
+    expect(zoom()).toBe('倍率 4.0倍')
+    expect(cell(5, 5)).toHaveAccessibleName(/^マス \(5, 5\) 味方1（/)
+    expect(pressed()).toEqual([cell(5, 5)])
+  }
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('ResizeObserver の無い環境: 画面の大きさが変わり表示枠が縮んだら、倍率・駒・選択を保ったまま盤面の端に収め直す', () => {
+    vi.stubGlobal('ResizeObserver', undefined)
+    setUp()
+    setFrame(150, 120)
+    fireEvent(window, new Event('resize'))
+    expect(board().style.transform).toBe('translate(-450px, -360px) scale(4)')
+    expectKept()
+  })
+
+  it('ResizeObserver のある環境: 表示枠の大きさの変化を受けて収め直す。広がったときは表示位置を動かさない', () => {
+    const observers: { callback: () => void; targets: Element[] }[] = []
+    vi.stubGlobal('ResizeObserver', class {
+      readonly entry: { callback: () => void; targets: Element[] }
+      constructor(callback: () => void) { this.entry = { callback, targets: [] }; observers.push(this.entry) }
+      observe(target: Element) { this.entry.targets.push(target) }
+      unobserve() {}
+      disconnect() { this.entry.targets = [] }
+    })
+    setUp()
+    const frame = board().parentElement!
+    const watching = observers.filter((observer) => observer.targets.includes(frame))
+    expect(watching).toHaveLength(1)
+    setFrame(400, 400)
+    act(() => { watching[0]!.callback() })
+    expect(board().style.transform).toBe('translate(-900px, -900px) scale(4)')
+    setFrame(150, 120)
+    act(() => { watching[0]!.callback() })
+    expect(board().style.transform).toBe('translate(-450px, -360px) scale(4)')
+    expectKept()
+  })
+})

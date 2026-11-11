@@ -301,3 +301,71 @@ test('拡大中の駒の設定ポップアップは駒の近くに出て、開�
   const gap2 = Math.min(Math.abs(area2.y - (near.y + near.height)), Math.abs(near.y - (area2.y + area2.height)))
   expect(gap2).toBeLessThanOrEqual(5)
 })
+
+/** 盤面（変形後の矩形）が表示枠を覆っている（端から余白が出ていない）ことを確かめる。 */
+async function expectBoardCoversFrame(page: Page) {
+  await expect.poll(async () => {
+    const view = await frame(page)
+    const area = await box(board(page))
+    return area.x <= view.x + 0.5 && area.y <= view.y + 0.5
+      && area.x + area.width >= view.x + view.width - 0.5 && area.y + area.height >= view.y + view.height - 0.5
+  }).toBe(true)
+}
+
+test('PC：4倍で右下を表示したまま画面を縮めても、盤面は表示枠を覆い、倍率・駒・選択を保つ', async ({ page }, testInfo) => {
+  test.skip(isMobile(testInfo.project.name), '1280px から 375px へ縮める操作は PC 幅（マウス）から始める')
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await prepare(page, 1, 0)
+  await place(page, '味方1', 5, 5)
+  await cell(page, 5, 5).click()
+  await expect(cell(page, 5, 5)).toHaveAttribute('aria-pressed', 'true')
+  await page.evaluate(() => window.scrollTo(0, 0))
+  const at = await boardCenter(page)
+  await page.mouse.move(at.x, at.y)
+  for (let i = 0; i < 30; i += 1) await page.mouse.wheel(0, -100)
+  await expect(zoomText(page)).toHaveText('倍率 4.0倍')
+  // 左ドラッグで盤面の右下の端まで表示する（端で止まるので、表示枠の大きさ分を何回か動かす）。
+  for (let i = 0; i < 4; i += 1) {
+    const view = await frame(page)
+    await mouseDrag(page, { x: view.x + view.width - 10, y: view.y + view.height - 10 }, -(view.width - 20), -(view.height - 20), 'left')
+  }
+  const view = await frame(page)
+  const area = await box(board(page))
+  expect(area.x + area.width).toBeCloseTo(view.x + view.width, 0)
+  expect(area.y + area.height).toBeCloseTo(view.y + view.height, 0)
+
+  await page.setViewportSize({ width: 375, height: 667 })
+  await expectBoardCoversFrame(page)
+  await testInfo.attach('縮めた後の盤面', { body: await page.screenshot(), contentType: 'image/png' })
+  await expect(zoomText(page)).toHaveText('倍率 4.0倍')
+  await expect(cell(page, 5, 5)).toHaveAccessibleName(/^マス \(5, 5\) 味方1（/)
+  await expect(cell(page, 5, 5)).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { pressed: true })).toHaveCount(1)
+  await expect(dialogs(page)).toHaveCount(0)
+})
+
+test('スマホ：1本目の指を少し（10px 以内）動かしてから2本目を置いても、広げた分だけ最後まで拡大する', async ({ page }, testInfo) => {
+  test.skip(!isMobile(testInfo.project.name), '2本指のピンチはスマホ幅で確かめる')
+  await page.goto('/')
+  await prepare(page, 1, 0)
+  await place(page, '味方1', 5, 5)
+  await page.evaluate(() => window.scrollTo(0, 0))
+  const at = await center(cell(page, 5, 5))
+  await touch(page, async (cdp) => {
+    // 1本目は駒の上に置き、横に 6px 動かす（長押し・ドラッグの許容量 10px 以内）。
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: at.x - 36, y: at.y, id: 0 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x - 33, y: at.y, id: 0 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x - 30, y: at.y, id: 0 }] })
+    // 2本目を置き、距離 60px → 150px まで8段で広げる（2.5倍）。
+    await touchEvent(cdp, 'touchStart', [{ x: at.x - 30, y: at.y }, { x: at.x + 30, y: at.y }])
+    for (let step = 1; step <= 8; step += 1) {
+      const d = 30 + (45 * step) / 8
+      await touchEvent(cdp, 'touchMove', [{ x: at.x - d, y: at.y }, { x: at.x + d, y: at.y }])
+    }
+    await touchEvent(cdp, 'touchEnd', [])
+  })
+  await expect(zoomText(page)).toHaveText('倍率 2.5倍')
+  await expect(dialogs(page)).toHaveCount(0)
+  await expect(page.getByRole('button', { pressed: true })).toHaveCount(0)
+})
