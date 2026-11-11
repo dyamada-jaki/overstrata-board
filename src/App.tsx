@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Board } from './components/Board.tsx'
+import { BoardViewport } from './components/BoardViewport.tsx'
+import { wholeBoard } from './components/boardView.ts'
 import { PieceSettings } from './components/PieceSettings.tsx'
 import { pieceDetails, tokenClass } from './components/piece.ts'
 import { useLongPress } from './components/useLongPress.ts'
@@ -45,7 +46,12 @@ function CountGuidance({ visible }: { visible: boolean }) {
 function settingsAnchor(id: string, button: HTMLElement) {
   const piece = document.querySelector<HTMLElement>(`[data-piece-id="${id}"]`)
   const rect = piece?.getBoundingClientRect()
-  return piece && rect && rect.bottom > 0 && rect.top < window.innerHeight ? piece : button
+  const frame = piece?.closest('.board-viewport')?.getBoundingClientRect()
+  const visible = rect && rect.bottom > Math.max(0, frame?.top ?? 0)
+    && rect.top < Math.min(window.innerHeight, frame?.bottom ?? window.innerHeight)
+    && rect.right > Math.max(0, frame?.left ?? 0)
+    && rect.left < Math.min(window.innerWidth, frame?.right ?? window.innerWidth)
+  return piece && visible ? piece : button
 }
 
 const settingsHelp = '駒を長押し（PCは右クリック）か「設定」で、移動力・状態・削除を扱えます。'
@@ -59,6 +65,7 @@ interface SettingsTarget {
 
 function App() {
   const [battle, setBattle] = useState(createInitialBattle)
+  const [view, setView] = useState(wholeBoard)
   const [allyCount, setAllyCount] = useState(0)
   const [enemyCount, setEnemyCount] = useState(0)
   const [adding, setAdding] = useState(false)
@@ -84,6 +91,7 @@ function App() {
   const tokenHandlers = useLongPress((id, element) => openSettings(id, element, element))
   const reset = () => {
     setBattle(createInitialBattle())
+    setView(wholeBoard)
     setAllyCount(0)
     setEnemyCount(0)
     setAdding(false)
@@ -103,7 +111,7 @@ function App() {
       <p className="board-help">駒を選んで空きマスを押すと配置・移動。同じ駒で選択解除。薄い色は移動範囲の目安です。</p>
       <div className="battle-layout">
         <div>
-          <Board size={boardSize} state={battle}
+          <BoardViewport size={boardSize} state={battle} view={view} onViewChange={setView}
             onTap={(position) => setBattle((current) => ({ ...current, ...tapPosition(current, position, boardSize) }))}
             onOpenSettings={(id, element) => openSettings(id, element, element)} />
           <p className="legend"><span className="ally-label">● 味方</span> <span className="enemy-label">● 敵</span> 移動力の初期値は{movementSetting.initial}マス（準備中・追加分の確定前に、駒の設定で変更できます）</p>

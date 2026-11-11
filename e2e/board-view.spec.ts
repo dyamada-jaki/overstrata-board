@@ -54,7 +54,7 @@ async function drag(page: Page, target: Locator, mobile: boolean, right = false)
     await page.mouse.up({ button: right ? 'right' : 'left' })
   }
 }
-async function press(page: Page, target: Locator, mobile: boolean) {
+async function press(target: Locator, mobile: boolean) {
   if (mobile) await target.tap()
   else await target.click()
 }
@@ -72,7 +72,7 @@ test('全体→拡大→駒の上から表示をドラッグ→表示上のマ�
   await prepare(page)
   const initial = await box(viewport(page))
   await expect(page.getByText('倍率 1.0倍')).toBeVisible()
-  await press(page, cell(page, 5, 5), mobile)
+  await press(cell(page, 5, 5), mobile)
   await zoom(page, mobile)
   const before = await box(cell(page, 5, 5))
   await drag(page, cell(page, 5, 5), mobile)
@@ -87,10 +87,10 @@ test('全体→拡大→駒の上から表示をドラッグ→表示上のマ�
     await expect(cell(page, 5, 5)).toHaveAttribute('aria-pressed', 'true')
   }
   await expect(cell(page, 6, 5)).toHaveAccessibleName(/移動範囲$/)
-  await press(page, cell(page, 6, 5), mobile)
+  await press(cell(page, 6, 5), mobile)
   await expect(cell(page, 6, 5)).toHaveAccessibleName(/味方1/)
   await expect(cell(page, 6, 5)).toHaveAttribute('aria-pressed', 'false')
-  await press(page, cell(page, 6, 5), mobile)
+  await press(cell(page, 6, 5), mobile)
   await test.step('変換後の駒の近くで設定し、開閉が盤面・一覧を動かさない', async () => {
     const layout = async () => [await box(viewport(page)), await box(page.getByRole('group', { name: '未配置の駒' }))]
     const before = await layout()
@@ -103,7 +103,7 @@ test('全体→拡大→駒の上から表示をドラッグ→表示上のマ�
     await button(page, '閉じる').click()
     expect(await layout()).toEqual(before)
   })
-  await press(page, cell(page, 5, 5), mobile)
+  await press(cell(page, 5, 5), mobile)
   await expect(cell(page, 6, 5)).toHaveAccessibleName(/倒れた状態/)
   await expect(cell(page, 5, 5)).toHaveAttribute('aria-pressed', 'true')
   await button(page, '全体を見る').click()
@@ -147,4 +147,22 @@ test('低いスマホ画面でも長押しを離す操作が設定変更にな�
   await button(page, '閉じる').click()
   await expect(cell(page, 5, 5)).toHaveAttribute('aria-pressed', 'true')
   expect(await box(cell(page, 5, 5))).toEqual(before)
+})
+
+test('二本目の指で長押しを取り消し、ピンチ後に選択・設定を行わない', async ({ page }, info) => {
+  test.skip(info.project.name !== 'chromium-mobile', '二点タッチはスマホ幅で確認')
+  await prepare(page)
+  const p = await center(cell(page, 5, 5))
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...p, id: 1 }] })
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...p, id: 1 }, { x: p.x + 40, y: p.y, id: 2 }] })
+  await page.waitForTimeout(650)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p.x - 20, y: p.y, id: 1 }, { x: p.x + 60, y: p.y, id: 2 }] })
+  await expect(page.getByText('倍率 2.0倍')).toBeVisible()
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await cdp.detach()
+  await expect(cell(page, 5, 5)).toHaveAttribute('aria-pressed', 'false')
+  await expect(cell(page, 5, 5)).toHaveAccessibleName(/味方1/)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 })

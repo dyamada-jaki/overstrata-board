@@ -4,12 +4,20 @@ export interface ViewSize { readonly width: number; readonly height: number }
 export interface ViewPoint { readonly x: number; readonly y: number }
 export const wholeBoard: BoardView = { scale: 1, x: 0, y: 0 }
 
-// テスト先行用の枠。表示計算は次の実装コミットで追加する。
+const limitScale = (scale: number) => Math.min(4, Math.max(1, scale))
+
+/** 表示枠の内側に盤面の外側の空白を入れない。幅の変更にも同じ制限を使う。 */
 export function constrainView(view: BoardView, size: ViewSize): BoardView {
-  void view; void size
-  return wholeBoard
+  const scale = limitScale(view.scale)
+  return {
+    scale,
+    x: Math.min(0, Math.max(size.width * (1 - scale), view.x)),
+    y: Math.min(0, Math.max(size.height * (1 - scale), view.y)),
+  }
 }
+/** from の下にある盤面上の点を to の下へ移す。ピンチでは中点の移動も反映する。 */
 export function zoomView(view: BoardView, scale: number, from: ViewPoint, to: ViewPoint, size: ViewSize): BoardView {
-  void view; void scale; void from; void to; void size
-  return wholeBoard
+  const nextScale = limitScale(scale)
+  const ratio = nextScale / view.scale
+  return constrainView({ scale: nextScale, x: to.x - (from.x - view.x) * ratio, y: to.y - (from.y - view.y) * ratio }, size)
 }

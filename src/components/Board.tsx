@@ -2,19 +2,15 @@ import { formatPosition, getBoardPositions } from '../domain/board.ts'
 import type { BoardSize, Position } from '../domain/movement.ts'
 import { getSelectedMovementRange, type BoardState } from '../domain/selection.ts'
 import { pieceDetails, tokenClass } from './piece.ts'
-import { useLongPress } from './useLongPress.ts'
 import './Board.css'
 
 const keyOf = (position: Position) => `${position.x},${position.y}`
 
-export function Board({ size, state, onTap, onOpenSettings = () => {} }: {
+export function Board({ size, state, onTap }: {
   size: BoardSize
   state: BoardState
   onTap: (position: Position) => void
-  /** 駒の長押し・右クリック。駒の設定を開くことを通知する（#45）。 */
-  onOpenSettings?: (id: string, element: HTMLElement) => void
 }) {
-  const pieceHandlers = useLongPress(onOpenSettings)
   const { selection } = state
   const occupants = new Map(state.characters.flatMap((character) => character.position === null
     ? [] : [[keyOf(character.position), character] as const]))
@@ -47,7 +43,7 @@ export function Board({ size, state, onTap, onOpenSettings = () => {} }: {
             <button key={key} type="button"
               className={inRange ? 'board-cell board-cell-range' : 'board-cell'}
               aria-label={label} aria-pressed={selected} data-piece-id={occupant?.id}
-              {...(occupant ? pieceHandlers(occupant.id, () => onTap(position)) : { onClick: () => onTap(position) })}>
+              onClick={() => onTap(position)}>
               {occupant && <span className={tokenClass(occupant)}>{occupant.number}</span>}
             </button>
           )

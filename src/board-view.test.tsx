@@ -3,7 +3,7 @@ import App from './App.tsx'
 import { setCount } from './test/counts.ts'
 
 const cell = (x = 1, y = 1) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
-const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
+const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
 const viewport = () => screen.getByRole('group', { name: '盤面の表示領域' })
 const transform = () => screen.getByRole('group', { name: '戦闘盤面' }).parentElement!.style.transform
 const zoom = (deltaY = -Math.log(2) / 0.002) => fireEvent.wheel(viewport(), { deltaY, clientX: 150, clientY: 150 })
@@ -110,6 +110,39 @@ it('右押下や押下中のcontextmenuでは開かず、静止して離すと�
   pointer(viewport(), 'pointerUp', 120, 100, 'mouse', 2)
   fireEvent.contextMenu(cell(), { button: 2 })
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('駒が未選択でもドラッグでは選ばず、空きマスからのドラッグで未配置の駒を置かない', () => {
+  render(<App />)
+  prepare()
+  zoom()
+  pointer(cell(), 'pointerDown', 100, 100)
+  pointer(cell(), 'pointerMove', 120, 100)
+  pointer(viewport(), 'pointerUp', 120, 100)
+  fireEvent.click(cell(), { detail: 1 })
+  expect(cell()).toHaveAttribute('aria-pressed', 'false')
+  click('駒を増やす')
+  setCount('敵の追加数', 1)
+  click('追加する')
+  const unplaced = screen.getByRole('button', { name: /^未配置 敵1/ })
+  fireEvent.click(unplaced)
+  pointer(cell(3, 3), 'pointerDown', 100, 100, 'touch')
+  pointer(cell(3, 3), 'pointerMove', 120, 100, 'touch')
+  pointer(viewport(), 'pointerUp', 120, 100, 'touch')
+  fireEvent.click(cell(3, 3), { detail: 1 })
+  expect(unplaced).toHaveAttribute('aria-pressed', 'true')
+  expect(cell(3, 3)).not.toHaveAccessibleName(/敵1/)
+})
+
+it('表示枠が小さくなると表示位置も端へ収め、縦横を取り違えない', () => {
+  render(<App />)
+  zoom()
+  pointer(cell(), 'pointerDown', 200, 200)
+  pointer(cell(), 'pointerMove', 0, 0)
+  pointer(viewport(), 'pointerUp', 0, 0)
+  vi.spyOn(viewport(), 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ width: 150, height: 200 }))
+  fireEvent.resize(window)
+  expect(transform()).toBe('translate(-150px, -200px) scale(2)')
 })
 
 it.each(['ContextMenu', 'F10'])('キーボードの%sから設定を開ける。ドラッグ後もEnterのclickは通常の選択に使える', (key) => {

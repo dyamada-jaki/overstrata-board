@@ -13,6 +13,9 @@ export default {
     'src/domain/board.ts', // 内部座標と表示座標の変換、盤面の座標一覧（spec.md 2.1）
     'src/data/board.ts', // 盤面サイズ
     'src/components/Board.tsx', // マス・キャラの選択表示、移動範囲の表示、座標ラベル（spec.md 2.1・2.3）
+    'src/components/BoardViewport.tsx', // 表示だけのリセット、倍率・touch-action（#63）
+    'src/components/boardView.ts', // 拡縮中心・倍率と端の制限（#63）
+    'src/components/useBoardGestures.ts', // 表示操作とタップ・長押し・右クリックの区別（#63）
     'src/components/piece.ts', // 駒の丸のクラスとアクセシブル名。倒れた状態の表示の分岐（spec.md 2.2 / #34）
     'src/domain/preparation.ts', // 駒数の±の境界・未配置の生成・確定の条件（spec.md 2.2）
     'src/App.tsx', // 駒数の±の有効条件・準備/確定/確認付きリセットの画面操作とフォーカス
