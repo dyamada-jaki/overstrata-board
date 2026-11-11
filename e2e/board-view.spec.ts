@@ -59,13 +59,18 @@ async function pinch(page: Page, at: Point, start: number, end: number) {
     await touchEvent(cdp, 'touchEnd', [])
   })
 }
-/** 1本指で from から dx・dy 動かして離す。 */
+/**
+ * 1本指で from から dx・dy 動かして離す。指を止めてから離す。
+ * 動かしたまま離すと Chromium がフリング（慣性）と判定し、直後のタップを「フリングを止める操作」として
+ * click にしない（Docker の Chromium で確認。アプリの処理ではなくブラウザの入力の扱い）。止める時間は入力そのものなので固定で待つ。
+ */
 async function touchDrag(page: Page, from: Point, dx: number, dy: number) {
   await touch(page, async (cdp) => {
     await touchEvent(cdp, 'touchStart', [from])
     for (let step = 1; step <= 8; step += 1) {
       await touchEvent(cdp, 'touchMove', [{ x: from.x + (dx * step) / 8, y: from.y + (dy * step) / 8 }])
     }
+    await page.waitForTimeout(200)
     await touchEvent(cdp, 'touchEnd', [])
   })
 }
