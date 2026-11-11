@@ -37,8 +37,8 @@ function zoomIn(times = 4) {
 }
 type Kind = 'mouse' | 'touch'
 const pointer = (element: HTMLElement, type: 'pointerDown' | 'pointerMove' | 'pointerUp' | 'pointerCancel',
-  x: number, y: number, { kind = 'mouse' as Kind, button = 0, id = 1 } = {}) =>
-  fireEvent[type](element, { pointerType: kind, pointerId: id, button, buttons: type === 'pointerUp' ? 0 : button === 2 ? 2 : 1, clientX: x, clientY: y })
+  x: number, y: number, { kind = 'mouse' as Kind, button = 0, id = 1, buttons = type === 'pointerUp' ? 0 : button === 2 ? 2 : 1 } = {}) =>
+  fireEvent[type](element, { pointerType: kind, pointerId: id, button, buttons, clientX: x, clientY: y })
 /** マウスのボタンで押して dx・dy 動かして離し、実ブラウザと同じく離した後の click（左）を出す。 */
 function mouseDrag(element: HTMLElement, dx: number, dy: number, button = 0) {
   pointer(element, 'pointerDown', 100, 100, { button })
@@ -435,5 +435,51 @@ describe('盤面の外の未配置の駒の長押し（#45 の条件。盤面の
     pointer(token('味方1'), 'pointerMove', 100, 111, { kind: 'touch' })
     act(() => { vi.advanceTimersByTime(1000) })
     expect(popups()).toEqual([])
+  })
+})
+
+describe('盤面の外で離した操作・駒の外から始めた右ドラッグ（PR #65 の確認で見つけた不具合の再現）', () => {
+  it('Windows の順: 空きマスから右ドラッグして駒の上で離し、離した後の contextmenu が駒に届いても開かない', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    pointer(cell(5, 5), 'pointerDown', 100, 100, { button: 2 })
+    pointer(cell(5, 5), 'pointerMove', 130, 100, { button: 2 })
+    pointer(cell(3, 3), 'pointerUp', 130, 100, { button: 2 })
+    expect(fireEvent.contextMenu(cell(3, 3), { button: 2 })).toBe(false)
+    expect(popups()).toEqual([])
+    expect(pressed()).toEqual([])
+  })
+
+  it('マウスを10px以内だけ動かして盤面の外で離した後、ボタンを押さずに盤面の上を動かしても表示は動かず、次のクリックは選択になる', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    setFrame()
+    zoomIn()
+    const before = board().style.transform
+    pointer(cell(5, 5), 'pointerDown', 100, 100)
+    pointer(cell(5, 5), 'pointerMove', 105, 100)
+    // 盤面の外で離したので、表示枠には pointerup が届かない。ボタンを押さずに戻ってくる（buttons 0）。
+    pointer(cell(5, 5), 'pointerMove', 160, 150, { buttons: 0 })
+    expect(board().style.transform).toBe(before)
+    pointer(cell(3, 3), 'pointerDown', 160, 150)
+    pointer(cell(3, 3), 'pointerUp', 160, 150)
+    fireEvent.click(cell(3, 3), { detail: 1 })
+    expect(pressed()).toEqual([cell(3, 3)])
+  })
+
+  it('ドラッグの後に盤面の外で離して pointerup が届かなくても、次に押したときは新しい操作として扱い、クリックを止めない', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    setFrame()
+    zoomIn()
+    pointer(cell(5, 5), 'pointerDown', 100, 100)
+    pointer(cell(5, 5), 'pointerMove', 140, 100)
+    pointer(cell(3, 3), 'pointerDown', 160, 150)
+    pointer(cell(3, 3), 'pointerUp', 160, 150)
+    fireEvent.click(cell(3, 3), { detail: 1 })
+    expect(pressed()).toEqual([cell(3, 3)])
   })
 })
