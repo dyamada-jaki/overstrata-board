@@ -1,5 +1,5 @@
 import { useEffect, useRef, type Dispatch, type MouseEvent, type PointerEvent, type RefObject, type SetStateAction } from 'react'
-import { panBy, zoomAt, type Point, type View } from './boardView.ts'
+import { clampView, panBy, zoomAt, type Point, type View } from './boardView.ts'
 import { longPress } from './useLongPress.ts'
 
 /** ホイール1ノッチ（deltaY 100）で約1.22倍。 */
@@ -41,6 +41,23 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
     }
     element.addEventListener('wheel', onWheel, { passive: false })
     return () => element.removeEventListener('wheel', onWheel)
+  }, [frame, setView])
+
+  // 表示枠の大きさが変わったら（画面の大きさの変更・スマホの回転）、倍率を保ったまま新しい大きさで表示位置を収め直す。
+  // ResizeObserver の無い環境では、画面（window）の大きさの変更で代わりに収め直す。
+  useEffect(() => {
+    const element = frame.current!
+    const refit = () => {
+      const current = frameSize(element)
+      setView((view) => clampView(view, current))
+    }
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', refit)
+      return () => window.removeEventListener('resize', refit)
+    }
+    const observer = new ResizeObserver(refit)
+    observer.observe(element)
+    return () => observer.disconnect()
   }, [frame, setView])
 
   const startPinch = () => {
