@@ -1,0 +1,336 @@
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import App from './App.tsx'
+import { setCount } from './test/counts.ts'
+
+// #63: 盤面の拡大・縮小と表示位置の移動（spec.md 2.4）。表示操作で駒・選択・設定が変わらないことを、
+// 画面の入り口（App）で確かめる。jsdom は pointerup の後の click も、右ボタンの contextmenu も出さないので、
+// 実ブラウザと同じ順に自分で発火する。座標の当たり判定と実際のタッチは Chromium E2E で確かめる。
+
+const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
+const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
+const token = (name: string) => screen.getByRole('button', { name: new RegExp(`(?:^未配置 | )${name}（`) })
+const pressed = () => screen.queryAllByRole('button', { pressed: true })
+const popups = () => screen.queryAllByRole('dialog', { name: /の設定$/ })
+const board = () => screen.getByRole('group', { name: '戦闘盤面' })
+const zoom = () => screen.getByText(/^倍率 /).textContent
+function prepare(ally: number, enemy: number) {
+  setCount('味方の数', ally)
+  setCount('敵の数', enemy)
+  click('駒を用意する')
+}
+function place(name: string, x: number, y: number) {
+  fireEvent.click(token(name))
+  fireEvent.click(cell(x, y))
+}
+/** jsdom にはレイアウトが無いので、表示枠（盤面の外側）の大きさだけ与える。左上は画面の (0, 0)。 */
+function setFrame(width = 300, height = 300) {
+  const frame = board().parentElement!
+  Object.defineProperty(frame, 'clientWidth', { configurable: true, value: width })
+  Object.defineProperty(frame, 'clientHeight', { configurable: true, value: height })
+}
+const wheel = (element: HTMLElement, deltaY: number, x = 150, y = 150) =>
+  fireEvent.wheel(element, { deltaY, clientX: x, clientY: y })
+/** 中央を基準に2倍にする（ホイール上を1回ずつ、2倍を超えるまで）。 */
+function zoomIn(times = 4) {
+  for (let i = 0; i < times; i += 1) wheel(cell(5, 5), -100)
+}
+type Kind = 'mouse' | 'touch'
+const pointer = (element: HTMLElement, type: 'pointerDown' | 'pointerMove' | 'pointerUp' | 'pointerCancel',
+  x: number, y: number, { kind = 'mouse' as Kind, button = 0, id = 1 } = {}) =>
+  fireEvent[type](element, { pointerType: kind, pointerId: id, button, buttons: type === 'pointerUp' ? 0 : button === 2 ? 2 : 1, clientX: x, clientY: y })
+/** マウスのボタンで押して dx・dy 動かして離し、実ブラウザと同じく離した後の click（左）を出す。 */
+function mouseDrag(element: HTMLElement, dx: number, dy: number, button = 0) {
+  pointer(element, 'pointerDown', 100, 100, { button })
+  pointer(element, 'pointerMove', 100 + dx / 2, 100 + dy / 2, { button })
+  pointer(element, 'pointerMove', 100 + dx, 100 + dy, { button })
+  pointer(element, 'pointerUp', 100 + dx, 100 + dy, { button })
+  if (button === 0) fireEvent.click(element, { detail: 1, button })
+}
+
+describe('倍率の範囲と全体表示（受け入れ条件1・3）', () => {
+  it('最初は全体表示の1倍。ホイール上で拡大し4倍で止まり、ホイール下で縮小し1倍で止まる', () => {
+    render(<App />)
+    setFrame()
+    expect(zoom()).toBe('倍率 1.0倍')
+    expect(board().style.transform).toBe('translate(0px, 0px) scale(1)')
+    wheel(cell(5, 5), -100)
+    expect(zoom()).toBe('倍率 1.2倍')
+    for (let i = 0; i < 20; i += 1) wheel(cell(5, 5), -100)
+    expect(zoom()).toBe('倍率 4.0倍')
+    for (let i = 0; i < 20; i += 1) wheel(cell(5, 5), 100)
+    expect(zoom()).toBe('倍率 1.0倍')
+    expect(board().style.transform).toBe('translate(0px, 0px) scale(1)')
+  })
+
+  it('ホイールの基準はカーソルの位置。盤面の上のホイールは、1倍・4倍の端でもページをスクロールさせない', () => {
+    render(<App />)
+    setFrame()
+    expect(wheel(cell(1, 1), 100)).toBe(false)
+    expect(zoom()).toBe('倍率 1.0倍')
+    for (let i = 0; i < 20; i += 1) wheel(cell(1, 1), -100, 0, 0)
+    expect(board().style.transform).toBe('translate(0px, 0px) scale(4)')
+    expect(wheel(cell(1, 1), -100, 0, 0)).toBe(false)
+  })
+
+  it('「全体を見る」で1倍・全体の位置へ戻す。拡大・移動・戻す操作で駒の位置と選択は変わらない', () => {
+    render(<App />)
+    prepare(2, 0)
+    place('味方1', 3, 3)
+    place('味方2', 5, 5)
+    fireEvent.click(cell(3, 3))
+    setFrame()
+    zoomIn()
+    expect(zoom()).not.toBe('倍率 1.0倍')
+    mouseDrag(cell(8, 8), -40, -30)
+    expect(board().style.transform).not.toBe('translate(0px, 0px) scale(1)')
+    expect(pressed()).toEqual([cell(3, 3)])
+    click('全体を見る')
+    expect(zoom()).toBe('倍率 1.0倍')
+    expect(board().style.transform).toBe('translate(0px, 0px) scale(1)')
+    expect(pressed()).toEqual([cell(3, 3)])
+    expect(cell(3, 3)).toHaveAccessibleName(/^マス \(3, 3\) 味方1（/)
+    expect(cell(5, 5)).toHaveAccessibleName(/^マス \(5, 5\) 味方2（/)
+  })
+
+  it('拡大後に駒を選択・配置しても表示は戻らない。「準備をやり直す」を実行すると全体表示へ戻り、取り消せば保つ（計画承認時の人間の決定）', () => {
+    render(<App />)
+    prepare(1, 0)
+    setFrame()
+    zoomIn()
+    const zoomed = zoom()
+    place('味方1', 2, 2)
+    fireEvent.click(cell(2, 2))
+    expect(zoom()).toBe(zoomed)
+    click('準備をやり直す')
+    click('キャンセル')
+    expect(zoom()).toBe(zoomed)
+    click('準備をやり直す')
+    click('やり直す')
+    expect(zoom()).toBe('倍率 1.0倍')
+    expect(board().style.transform).toBe('translate(0px, 0px) scale(1)')
+  })
+
+  it('「新しい戦闘を始める」でも全体表示へ戻す', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 2, 2)
+    click('確定')
+    setFrame()
+    zoomIn()
+    click('新しい戦闘を始める')
+    click('始める')
+    expect(zoom()).toBe('倍率 1.0倍')
+  })
+})
+
+describe('マウスの左右ドラッグ（受け入れ条件2・4）', () => {
+  it('拡大中に左ドラッグ・右ドラッグで表示位置を動かす', () => {
+    render(<App />)
+    setFrame()
+    zoomIn()
+    const before = board().style.transform
+    mouseDrag(cell(5, 5), -30, -20)
+    const afterLeft = board().style.transform
+    expect(afterLeft).not.toBe(before)
+    mouseDrag(cell(5, 5), 20, 10, 2)
+    expect(board().style.transform).not.toBe(afterLeft)
+  })
+
+  it('駒を選んだまま空きマスの上から左ドラッグしても、離した後の click で駒は動かず選択も保つ。次のクリックは普通に移動になる', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    fireEvent.click(cell(3, 3))
+    setFrame()
+    zoomIn()
+    mouseDrag(cell(6, 6), 30, 30)
+    expect(cell(3, 3)).toHaveAccessibleName(/^マス \(3, 3\) 味方1（/)
+    expect(cell(6, 6)).toHaveAccessibleName(/^マス \(6, 6\)( 移動範囲)?$/)
+    expect(pressed()).toEqual([cell(3, 3)])
+    fireEvent.click(cell(6, 6), { detail: 1 })
+    expect(cell(6, 6)).toHaveAccessibleName(/^マス \(6, 6\) 味方1（/)
+  })
+
+  it('駒の上から左ドラッグしても、その駒を選択しない。選択中の駒の上からでも解除しない', () => {
+    render(<App />)
+    prepare(2, 0)
+    place('味方1', 3, 3)
+    place('味方2', 5, 5)
+    mouseDrag(cell(5, 5), 30, 0)
+    expect(pressed()).toEqual([])
+    fireEvent.click(cell(3, 3))
+    mouseDrag(cell(3, 3), 0, 30)
+    expect(pressed()).toEqual([cell(3, 3)])
+    expect(popups()).toEqual([])
+  })
+
+  it('未配置一覧で選んだ駒は、盤面の空きマスの上からドラッグしても配置されない', () => {
+    render(<App />)
+    prepare(1, 0)
+    fireEvent.click(token('味方1'))
+    mouseDrag(cell(4, 4), 25, 25)
+    expect(token('味方1')).toHaveAccessibleName(/^未配置 味方1（/)
+    expect(token('味方1')).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('10pxまでのぶれはクリックとして選択し、11px動かすとドラッグとして選択しない', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    mouseDrag(cell(3, 3), 6, 8)
+    expect(pressed()).toEqual([cell(3, 3)])
+    fireEvent.click(cell(3, 3))
+    expect(pressed()).toEqual([])
+    mouseDrag(cell(3, 3), 0, 11)
+    expect(pressed()).toEqual([])
+  })
+})
+
+describe('右クリックと右ドラッグの区別（受け入れ条件6・ADR 0007 からの変更）', () => {
+  it('macOS の順（押した時点で contextmenu）: 動かさず離すと駒を選択して1回だけ開き、ブラウザのメニューは出さない', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    pointer(cell(3, 3), 'pointerDown', 100, 100, { button: 2 })
+    expect(fireEvent.contextMenu(cell(3, 3), { button: 2 })).toBe(false)
+    expect(popups()).toEqual([])
+    pointer(cell(3, 3), 'pointerUp', 100, 100, { button: 2 })
+    expect(popups()).toHaveLength(1)
+    expect(pressed()).toEqual([cell(3, 3)])
+  })
+
+  it('Windows の順（離した後に contextmenu）: 動かさず離すと1回だけ開き、後の contextmenu で閉じない', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    pointer(cell(3, 3), 'pointerDown', 100, 100, { button: 2 })
+    pointer(cell(3, 3), 'pointerUp', 100, 100, { button: 2 })
+    expect(popups()).toHaveLength(1)
+    expect(fireEvent.contextMenu(cell(3, 3), { button: 2 })).toBe(false)
+    expect(popups()).toHaveLength(1)
+  })
+
+  it.each([['macOS', true], ['Windows', false]] as const)('%s の順: 駒の上から右ドラッグすると開かず、選択も変えない', (_, early) => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    setFrame()
+    zoomIn()
+    const before = board().style.transform
+    pointer(cell(3, 3), 'pointerDown', 100, 100, { button: 2 })
+    if (early) expect(fireEvent.contextMenu(cell(3, 3), { button: 2 })).toBe(false)
+    pointer(cell(3, 3), 'pointerMove', 130, 120, { button: 2 })
+    pointer(cell(3, 3), 'pointerUp', 130, 120, { button: 2 })
+    if (!early) expect(fireEvent.contextMenu(cell(3, 3), { button: 2 })).toBe(false)
+    expect(popups()).toEqual([])
+    expect(pressed()).toEqual([])
+    expect(board().style.transform).not.toBe(before)
+  })
+
+  it('空きマスの右クリック・右ドラッグでもブラウザのメニューを出さない', () => {
+    render(<App />)
+    pointer(cell(4, 4), 'pointerDown', 100, 100, { button: 2 })
+    expect(fireEvent.contextMenu(cell(4, 4), { button: 2 })).toBe(false)
+    pointer(cell(4, 4), 'pointerUp', 100, 100, { button: 2 })
+    expect(popups()).toEqual([])
+  })
+
+  it('マウスを伴わない contextmenu（キーボードの Shift+F10・メニューキー）は従来どおり開く', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    fireEvent.contextMenu(cell(3, 3))
+    expect(popups()).toHaveLength(1)
+  })
+})
+
+describe('タッチのドラッグ・ピンチと長押し（受け入れ条件2・4・6。時刻だけ偽のタイマーにする）', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('拡大中に駒の上から1本指でドラッグすると表示位置が動き、長押しにならず、離した後の click で選択しない', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    setFrame()
+    zoomIn()
+    const before = board().style.transform
+    pointer(cell(3, 3), 'pointerDown', 100, 100, { kind: 'touch' })
+    pointer(cell(3, 3), 'pointerMove', 120, 130, { kind: 'touch' })
+    act(() => { vi.advanceTimersByTime(1000) })
+    pointer(cell(3, 3), 'pointerUp', 120, 130, { kind: 'touch' })
+    fireEvent.click(cell(3, 3), { detail: 1 })
+    expect(board().style.transform).not.toBe(before)
+    expect(popups()).toEqual([])
+    expect(pressed()).toEqual([])
+  })
+
+  it('2本指のピンチで、指の間の距離の比だけ拡大する。1本目の長押しは2本目を置いた時点で取り消し、離した後の click で選択しない', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    setFrame()
+    pointer(cell(3, 3), 'pointerDown', 100, 100, { kind: 'touch', id: 1 })
+    pointer(cell(6, 6), 'pointerDown', 120, 100, { kind: 'touch', id: 2 })
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(popups()).toEqual([])
+    pointer(cell(6, 6), 'pointerMove', 160, 100, { kind: 'touch', id: 2 })
+    expect(zoom()).toBe('倍率 3.0倍')
+    pointer(cell(6, 6), 'pointerUp', 160, 100, { kind: 'touch', id: 2 })
+    pointer(cell(3, 3), 'pointerUp', 100, 100, { kind: 'touch', id: 1 })
+    fireEvent.click(cell(3, 3), { detail: 1 })
+    expect(pressed()).toEqual([])
+    expect(popups()).toEqual([])
+  })
+
+  it('ピンチで縮めても1倍より小さくならない', () => {
+    render(<App />)
+    setFrame()
+    pointer(cell(3, 3), 'pointerDown', 100, 100, { kind: 'touch', id: 1 })
+    pointer(cell(6, 6), 'pointerDown', 200, 100, { kind: 'touch', id: 2 })
+    pointer(cell(6, 6), 'pointerMove', 110, 100, { kind: 'touch', id: 2 })
+    expect(zoom()).toBe('倍率 1.0倍')
+  })
+
+  it('動かさずに押し続けた長押しは、拡大中でも従来どおり開く', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 3, 3)
+    setFrame()
+    zoomIn()
+    pointer(cell(3, 3), 'pointerDown', 100, 100, { kind: 'touch' })
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(popups()).toHaveLength(1)
+  })
+
+  it('1倍では盤面の上から縦にページをスクロールでき（pan-y）、拡大中は盤面の表示位置の移動に使う（none）', () => {
+    render(<App />)
+    setFrame()
+    const frame = board().parentElement!
+    expect(frame.style.touchAction).toBe('pan-y')
+    zoomIn()
+    expect(frame.style.touchAction).toBe('none')
+    click('全体を見る')
+    expect(frame.style.touchAction).toBe('pan-y')
+  })
+})
+
+describe('拡大後の駒の操作（受け入れ条件5）', () => {
+  it('拡大・移動した後も、クリックで配置・移動でき、倒れた駒は空きマスへ動かない', () => {
+    render(<App />)
+    prepare(1, 0)
+    setFrame()
+    zoomIn()
+    mouseDrag(cell(5, 5), -20, -20)
+    place('味方1', 4, 4)
+    expect(cell(4, 4)).toHaveAccessibleName(/^マス \(4, 4\) 味方1（/)
+    fireEvent.click(cell(4, 4))
+    expect(cell(6, 4)).toHaveAccessibleName('マス (6, 4) 移動範囲')
+    click('設定')
+    click('倒れた状態にする')
+    click('閉じる')
+    fireEvent.click(cell(5, 4))
+    expect(cell(4, 4)).toHaveAccessibleName(/^マス \(4, 4\) 味方1（.*倒れた状態）$/)
+    expect(zoom()).not.toBe('倍率 1.0倍')
+  })
+})
