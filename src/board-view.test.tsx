@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { StrictMode } from 'react'
 import App from './App.tsx'
 import { setCount } from './test/counts.ts'
 
@@ -140,9 +141,145 @@ it('表示枠が小さくなると表示位置も端へ収め、縦横を取り�
   pointer(cell(), 'pointerDown', 200, 200)
   pointer(cell(), 'pointerMove', 0, 0)
   pointer(viewport(), 'pointerUp', 0, 0)
-  vi.spyOn(viewport(), 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ width: 150, height: 200 }))
+  viewport().getBoundingClientRect = () => DOMRect.fromRect({ width: 150, height: 200 })
   fireEvent.resize(window)
   expect(transform()).toBe('translate(-150px, -200px) scale(2)')
+})
+
+it('画面上の表示枠の原点を差し引いてホイールの中心を決める', () => {
+  render(<App />)
+  viewport().getBoundingClientRect = () => DOMRect.fromRect({ x: 50, y: 80, width: 300, height: 300 })
+  fireEvent.wheel(viewport(), { deltaY: -Math.log(2) / 0.002, clientX: 200, clientY: 230 })
+  expect(transform()).toBe('translate(-150px, -150px) scale(2)')
+})
+
+it.each([1, 2])('ホイールのdeltaMode=%sも同じ距離として拡縮する', (deltaMode) => {
+  render(<App />)
+  fireEvent.wheel(viewport(), { deltaMode, deltaY: -Math.log(2) / (0.002 * (deltaMode === 1 ? 16 : 300)), clientX: 150, clientY: 150 })
+  expect(screen.getByText('倍率 2.0倍')).toBeVisible()
+  expect(transform()).toBe('translate(-150px, -150px) scale(2)')
+})
+
+it('全体へ戻した後の拡大は1倍・位置0を基準にし直す。StrictModeの再接続でもホイールを重複処理しない', () => {
+  render(<StrictMode><App /></StrictMode>)
+  zoom()
+  expect(screen.getByText('倍率 2.0倍')).toBeVisible()
+  click('全体を見る')
+  zoom()
+  expect(transform()).toBe('translate(-150px, -150px) scale(2)')
+})
+
+it('ドラッグ中の複数のmoveを反映し、captureを失った後は表示移動を続けない。次の指は通常のタップになる', () => {
+  render(<App />)
+  prepare()
+  zoom()
+  pointer(cell(), 'pointerDown', 100, 100, 'touch')
+  pointer(cell(), 'pointerMove', 116, 100, 'touch')
+  pointer(viewport(), 'pointerMove', 140, 130, 'touch')
+  expect(transform()).toBe('translate(-110px, -120px) scale(2)')
+  fireEvent.lostPointerCapture(viewport(), { pointerId: 1 })
+  pointer(viewport(), 'pointerMove', 160, 150, 'touch')
+  expect(transform()).toBe('translate(-110px, -120px) scale(2)')
+  pointer(cell(), 'pointerDown', 100, 100, 'touch', 0, 2)
+  pointer(cell(), 'pointerUp', 100, 100, 'touch', 0, 2)
+  fireEvent.click(cell(), { detail: 1 })
+  expect(cell()).toHaveAttribute('aria-pressed', 'true')
+})
+
+it('ピンチで離した指のcapture終了は、残る指のドラッグを取り消さない', () => {
+  render(<App />)
+  pointer(cell(), 'pointerDown', 100, 150, 'touch')
+  pointer(cell(), 'pointerDown', 200, 150, 'touch', 0, 2)
+  pointer(viewport(), 'pointerMove', 300, 150, 'touch', 0, 2)
+  pointer(viewport(), 'pointerUp', 300, 150, 'touch', 0, 2)
+  fireEvent.lostPointerCapture(viewport(), { pointerId: 2 })
+  pointer(viewport(), 'pointerMove', 120, 160, 'touch')
+  expect(transform()).toBe('translate(-80px, -140px) scale(2)')
+})
+
+it.each(['pointerMove', 'pointerUp'] as const)('盤面の外から入った未追跡の指の%sで、盤面上の長押しを中断しない', (type) => {
+  vi.useFakeTimers()
+  render(<App />)
+  prepare()
+  pointer(cell(), 'pointerDown', 100, 100, 'touch')
+  pointer(viewport(), type, 200, 200, 'touch', 0, 2)
+  act(() => { vi.advanceTimersByTime(500) })
+  expect(screen.getByRole('dialog', { name: '味方1の設定' })).toBeVisible()
+})
+
+it('長押し後のmoveやclickで表示をずらしたり、選択を解除したりしない。ペンにも同じ判定を使う', () => {
+  vi.useFakeTimers()
+  render(<App />)
+  prepare()
+  zoom()
+  pointer(cell(), 'pointerDown', 100, 100, 'pen')
+  act(() => { vi.advanceTimersByTime(500) })
+  expect(screen.getByRole('dialog', { name: '味方1の設定' })).toBeVisible()
+  pointer(cell(), 'pointerMove', 150, 150, 'pen')
+  expect(transform()).toBe('translate(-150px, -150px) scale(2)')
+  pointer(cell(), 'pointerUp', 150, 150, 'pen')
+  fireEvent.click(cell(), { detail: 1 })
+  expect(cell()).toHaveAttribute('aria-pressed', 'true')
+})
+
+it('左マウスの保持では設定を開かず、タッチを早く離せば長押しを取り消す', () => {
+  vi.useFakeTimers()
+  render(<App />)
+  prepare()
+  pointer(cell(), 'pointerDown', 100, 100)
+  act(() => { vi.advanceTimersByTime(600) })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  pointer(cell(), 'pointerUp', 100, 100)
+  pointer(cell(), 'pointerDown', 100, 100, 'touch')
+  act(() => { vi.advanceTimersByTime(300) })
+  pointer(cell(), 'pointerUp', 100, 100, 'touch')
+  act(() => { vi.advanceTimersByTime(600) })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('ページの縦スクロールはcaptureで受けて長押しを取り消す', () => {
+  vi.useFakeTimers()
+  render(<App />)
+  prepare()
+  pointer(cell(), 'pointerDown', 100, 100, 'touch')
+  fireEvent.scroll(document.documentElement)
+  act(() => { vi.advanceTimersByTime(600) })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('通常キー・Shift単独・ShiftなしF10では設定を開かず、メニューキーでは既定動作を取り消して開く', () => {
+  vi.useFakeTimers()
+  render(<App />)
+  prepare()
+  for (const init of [{ key: 'a' }, { key: 'F10' }, { key: 'A', shiftKey: true }]) {
+    fireEvent.keyDown(cell(), init)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  }
+  pointer(cell(), 'pointerDown', 100, 100, 'touch')
+  expect(fireEvent.contextMenu(cell())).toBe(false)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(fireEvent.keyDown(cell(), { key: 'ContextMenu' })).toBe(false)
+  expect(screen.getByRole('dialog', { name: '味方1の設定' })).toBeVisible()
+  click('閉じる')
+  act(() => { vi.advanceTimersByTime(600) })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(fireEvent.dragStart(cell())).toBe(false)
+})
+
+it.each([
+  ['見える', 100, 100, 134], ['上端だけ接する', 100, 20, 434], ['上に隠れる', 100, 0, 434],
+  ['下端だけ接する', 100, 350, 434], ['下に隠れる', 100, 370, 434],
+  ['左端だけ接する', 20, 100, 434], ['左に隠れる', 0, 100, 434],
+  ['右端だけ接する', 350, 100, 434], ['右に隠れる', 370, 100, 434],
+] as const)('設定ボタンは駒が%sときに、見える駒か設定ボタンの近くへ出す', (_name, x, y, top) => {
+  render(<App />)
+  prepare()
+  fireEvent.click(cell())
+  viewport().getBoundingClientRect = () => DOMRect.fromRect({ x: 50, y: 50, width: 300, height: 300 })
+  cell().getBoundingClientRect = () => DOMRect.fromRect({ x, y, width: 30, height: 30 })
+  screen.getByRole('button', { name: '設定' }).getBoundingClientRect = () => DOMRect.fromRect({ x: 500, y: 400, width: 80, height: 30 })
+  click('設定')
+  expect(screen.getByRole('dialog', { name: '味方1の設定' })).toHaveStyle({ top: `${top}px` })
 })
 
 it.each(['ContextMenu', 'F10'])('キーボードの%sから設定を開ける。ドラッグ後もEnterのclickは通常の選択に使える', (key) => {

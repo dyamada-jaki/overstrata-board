@@ -147,6 +147,20 @@ describe('長押しで開く（#45。時刻だけ偽のタイマーにする）'
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })
 
+  it('未配置一覧でも10pxの揺れは長押しを保ち、11pxのスクロール開始は取り消す', () => {
+    render(<App />)
+    prepare('1', '0')
+    touch(token('味方1'), 'pointerDown', 100, 100)
+    touch(token('味方1'), 'pointerMove', 106, 108)
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(popup('味方1')).toBeInTheDocument()
+    click('閉じる')
+    touch(token('味方1'), 'pointerDown', 100, 100)
+    touch(token('味方1'), 'pointerMove', 100, 111)
+    act(() => { vi.advanceTimersByTime(600) })
+    expect(popups()).toEqual([])
+  })
+
   it('タッチで499msでは開かず、500msで選択して開く。指を離した後の click で選択を解除しない', () => {
     render(<App />)
     prepare('1', '0')
