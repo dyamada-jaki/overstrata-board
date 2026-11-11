@@ -398,8 +398,9 @@ describe('表示操作の続きと後始末（ミューテーションテスト�
     // キーボードの Enter・Space（detail 0）は、直前のドラッグの click として止めない。
     fireEvent.click(cell(3, 3), { detail: 0 })
     expect(pressed()).toEqual([cell(3, 3)])
-    pointer(cell(6, 6), 'pointerDown', 100, 100, { kind: 'touch' })
-    pointer(cell(6, 6), 'pointerUp', 100, 100, { kind: 'touch' })
+    // 実際のタッチは、新しい指ごとに別の pointerId になる。
+    pointer(cell(6, 6), 'pointerDown', 100, 100, { kind: 'touch', id: 2 })
+    pointer(cell(6, 6), 'pointerUp', 100, 100, { kind: 'touch', id: 2 })
     fireEvent.click(cell(6, 6), { detail: 1 })
     expect(cell(6, 6)).toHaveAccessibleName(/^マス \(6, 6\) 味方1（/)
   })
