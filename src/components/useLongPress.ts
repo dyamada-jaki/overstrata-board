@@ -30,13 +30,22 @@ export function useLongPress(onOpen: (id: string, element: HTMLElement) => void)
   }, [])
   useEffect(() => cancel, [cancel])
 
+  /**
+   * マウスの右ボタンを押したことを覚える。盤面では空きマスから始めた右ドラッグも、離した後に駒へ届く contextmenu で開かないよう、
+   * 表示枠の pointerdown からも呼ぶ（#63）。
+   */
+  const notePointerDown = (event: PointerEvent<HTMLElement>) => {
+    const rightButton = event.pointerType === 'mouse' && event.button === 2
+    mouseMenu.current = rightButton
+    return rightButton
+  }
+
   const bind = (id: string, onClick: () => void) => ({
     onPointerDown: (event: PointerEvent<HTMLElement>) => {
       cancel()
       opened.current = null
       const element = event.currentTarget
-      const rightButton = event.pointerType === 'mouse' && event.button === 2
-      mouseMenu.current = rightButton
+      const rightButton = notePointerDown(event)
       if (rightButton) {
         press.current = { x: event.clientX, y: event.clientY, element }
         return
@@ -78,5 +87,5 @@ export function useLongPress(onOpen: (id: string, element: HTMLElement) => void)
       onClick()
     },
   })
-  return { bind, cancel }
+  return { bind, cancel, notePointerDown }
 }

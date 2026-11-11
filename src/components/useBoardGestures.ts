@@ -53,6 +53,8 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
   return {
     onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
       if (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 2) return
+      // 盤面の外で離して pointerup が届かなかった同じ pointer は、古い操作として捨てて新しく始める。
+      pointers.current.delete(event.pointerId)
       if (pointers.current.size >= 2) return
       const point = { x: event.clientX, y: event.clientY }
       if (pointers.current.size === 0) suppressClick.current = false
@@ -62,6 +64,11 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
     },
     onPointerMove: (event: PointerEvent<HTMLDivElement>) => {
       if (!pointers.current.has(event.pointerId)) return
+      // マウスのボタンを離した後（盤面の外で離した）の移動は、操作の終わりとして扱い、表示を動かさない。
+      if (event.pointerType === 'mouse' && event.buttons === 0) {
+        end(event.pointerId)
+        return
+      }
       const point = { x: event.clientX, y: event.clientY }
       pointers.current.set(event.pointerId, point)
       const current = gesture.current

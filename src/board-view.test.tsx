@@ -37,8 +37,8 @@ function zoomIn(times = 4) {
 }
 type Kind = 'mouse' | 'touch'
 const pointer = (element: HTMLElement, type: 'pointerDown' | 'pointerMove' | 'pointerUp' | 'pointerCancel',
-  x: number, y: number, { kind = 'mouse' as Kind, button = 0, id = 1, buttons = type === 'pointerUp' ? 0 : button === 2 ? 2 : 1 } = {}) =>
-  fireEvent[type](element, { pointerType: kind, pointerId: id, button, buttons, clientX: x, clientY: y })
+  x: number, y: number, { kind = 'mouse', button = 0, id = 1, buttons }: { kind?: Kind; button?: number; id?: number; buttons?: number } = {}) =>
+  fireEvent[type](element, { pointerType: kind, pointerId: id, button, buttons: buttons ?? (type === 'pointerUp' ? 0 : button === 2 ? 2 : 1), clientX: x, clientY: y })
 /** マウスのボタンで押して dx・dy 動かして離し、実ブラウザと同じく離した後の click（左）を出す。 */
 function mouseDrag(element: HTMLElement, dx: number, dy: number, button = 0) {
   pointer(element, 'pointerDown', 100, 100, { button })

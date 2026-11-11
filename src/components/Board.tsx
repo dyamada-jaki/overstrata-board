@@ -1,4 +1,4 @@
-import { useRef, type Dispatch, type SetStateAction } from 'react'
+import { useRef, type Dispatch, type PointerEvent, type SetStateAction } from 'react'
 import { formatPosition, getBoardPositions } from '../domain/board.ts'
 import type { BoardSize, Position } from '../domain/movement.ts'
 import { getSelectedMovementRange, type BoardState } from '../domain/selection.ts'
@@ -22,9 +22,13 @@ export function Board({ size, state, onTap, onOpenSettings = () => {}, view = in
   view?: View
   onViewChange?: Dispatch<SetStateAction<View>>
 }) {
-  const { bind: pieceHandlers, cancel: cancelPress } = useLongPress(onOpenSettings)
+  const { bind: pieceHandlers, cancel: cancelPress, notePointerDown } = useLongPress(onOpenSettings)
   const frame = useRef<HTMLDivElement>(null)
   const gestures = useBoardGestures(frame, onViewChange, cancelPress)
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    notePointerDown(event)
+    gestures.onPointerDown(event)
+  }
   const { selection } = state
   const occupants = new Map(state.characters.flatMap((character) => character.position === null
     ? [] : [[keyOf(character.position), character] as const]))
@@ -33,7 +37,7 @@ export function Board({ size, state, onTap, onOpenSettings = () => {}, view = in
 
   return (
     // 表示枠。1倍は盤面の上から縦にページをスクロールでき、拡大中は1本指のドラッグを表示位置の移動に使う（計画承認時の人間の決定）。
-    <div className="board-viewport" ref={frame} style={{ touchAction: view.scale > 1 ? 'none' : 'pan-y' }} {...gestures}>
+    <div className="board-viewport" ref={frame} style={{ touchAction: view.scale > 1 ? 'none' : 'pan-y' }} {...gestures} onPointerDown={onPointerDown}>
       <div className="board" role="group" aria-label="戦闘盤面"
         style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}>
         <div className="board-columns" role="group" aria-label="横の座標" style={columns}>
