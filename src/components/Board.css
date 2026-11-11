@@ -110,7 +110,7 @@
   -webkit-touch-callout: none;
 }
 .board-transform { transform-origin: 0 0; }
-.board-view-controls { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.375rem; }
+.board-view-controls { display: flex; align-items: center; gap: 0.75rem; }
 .board-view-controls span { min-width: 6.5em; font-variant-numeric: tabular-nums; }
 .board-view-controls button {
   min-height: 2.75rem;
@@ -123,4 +123,4 @@
   touch-action: manipulation;
 }
 .board-view-controls button:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
-.board-view-help { margin-bottom: 0.5rem; font-size: 0.75rem; }
+.board-view-help { margin-bottom: 0.25rem; font-size: 0.75rem; }
