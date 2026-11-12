@@ -1,43 +1,78 @@
 /* 拡大・移動した盤面を切り取る表示枠（#63）。clip は hidden と違い、フォーカスの移動などでスクロールされない。 */
-.board-viewport {
-  overflow: clip;
-}
-
-.board {
-  transform-origin: 0 0;
+.board-frame {
   display: grid;
   grid-template-columns: 1.5rem minmax(0, 1fr);
   grid-template-rows: 1.5rem auto;
   width: 100%;
 }
 
-.board-columns,
-.board-rows {
-  display: grid;
+.board-viewport {
+  grid-column: 2;
+  grid-row: 2;
+  overflow: clip;
+  min-width: 0;
+}
+
+.board {
+  transform-origin: 0 0;
+  width: 100%;
+}
+
+.board-labels {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: clip;
   color: #475569;
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.board-labels svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #64748b;
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.board-label {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  white-space: nowrap;
 }
 
 .board-columns {
   grid-column: 2;
-  padding-inline: 1px;
-  column-gap: 1px;
-  align-items: center;
+  grid-row: 1;
+}
+
+.board-columns .board-label {
+  top: 0;
+  transform: translateX(-50%);
 }
 
 .board-rows {
+  grid-column: 1;
   grid-row: 2;
-  padding-block: 1px;
-  row-gap: 1px;
-  align-items: center;
+}
+
+.board-rows .board-label {
+  left: 0;
+  transform: translateY(-50%);
 }
 
 .board-cells {
   display: grid;
-  grid-column: 2;
-  grid-row: 2;
   gap: 1px;
   padding: 1px;
   background: #94a3b8;

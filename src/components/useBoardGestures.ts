@@ -1,5 +1,5 @@
-import { useEffect, useRef, type Dispatch, type MouseEvent, type PointerEvent, type RefObject, type SetStateAction } from 'react'
-import { clampView, panBy, zoomAt, type Point, type View } from './boardView.ts'
+import { useEffect, useLayoutEffect, useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type RefObject, type SetStateAction } from 'react'
+import { clampView, panBy, zoomAt, type Frame, type Point, type View } from './boardView.ts'
 import { longPress } from './useLongPress.ts'
 
 /** ホイール1ノッチ（deltaY 100）で約1.22倍。 */
@@ -24,7 +24,8 @@ const frameSize = (element: HTMLElement) => ({ width: element.clientWidth, heigh
  * - ホイール: カーソルの位置を基準に拡大・縮小し、ページはスクロールさせない
  * ドラッグ・ピンチを始めたら駒の長押しを取り消し（cancelPress）、離した後の click を1回だけ止める。
  */
-export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setView: Dispatch<SetStateAction<View>>, cancelPress: () => void) {
+export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, surface: RefObject<HTMLDivElement | null>, setView: Dispatch<SetStateAction<View>>, cancelPress: () => void) {
+  const [bounds, setBounds] = useState<Frame>({ width: 0, height: 0 })
   const pointers = useRef(new Map<number, Point>())
   const gesture = useRef<{ mode: 'press' | 'drag'; origin: Point; last: Point } | { mode: 'pinch'; distance: number; middle: Point } | null>(null)
   const suppressClick = useRef(false)
@@ -33,28 +34,30 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
   const size = () => frameSize(frame.current!)
 
   useEffect(() => {
-    const element = frame.current!
+    const element = surface.current!
     // React の onWheel は passive で preventDefault できないので、ネイティブの listener で受ける。
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
-      const point = toFrame(element, { x: event.clientX, y: event.clientY })
-      const current = frameSize(element)
+      const point = toFrame(frame.current!, { x: event.clientX, y: event.clientY })
+      const current = frameSize(frame.current!)
       // deltaY をピクセルに換算する: 行単位（1）は 1行 = 16px、ページ単位（2）は 1ページ = 表示枠の高さ。
       const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? wheelLinePx : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? current.height : 1
       setView((view) => zoomAt(view, Math.exp(-event.deltaY * unit * wheelRate), point, current))
     }
     element.addEventListener('wheel', onWheel, { passive: false })
     return () => element.removeEventListener('wheel', onWheel)
-  }, [frame, setView])
+  }, [frame, surface, setView])
 
   // 表示枠の大きさが変わったら（画面の大きさの変更・スマホの回転）、倍率を保ったまま新しい大きさで表示位置を収め直す。
   // ResizeObserver の無い環境では、画面（window）の大きさの変更で代わりに収め直す。
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = frame.current!
     const refit = () => {
       const current = frameSize(element)
+      setBounds(current)
       setView((view) => clampView(view, current))
     }
+    refit()
     if (typeof ResizeObserver === 'undefined') {
       window.addEventListener('resize', refit)
       return () => window.removeEventListener('resize', refit)
@@ -71,7 +74,7 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
     suppressClick.current = true
   }
 
-  return {
+  return { bounds, bind: {
     onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
       if (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 2) return
       // 盤面の外で離して pointerup が届かなかった同じ pointer は、古い操作として捨てて新しく始める。
@@ -110,7 +113,7 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
         cancelPress()
         suppressClick.current = true
         // 枠の外へ出ても動かし続けられるよう、ドラッグを始めてから枠で受ける（押した時点では受けず、タップの click を壊さない）。
-        frame.current!.setPointerCapture?.(event.pointerId)
+        surface.current!.setPointerCapture?.(event.pointerId)
       }
       const bounds = size()
       const { last } = current
@@ -128,7 +131,7 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
     },
     // 盤面の上ではブラウザのメニューを出さない（右ドラッグ中のメニューを含む）。駒の設定は useLongPress が開く。
     onContextMenu: (event: MouseEvent<HTMLDivElement>) => event.preventDefault(),
-  }
+  } }
 
   function end(pointerId: number) {
     if (!pointers.current.delete(pointerId)) return
