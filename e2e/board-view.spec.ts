@@ -424,7 +424,7 @@ async function expectLabelsMatch(page: Page, testInfo: { attach: (name: string, 
 }
 const axisNumbers = (page: Page, name: '横の座標' | '縦の座標') => page.getByRole('group', { name }).locator('span')
 type Attach = { attach: (name: string, options: { body: Buffer; contentType: string }) => Promise<void> }
-/** 左上（sign 1）か右下（sign −1）の端に着くまで、150px ずつ斜めにドラッグする。毎回、番号とマスの対応を確かめる。 */
+/** 左上（sign 1）か右下（sign −1）の端に着くまで、150px ずつ斜めにドラッグする（4倍の端から端は約12回）。毎回、番号とマスの対応を確かめる。 */
 async function dragToCorner(page: Page, project: string, sign: 1 | -1, testInfo: Attach, name: string) {
   const reached = async () => {
     const view = await frame(page)
@@ -433,12 +433,14 @@ async function dragToCorner(page: Page, project: string, sign: 1 | -1, testInfo:
       ? target.x >= view.x - 0.5 && target.y >= view.y - 0.5
       : target.x + target.width <= view.x + view.width + 0.5 && target.y + target.height <= view.y + view.height + 0.5
   }
-  for (let step = 1; step <= 8 && !await reached(); step += 1) {
+  for (let step = 1; step <= 16 && !await reached(); step += 1) {
     await drag(page, project, await boardCenter(page), 150 * sign, 150 * sign)
     await expectLabelsMatch(page, testInfo, `${name}へ ${step}回目のドラッグの後`)
     await noHorizontalScroll(page)
   }
-  expect(await reached(), `${name}の端に着く`).toBe(true)
+  const view = await frame(page)
+  const target = await box(sign === 1 ? cell(page, 1, 1) : cell(page, 10, 10))
+  expect(await reached(), `${name}の端に着く（表示枠 ${JSON.stringify(view)}・マス ${JSON.stringify(target)}）`).toBe(true)
 }
 
 test('拡大・移動を何度繰り返しても、見えている列・行の番号が表示枠の上端・左端で対応するマスに揃い、「全体を見る」で 1〜10 に戻る', async ({ page }, testInfo) => {
