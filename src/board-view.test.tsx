@@ -73,6 +73,54 @@ describe('倍率の範囲と全体表示（受け入れ条件1・3）', () => {
     expect(wheel(cell(1, 1), -100, 0, 0)).toBe(false)
   })
 
+  // Firefox は行単位（deltaMode 1）やページ単位（deltaMode 2）の deltaY を出すことがある。
+  // 換算の規則: 1行 = 16px、1ページ = 表示枠の高さ。換算後はピクセル単位（deltaMode 0）と同じ倍率・位置になる。
+  describe('ホイールの単位（deltaMode）をピクセルに換算する', () => {
+    /** 新しく描画し、表示枠を与えて、カーソル (60, 90) で1回だけホイールを回したときの倍率と位置。 */
+    function afterWheel(deltaY: number, deltaMode: number, width = 300, height = 300) {
+      const { unmount } = render(<App />)
+      setFrame(width, height)
+      fireEvent.wheel(cell(3, 4), { deltaY, deltaMode, clientX: 60, clientY: 90 })
+      const result = { zoom: zoom(), transform: board().style.transform }
+      unmount()
+      return result
+    }
+
+    it('ピクセル単位（deltaMode 0）は今のまま。deltaY -100 で約1.22倍', () => {
+      const result = afterWheel(-100, 0)
+      expect(result.zoom).toBe('倍率 1.2倍')
+      expect(result).toEqual(afterWheel(-100, 0))
+      expect(result.transform).not.toBe('translate(0px, 0px) scale(1)')
+    })
+
+    it('行単位（deltaMode 1）の deltaY -3 は、ピクセル単位の deltaY -48（1行 = 16px）と同じ倍率・位置になる', () => {
+      const lines = afterWheel(-3, 1)
+      expect(lines).toEqual(afterWheel(-48, 0))
+      expect(lines).not.toEqual(afterWheel(-3, 0))
+    })
+
+    it('行単位で拡大した後の縮小も同じ換算になる（deltaY 2 行 = 32px）', () => {
+      const { unmount } = render(<App />)
+      setFrame()
+      zoomIn()
+      fireEvent.wheel(cell(3, 4), { deltaY: 2, deltaMode: 1, clientX: 60, clientY: 90 })
+      const lines = { zoom: zoom(), transform: board().style.transform }
+      unmount()
+      render(<App />)
+      setFrame()
+      zoomIn()
+      fireEvent.wheel(cell(3, 4), { deltaY: 32, deltaMode: 0, clientX: 60, clientY: 90 })
+      expect(lines).toEqual({ zoom: zoom(), transform: board().style.transform })
+    })
+
+    it('ページ単位（deltaMode 2）の deltaY -1 は、ピクセル単位の deltaY -（表示枠の高さ）と同じ倍率・位置になる（幅ではなく高さ）', () => {
+      const page = afterWheel(-1, 2, 400, 250)
+      expect(page).toEqual(afterWheel(-250, 0, 400, 250))
+      expect(page).not.toEqual(afterWheel(-400, 0, 400, 250))
+      expect(page).not.toEqual(afterWheel(-1, 0, 400, 250))
+    })
+  })
+
   it('「全体を見る」で1倍・全体の位置へ戻す。拡大・移動・戻す操作で駒の位置と選択は変わらない', () => {
     render(<App />)
     prepare(2, 0)
