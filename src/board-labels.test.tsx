@@ -59,6 +59,37 @@ describe('#67 座標ラベルを表示枠に残す（Appの操作から）', () 
     expect(numbers('縦の座標')).toEqual(['1', '2', '3'])
   })
 
+  it('番号の位置と引出線を同じ表示から描き、細い断片でも正しいマスを指す', () => {
+    render(<App />)
+    measure()
+    // 幅311の10列はマス幅30、1pxの線を挟む。5列目/行目は125〜155なので中心140。
+    expect(within(axis()).getByText('5')).toHaveStyle({ left: '140px' })
+    expect(within(axis('縦の座標')).getByText('5')).toHaveStyle({ top: '140px' })
+    zoom4()
+    // 中央4倍: 4列目の見えている区間は0〜29.5、中央14.75。
+    expect(within(axis()).getByText('4')).toHaveStyle({ left: '14.75px' })
+    const line = axis().querySelector('.board-label-leader[data-number="4"]')!
+    expect(line).toHaveAttribute('x1', '14.75')
+    expect(line).toHaveAttribute('y1', '20')
+    expect(line).toHaveAttribute('x2', '14.75')
+    expect(line).toHaveAttribute('y2', '24')
+    const vertical = axis('縦の座標').querySelector('.board-label-leader[data-number="4"]')!
+    expect(vertical).toHaveAttribute('x1', '20')
+    expect(vertical).toHaveAttribute('y1', '14.75')
+    expect(vertical).toHaveAttribute('x2', '24')
+    expect(vertical).toHaveAttribute('y2', '14.75')
+    // 28.5pxだけさらに動かすと4列目は1pxになり、番号は10pxへ寄るが行き先は0.5px。
+    drag(axis(), -28.5, 0)
+    expect(within(axis()).getByText('4')).toHaveStyle({ left: '10px' })
+    const partial = axis().querySelector('.board-label-leader[data-number="4"]')!
+    expect(partial).toHaveAttribute('x1', '10')
+    expect(partial).toHaveAttribute('x2', '0.5')
+    expect(partial.closest('svg')).toHaveAttribute('aria-hidden', 'true')
+    expect(partial.closest('svg')).toHaveAttribute('viewBox', '0 0 311 24')
+    expect(axis('縦の座標').querySelector('svg')).toHaveAttribute('viewBox', '0 0 24 311')
+    expect(partial.parentElement!.querySelector('path')).toHaveAttribute('d', 'M0 18V24M1 18V24')
+  })
+
   it.each(['mouse', 'touch'])('%s: 帯と角からのドラッグも追従し、番号のタップは選択を変えない', (kind) => {
     render(<App />)
     prepare()
