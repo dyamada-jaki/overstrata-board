@@ -423,6 +423,23 @@ async function expectLabelsMatch(page: Page, testInfo: { attach: (name: string, 
   expect(problems, step).toEqual([])
 }
 const axisNumbers = (page: Page, name: '横の座標' | '縦の座標') => page.getByRole('group', { name }).locator('span')
+type Attach = { attach: (name: string, options: { body: Buffer; contentType: string }) => Promise<void> }
+/** 左上（sign 1）か右下（sign −1）の端に着くまで、150px ずつ斜めにドラッグする。毎回、番号とマスの対応を確かめる。 */
+async function dragToCorner(page: Page, project: string, sign: 1 | -1, testInfo: Attach, name: string) {
+  const reached = async () => {
+    const view = await frame(page)
+    const target = await box(sign === 1 ? cell(page, 1, 1) : cell(page, 10, 10))
+    return sign === 1
+      ? target.x >= view.x - 0.5 && target.y >= view.y - 0.5
+      : target.x + target.width <= view.x + view.width + 0.5 && target.y + target.height <= view.y + view.height + 0.5
+  }
+  for (let step = 1; step <= 8 && !await reached(); step += 1) {
+    await drag(page, project, await boardCenter(page), 150 * sign, 150 * sign)
+    await expectLabelsMatch(page, testInfo, `${name}へ ${step}回目のドラッグの後`)
+    await noHorizontalScroll(page)
+  }
+  expect(await reached(), `${name}の端に着く`).toBe(true)
+}
 
 test('拡大・移動を何度繰り返しても、見えている列・行の番号が表示枠の上端・左端で対応するマスに揃い、「全体を見る」で 1〜10 に戻る', async ({ page }, testInfo) => {
   const project = testInfo.project.name
@@ -436,14 +453,15 @@ test('拡大・移動を何度繰り返しても、見えている列・行の�
   await zoomIn(page, project)
   await expectLabelsMatch(page, testInfo, '中間の倍率')
   // 指・マウスを複数回動かす（2回目以降も止まらずに追従すること）。左上の端 → 右下の端 → 中央寄り。
-  const moves: [number, number][] = [[400, 400], [-900, -900], [120, 90]]
-  for (const [index, [dx, dy]] of moves.entries()) {
-    const before = await box(cell(page, 5, 5))
-    await drag(page, project, await boardCenter(page), dx, dy)
-    expect((await box(cell(page, 5, 5))).x, `${index + 1}回目のドラッグで動く`).not.toBeCloseTo(before.x, 0)
-    await expectLabelsMatch(page, testInfo, `${index + 1}回目のドラッグの後`)
-    await noHorizontalScroll(page)
-  }
+  // 1回のドラッグは表示枠の中に収まる量（150px）にし、端に着くまで繰り返す（PC ではマウスが画面の外へ出ると止まるため）。
+  await dragToCorner(page, project, 1, testInfo, '左上')
+  await expect(axisNumbers(page, '横の座標').first()).toHaveText('1')
+  await expect(axisNumbers(page, '縦の座標').first()).toHaveText('1')
+  await dragToCorner(page, project, -1, testInfo, '右下')
+  await expect(axisNumbers(page, '横の座標').last()).toHaveText('10')
+  await expect(axisNumbers(page, '縦の座標').last()).toHaveText('10')
+  await drag(page, project, await boardCenter(page), 70, 50)
+  await expectLabelsMatch(page, testInfo, '中央寄りへ動かした後')
   await expect(axisNumbers(page, '横の座標')).not.toHaveCount(10)
 
   // 4倍と、その表示位置の移動（PC は右ボタンのドラッグも）。
@@ -457,6 +475,17 @@ test('拡大・移動を何度繰り返しても、見えている列・行の�
   }
   await expect(zoomText(page)).toHaveText('倍率 4.0倍')
   await expectLabelsMatch(page, testInfo, '4倍')
+  // 4倍の左上の端: 帯のすぐ隣（盤面の内側の余白 4px の内側）のマス (1, 1) を押して選び、もう一度押して解除する。
+  await dragToCorner(page, project, 1, testInfo, '4倍の左上')
+  await expect(axisNumbers(page, '横の座標').first()).toHaveText('1')
+  const corner = await frame(page)
+  await pressAt(page, project, { x: corner.x + 6, y: corner.y + 6 })
+  await expect(cell(page, 1, 1)).toHaveAttribute('aria-pressed', 'true')
+  await pressAt(page, project, { x: corner.x + 6, y: corner.y + 6 })
+  await expect(cell(page, 1, 1)).toHaveAttribute('aria-pressed', 'false')
+  await dragToCorner(page, project, -1, testInfo, '4倍の右下')
+  await expect(axisNumbers(page, '横の座標').last()).toHaveText('10')
+  await expect(axisNumbers(page, '縦の座標').last()).toHaveText('10')
   await drag(page, project, await boardCenter(page), -70, 50, 'right')
   await expectLabelsMatch(page, testInfo, '4倍で動かした後')
   await drag(page, project, await boardCenter(page), 37, -23)
@@ -508,15 +537,18 @@ test('拡大して左上の端を表示し、番号の帯のすぐ隣のマス�
   const rowStrip = await box(page.getByRole('group', { name: '縦の座標' }))
   await pressAt(page, project, { x: view.x + 3, y: row3.y + row3.height / 2 })
   await expect(cell(page, 1, 3)).toHaveAttribute('aria-pressed', 'true')
-  await pressAt(page, project, { x: first.x + first.width / 2, y: columnStrip.y + columnStrip.height / 2 })
-  await pressAt(page, project, { x: rowStrip.x + rowStrip.width / 2, y: row3.y + row3.height / 2 })
+  // PC は境界の 3px 外を押す。スマホのタッチは境界のすぐ外を押すとブラウザの補正で隣のマスとして扱われることがある
+  // （帯の無い盤面の右端の外でも同じ。下の確認）ので、帯の中央を押す。
+  const outside = isMobile(project) ? { top: columnStrip.y + columnStrip.height / 2, left: rowStrip.x + rowStrip.width / 2 } : { top: view.y - 3, left: view.x - 3 }
+  await pressAt(page, project, { x: first.x + first.width / 2, y: outside.top })
+  await pressAt(page, project, { x: outside.left, y: row3.y + row3.height / 2 })
   await expect(cell(page, 1, 3)).toHaveAttribute('aria-pressed', 'true')
   await expect(cell(page, 1, 3)).toHaveAccessibleName(/^マス \(1, 3\) 味方1（/)
   await expect(dialogs(page)).toHaveCount(0)
 
   if (!isMobile(project)) {
     // 帯の上の右クリックは設定もブラウザのメニューも出さない。端の駒の右クリック（動かさず離す）は設定を開く。
-    await page.mouse.click(first.x + first.width / 2, columnStrip.y + columnStrip.height / 2, { button: 'right' })
+    await page.mouse.click(first.x + first.width / 2, view.y - 3, { button: 'right' })
     await expect(dialogs(page)).toHaveCount(0)
     const piece = await box(cell(page, 1, 3))
     await page.mouse.click(view.x + 3, piece.y + piece.height / 2, { button: 'right' })
