@@ -704,6 +704,20 @@ describe('拡大・移動中の座標の番号（#67）', () => {
     vi.unstubAllGlobals()
   })
 
+  it('表示枠の幅だけ・高さだけが変わったときも、変わった向きの番号を計算し直す', () => {
+    vi.stubGlobal('ResizeObserver', undefined)
+    setUp()
+    setFrame(221, 111)
+    fireEvent(window, new Event('resize'))
+    expect(labels('横の座標')).toEqual(['1 4px 84px', '2 92px 84px', '3 180px 41px'])
+    expect(labels('縦の座標')).toEqual(topLeft4x)
+    setFrame(221, 221)
+    fireEvent(window, new Event('resize'))
+    expect(labels('横の座標')).toEqual(['1 4px 84px', '2 92px 84px', '3 180px 41px'])
+    expect(labels('縦の座標')).toEqual(['1 4px 84px', '2 92px 84px', '3 180px 41px'])
+    vi.unstubAllGlobals()
+  })
+
   describe('番号の帯と角の上の操作', () => {
     it('帯の上から始めたドラッグでも表示位置を動かし、離した後の click で選択を変えない', () => {
       render(<App />)
