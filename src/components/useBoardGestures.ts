@@ -4,6 +4,8 @@ import { longPress } from './useLongPress.ts'
 
 /** ホイール1ノッチ（deltaY 100）で約1.22倍。 */
 const wheelRate = 0.002
+/** 行単位（deltaMode 1）の1行をピクセルにした量。Firefox が行単位の deltaY を出す。 */
+const wheelLinePx = 16
 
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
 const middle = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
@@ -37,7 +39,9 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
       event.preventDefault()
       const point = toFrame(element, { x: event.clientX, y: event.clientY })
       const current = frameSize(element)
-      setView((view) => zoomAt(view, Math.exp(-event.deltaY * wheelRate), point, current))
+      // deltaY をピクセルに換算する: 行単位（1）は 1行 = 16px、ページ単位（2）は 1ページ = 表示枠の高さ。
+      const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? wheelLinePx : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? current.height : 1
+      setView((view) => zoomAt(view, Math.exp(-event.deltaY * unit * wheelRate), point, current))
     }
     element.addEventListener('wheel', onWheel, { passive: false })
     return () => element.removeEventListener('wheel', onWheel)
