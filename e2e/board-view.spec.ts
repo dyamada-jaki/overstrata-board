@@ -369,3 +369,188 @@ test('スマホ：1本目の指を少し（10px 以内）動かしてから2本�
   await expect(dialogs(page)).toHaveCount(0)
   await expect(page.getByRole('button', { pressed: true })).toHaveCount(0)
 })
+
+/** #67: 正解は実際に見えるマスの矩形から求める。アプリの表示計算は呼ばない。 */
+async function expectCoordinateLabels(page: Page) {
+  const view = await frame(page)
+  for (const [name, horizontal] of [['横の座標', true], ['縦の座標', false]] as const) {
+    const axis = page.getByRole('group', { name })
+    const area = await box(axis)
+    // 固定先はマスの表示枠。倍率で帯の厚さが変わらず、マスを覆わない。
+    if (horizontal) {
+      expect(area.x).toBeCloseTo(view.x, 0)
+      expect(area.y + area.height).toBeCloseTo(view.y, 0)
+      expect(area.width).toBeCloseTo(view.width, 0)
+      expect(area.height).toBe(24)
+    } else {
+      expect(area.y).toBeCloseTo(view.y, 0)
+      expect(area.x + area.width).toBeCloseTo(view.x, 0)
+      expect(area.height).toBeCloseTo(view.height, 0)
+      expect(area.width).toBe(24)
+    }
+    const low = horizontal ? view.x : view.y
+    const high = low + (horizontal ? view.width : view.height)
+    const visible: { number: string; anchor: number }[] = []
+    for (let n = 1; n <= 10; n += 1) {
+      const rect = await box(horizontal ? cell(page, n, 1) : cell(page, 1, n))
+      const start = Math.max(low, horizontal ? rect.x : rect.y)
+      const end = Math.min(high, horizontal ? rect.x + rect.width : rect.y + rect.height)
+      if (end - start > 0.01) visible.push({ number: String(n), anchor: (start + end) / 2 })
+    }
+    const labels = axis.locator('span')
+    await expect(labels).toHaveText(visible.map((label) => label.number))
+    let last = -Infinity
+    for (let i = 0; i < visible.length; i += 1) {
+      const rect = await box(labels.nth(i))
+      const start = horizontal ? rect.x : rect.y
+      const end = start + (horizontal ? rect.width : rect.height)
+      expect(start).toBeGreaterThanOrEqual(low - 0.1)
+      expect(end).toBeLessThanOrEqual(high + 0.1)
+      expect(start).toBeGreaterThanOrEqual(last - 0.1)
+      last = end
+      // 引出線の先端は、わずかに見える断片も含めて自分のマスの中央を指す。
+      const leader = axis.locator(`.board-label-leader[data-number="${visible[i]!.number}"]`)
+      const anchor = await leader.evaluate((element, isHorizontal) => {
+        const line = element as SVGLineElement
+        const point = new DOMPoint(line.x2.baseVal.value, line.y2.baseVal.value).matrixTransform(line.getScreenCTM()!)
+        return isHorizontal ? point.x : point.y
+      }, horizontal)
+      expect(anchor).toBeCloseTo(visible[i]!.anchor, 0)
+    }
+  }
+  await noHorizontalScroll(page)
+}
+
+test('#67: 番号は1倍・中間・4倍と中央/四隅で枠に残り、細い断片でも重ならず対応先を指す', async ({ page }, testInfo) => {
+  await page.goto('/')
+  await expectCoordinateLabels(page)
+  await zoomIn(page, testInfo.project.name)
+  await expectCoordinateLabels(page)
+  const at = await boardCenter(page)
+  if (isMobile(testInfo.project.name)) await pinch(page, at, 20, 100)
+  else { await page.mouse.move(at.x, at.y); await page.mouse.wheel(0, -10000) }
+  await expect(zoomText(page)).toHaveText('倍率 4.0倍')
+  await expectCoordinateLabels(page)
+  // 途中で切れた最初の列・行を2pxだけ残す（番号が隣へ誤対応しやすい状態）。
+  const view = await frame(page)
+  const edge = await box(cell(page, 4, 4))
+  await drag(page, testInfo.project.name, at, view.x + 2 - edge.x - edge.width, view.y + 2 - edge.y - edge.height)
+  await expectCoordinateLabels(page)
+  await testInfo.attach('端の細い断片と番号の引出線', { body: await page.screenshot(), contentType: 'image/png' })
+  for (const [dx, dy] of [[5000, 5000], [-5000, 0], [0, -5000], [5000, 0]] as const) {
+    // 入力は枠内から始め、複数回のドラッグで端へ到達する。
+    for (let step = 0; step < 5; step += 1) {
+      const current = await frame(page)
+      const sx = dx > 0 ? current.x + 10 : current.x + current.width - 10
+      const sy = dy > 0 ? current.y + 10 : current.y + current.height - 10
+      await drag(page, testInfo.project.name, { x: sx, y: sy }, Math.sign(dx) * (current.width - 20), Math.sign(dy) * (current.height - 20))
+    }
+    await expectCoordinateLabels(page)
+  }
+  await button(page, '全体を見る').click()
+  await expectCoordinateLabels(page)
+  await expect(zoomText(page)).toHaveText('倍率 1.0倍')
+})
+
+test('#67: 帯・角からの表示操作を複数回続けられ、片方の指が帯のピンチや帯のホイールも扱う', async ({ page }, testInfo) => {
+  await page.goto('/')
+  await prepare(page, 1, 0)
+  await place(page, '味方1', 5, 5)
+  await cell(page, 5, 5).click()
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await zoomIn(page, testInfo.project.name)
+  const columns = page.getByRole('group', { name: '横の座標' })
+  const from = await center(columns)
+  // ドラッグの各段階を検証する。1歩目だけ動いて以降が止まる回帰を見逃さない。
+  const moveAndCheck = async (move: (step: number) => Promise<unknown>) => {
+    let previous = await box(cell(page, 5, 5))
+    for (let step = 1; step <= 3; step += 1) {
+      await move(step)
+      const current = await box(cell(page, 5, 5))
+      expect(current.x).toBeLessThan(previous.x - 10)
+      await expectCoordinateLabels(page)
+      previous = current
+    }
+  }
+  if (isMobile(testInfo.project.name)) {
+    await touch(page, async (cdp) => {
+      await touchEvent(cdp, 'touchStart', [from])
+      await moveAndCheck((step) => touchEvent(cdp, 'touchMove', [{ x: from.x - step * 20, y: from.y }]))
+      await page.waitForTimeout(200)
+      await touchEvent(cdp, 'touchEnd', [])
+    })
+    // 片方の指は列番号の帯、もう片方はマスに置き、距離を広げる。
+    const view = await frame(page)
+    const upper = { x: from.x, y: view.y - 12 }
+    const lower = { x: from.x, y: view.y + 35 }
+    await touch(page, async (cdp) => {
+      await touchEvent(cdp, 'touchStart', [upper, lower])
+      for (let step = 1; step <= 3; step += 1) await touchEvent(cdp, 'touchMove', [upper, { x: lower.x, y: lower.y + step * 30 }])
+      await touchEvent(cdp, 'touchEnd', [])
+    })
+  } else {
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await moveAndCheck((step) => page.mouse.move(from.x - step * 20, from.y))
+    await page.mouse.up()
+    const scroll = await page.evaluate(() => window.scrollY)
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.wheel(0, -10000)
+    expect(await page.evaluate(() => window.scrollY)).toBe(scroll)
+    await page.mouse.click(from.x, from.y, { button: 'right' })
+  }
+  await expect(zoomText(page)).toHaveText('倍率 4.0倍')
+  await expectCoordinateLabels(page)
+  await drag(page, testInfo.project.name, await center(page.locator('.board-corner')), 30, 30)
+  await expectCoordinateLabels(page)
+  await expect(cell(page, 5, 5)).toHaveAccessibleName(/^マス \(5, 5\) 味方1/)
+  await expect(cell(page, 5, 5)).toHaveAttribute('aria-pressed', 'true')
+  await expect(dialogs(page)).toHaveCount(0)
+})
+
+test('#67: 上/左のラベル境界直下の画面座標で選択・配置・移動し、設定の開閉でもずれない', async ({ page }, testInfo) => {
+  await page.goto('/')
+  await prepare(page, 1, 0)
+  await zoomIn(page, testInfo.project.name)
+  await token(page, '味方1').click()
+  await page.evaluate(() => window.scrollTo(0, 0))
+  const view = await frame(page)
+  // 最初の可視マスをDOMから探し、ラベル境界の2px内側を画面座標で押す。
+  const first = await page.getByRole('button', { name: /^マス / }).evaluateAll((elements, bounds) => {
+    for (const element of elements) {
+      const rect = element.getBoundingClientRect()
+      const x = Math.max(rect.left, bounds.x)
+      const y = Math.max(rect.top, bounds.y)
+      if (rect.right > x + 4 && rect.bottom > y + 4 && x < bounds.x + bounds.width && y < bounds.y + bounds.height) {
+        return { name: element.getAttribute('aria-label')!, x: x + 2, y: y + 2 }
+      }
+    }
+    throw new Error('表示枠内にマスがありません')
+  }, view)
+  await pressAt(page, testInfo.project.name, first)
+  const placed = page.getByRole('button', { name: new RegExp(`^${first.name.replace(/[()]/g, '\\$&')} 味方1`) })
+  await expect(placed).toBeVisible()
+  await pressAt(page, testInfo.project.name, first)
+  await expect(placed).toHaveAttribute('aria-pressed', 'true')
+  // 列・行の帯を押しても位置/選択を変えない。
+  await pressAt(page, testInfo.project.name, await center(page.getByRole('group', { name: '横の座標' })))
+  await pressAt(page, testInfo.project.name, await center(page.getByRole('group', { name: '縦の座標' })))
+  await expect(placed).toHaveAttribute('aria-pressed', 'true')
+  const dest = cell(page, 5, 5)
+  await pressAt(page, testInfo.project.name, await center(dest))
+  await expect(dest).toHaveAccessibleName(/^マス \(5, 5\) 味方1/)
+  const before = await box(dest)
+  await pressAt(page, testInfo.project.name, await center(dest))
+  await button(page, '設定').click()
+  await expect(page.getByRole('dialog', { name: '味方1の設定' })).toBeVisible()
+  await button(page, '閉じる').click()
+  await page.evaluate(() => window.scrollTo(0, 0))
+  expect(await box(dest)).toEqual(before)
+  await button(page, '準備をやり直す').click()
+  await button(page, 'キャンセル').click()
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await expectCoordinateLabels(page)
+  await button(page, '準備をやり直す').click()
+  await button(page, 'やり直す').click()
+  await expectCoordinateLabels(page)
+})
