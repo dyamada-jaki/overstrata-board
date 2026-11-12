@@ -154,6 +154,29 @@ echo "term_po" > "$FAKE/state/po.handle"
 ORCA_TERMINAL_HANDLE=term_po run close-self; rc=$?
 check "PO の端末では close-self を断る" test "$rc-$(cat "$FAKE/closed" 2>/dev/null)" = "1-"
 
+# launch --close-self: 待ってから自分の端末を閉じる（試験では待ち時間を 0 にし、閉じ終わるのを待つ）
+waitclosed() { for _ in $(seq 1 50); do [ -s "$FAKE/closed" ] && break; sleep 0.1; done; cat "$FAKE/closed" 2>/dev/null; }
+reset 5 ""
+DEV_TEAM_CLOSE_DELAY=0 ORCA_TERMINAL_HANDLE=term_launcher run launch --close-self; rc=$?
+check "launch --close-self: 起動したうえで、起動係の端末を閉じる" test "$rc-$(lock)-$(waitclosed)" = "0-5 term_new-term_launcher"
+
+reset "" ""
+DEV_TEAM_CLOSE_DELAY=0 ORCA_TERMINAL_HANDLE=term_launcher run launch --close-self; rc=$?
+check "launch --close-self: 起動する Issue が無くても、起動係の端末を閉じる" test "$rc-$(waitclosed)" = "0-term_launcher"
+
+reset 5 ""
+DEV_TEAM_CLOSE_DELAY=0 ORCA_TERMINAL_HANDLE=term_launcher FAKE_SEND_FAIL=1 run launch --close-self; rc=$?
+check "launch --close-self: 起動に失敗しても、起動係の端末を閉じる" test "$rc-$(waitclosed)" = "1-term_launcher"
+
+reset 5 ""
+echo "term_po" > "$FAKE/state/po.handle"
+DEV_TEAM_CLOSE_DELAY=0 ORCA_TERMINAL_HANDLE=term_po run launch --close-self; sleep 0.5
+check "launch --close-self: PO の端末で実行しても閉じない" test -z "$(cat "$FAKE/closed" 2>/dev/null)"
+
+reset 5 ""
+DEV_TEAM_CLOSE_DELAY=0 ORCA_TERMINAL_HANDLE=term_me run launch; sleep 0.5
+check "launch（--close-self なし）: 端末を閉じない" test -z "$(cat "$FAKE/closed" 2>/dev/null)"
+
 reset "" ""
 run mark 5 開発チーム "1. 事前確認"; run mark 5 PO 待ち
 check "mark: 1行ずつ時刻・担当・作業を追記する" test "$(cut -f2,3 "$FAKE/state/work-times/5.tsv" | tr '\t\n' ':;')" = "開発チーム:1. 事前確認;PO:待ち;"
