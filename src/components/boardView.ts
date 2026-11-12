@@ -39,3 +39,13 @@ export function zoomAt(view: View, factor: number, point: Point, frame: Frame): 
 export function panBy(view: View, dx: number, dy: number, frame: Frame): View {
   return clampView({ ...view, x: view.x + dx, y: view.y + dy }, frame)
 }
+
+/** 座標の番号を出す、切れたマスの見えている部分の最小の幅・高さ（px）（#67）。 */
+export const labelMinSize = 16
+
+/** 表示枠に見えている列（行）の番号と、その番号を置く範囲（表示枠の左端・上端からの px）（#67）。 */
+export interface AxisLabel { readonly number: number; readonly start: number; readonly size: number }
+
+export function axisLabels(_count: number, _scale: number, _offset: number, _length: number): AxisLabel[] {
+  return []
+}

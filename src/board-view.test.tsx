@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import App from './App.tsx'
 import { setCount } from './test/counts.ts'
 
@@ -584,5 +584,199 @@ describe('表示枠の大きさが変わったときの収め直し（PR #65 の
     act(() => { watching[0]!.callback() })
     expect(board().style.transform).toBe('translate(-450px, -360px) scale(4)')
     expectKept()
+  })
+})
+
+// #67: 拡大・移動中も座標の番号を表示枠の上端・左端に残す（spec.md 2.4「拡大・移動中の座標ラベル」）。
+// 表示枠（マスの表示枠）を 111px 四方にすると、1倍のマスは 10px（内側の余白 1px・間 1px）になり、マス i は 1倍で [1 + 11i, 11 + 11i]、
+// 4倍で [4 + 44i, 44 + 44i] に表示位置を足した範囲になる。番号はそのマスの見えている部分に置き、16px 未満しか見えないマスの番号は出さない。
+// 期待値はこの並びから手で計算した（boardView.test.ts の axisLabels と同じ例）。jsdom にはレイアウトが無いので、位置は style の値で確かめる。
+describe('拡大・移動中の座標の番号（#67）', () => {
+  const axis = (name: '横の座標' | '縦の座標') => screen.getByRole('group', { name })
+  /** 番号と、置いた範囲（列は left・width、行は top・height）。 */
+  function labels(name: '横の座標' | '縦の座標') {
+    const [position, length] = name === '横の座標' ? ['left', 'width'] as const : ['top', 'height'] as const
+    return within(axis(name)).queryAllByText(/^\d+$/).map((label) => `${label.textContent} ${label.style[position]} ${label.style[length]}`)
+  }
+  const oneX = Array.from({ length: 10 }, (_, i) => `${i + 1} ${1 + 11 * i}px 10px`)
+  const topLeft4x = ['1 4px 40px', '2 48px 40px', '3 92px 19px']
+  /** 左上を基準に4倍まで拡大する（表示位置は (0, 0) のまま）。 */
+  function zoomTo4xTopLeft() {
+    for (let i = 0; i < 20; i += 1) wheel(cell(1, 1), -100, 0, 0)
+    expect(board().style.transform).toBe('translate(0px, 0px) scale(4)')
+  }
+  function setUp() {
+    render(<App />)
+    setFrame(111, 111)
+    zoomTo4xTopLeft()
+  }
+
+  it('1倍では横・縦とも 1〜10 を1回ずつ表示し、盤面（拡大・移動する部分）の中には番号を置かない', () => {
+    render(<App />)
+    setFrame(111, 111)
+    for (const name of ['横の座標', '縦の座標'] as const) {
+      expect(within(axis(name)).getAllByText(/^\d+$/).map((label) => label.textContent))
+        .toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
+      expect(board()).not.toContainElement(axis(name))
+    }
+    expect(within(board()).queryAllByText(/^\d+$/)).toEqual([])
+  })
+
+  it('拡大すると、見えている列・行の番号だけを表示枠の上端・左端に、マスの位置に合わせて置く', () => {
+    setUp()
+    expect(labels('横の座標')).toEqual(topLeft4x)
+    expect(labels('縦の座標')).toEqual(topLeft4x)
+  })
+
+  it('横に動かすと列の番号だけが追従し、縦に動かすと行の番号だけが追従する（両端で 16px 未満しか見えない番号は出さない）', () => {
+    setUp()
+    mouseDrag(cell(2, 2), -30, 0)
+    expect(labels('横の座標')).toEqual(['2 18px 40px', '3 62px 40px'])
+    expect(labels('縦の座標')).toEqual(topLeft4x)
+    mouseDrag(cell(2, 2), 0, -55)
+    expect(labels('横の座標')).toEqual(['2 18px 40px', '3 62px 40px'])
+    expect(labels('縦の座標')).toEqual(['2 0px 33px', '3 37px 40px', '4 81px 30px'])
+  })
+
+  it('ドラッグの途中の小さな移動（3px）にも同じ量だけ追従する', () => {
+    setUp()
+    mouseDrag(cell(2, 2), -30, 0)
+    pointer(cell(2, 2), 'pointerDown', 100, 100)
+    pointer(cell(2, 2), 'pointerMove', 88, 100)
+    // 表示位置 −42: 1 は 2px しか見えず、4 は [94, 134] のうち 17px が見える。
+    expect(labels('横の座標')).toEqual(['2 6px 40px', '3 50px 40px', '4 94px 17px'])
+    pointer(cell(2, 2), 'pointerMove', 85, 100)
+    expect(labels('横の座標')).toEqual(['2 3px 40px', '3 47px 40px', '4 91px 20px'])
+    pointer(cell(2, 2), 'pointerUp', 85, 100)
+  })
+
+  it('右下の端まで動かすと 8〜10 の番号になる', () => {
+    setUp()
+    mouseDrag(cell(2, 2), -2000, -2000)
+    expect(board().style.transform).toBe('translate(-333px, -333px) scale(4)')
+    expect(labels('横の座標')).toEqual(['8 0px 19px', '9 23px 40px', '10 67px 40px'])
+    expect(labels('縦の座標')).toEqual(['8 0px 19px', '9 23px 40px', '10 67px 40px'])
+  })
+
+  it('「全体を見る」で 1〜10 の番号を1倍の位置へ戻す', () => {
+    setUp()
+    mouseDrag(cell(2, 2), -60, -60)
+    click('全体を見る')
+    expect(labels('横の座標')).toEqual(oneX)
+    expect(labels('縦の座標')).toEqual(oneX)
+  })
+
+  it('「準備をやり直す」を取り消すと番号の位置を保ち、実行すると 1〜10 に戻す', () => {
+    render(<App />)
+    prepare(1, 0)
+    setFrame(111, 111)
+    zoomTo4xTopLeft()
+    mouseDrag(cell(2, 2), -30, 0)
+    click('準備をやり直す')
+    click('キャンセル')
+    expect(labels('横の座標')).toEqual(['2 18px 40px', '3 62px 40px'])
+    click('準備をやり直す')
+    click('やり直す')
+    expect(labels('横の座標')).toEqual(oneX)
+    expect(labels('縦の座標')).toEqual(oneX)
+  })
+
+  it('「新しい戦闘を始める」を実行すると 1〜10 に戻す', () => {
+    render(<App />)
+    prepare(1, 0)
+    place('味方1', 2, 2)
+    click('確定')
+    setFrame(111, 111)
+    zoomTo4xTopLeft()
+    click('新しい戦闘を始める')
+    click('始める')
+    expect(labels('横の座標')).toEqual(oneX)
+    expect(labels('縦の座標')).toEqual(oneX)
+  })
+
+  it('表示枠の大きさが変わったら、新しい大きさで番号の位置を計算し直す', () => {
+    vi.stubGlobal('ResizeObserver', undefined)
+    setUp()
+    // 221px なら1倍のマスは 21px。4倍で [4 + 88i, 88 + 88i]。
+    setFrame(221, 221)
+    fireEvent(window, new Event('resize'))
+    expect(labels('横の座標')).toEqual(['1 4px 84px', '2 92px 84px', '3 180px 41px'])
+    vi.unstubAllGlobals()
+  })
+
+  describe('番号の帯と角の上の操作', () => {
+    it('帯の上から始めたドラッグでも表示位置を動かし、離した後の click で選択を変えない', () => {
+      render(<App />)
+      prepare(1, 0)
+      place('味方1', 3, 3)
+      fireEvent.click(cell(3, 3))
+      setFrame(111, 111)
+      zoomTo4xTopLeft()
+      mouseDrag(within(axis('横の座標')).getByText('2'), -30, 0)
+      expect(board().style.transform).toBe('translate(-30px, 0px) scale(4)')
+      mouseDrag(within(axis('縦の座標')).getByText('2'), 0, -30)
+      expect(board().style.transform).toBe('translate(-30px, -30px) scale(4)')
+      expect(pressed()).toEqual([cell(3, 3)])
+    })
+
+    it('帯の上のホイールでも拡大し、ページをスクロールさせない。基準点はマスの表示枠の左上を原点にする', () => {
+      render(<App />)
+      // マスの表示枠を画面の (24, 24) に置く。行の番号の帯の上（x = 10）は、表示枠から見ると左に 14px の外。
+      setFrame(111, 111, 24, 24)
+      expect(wheel(within(axis('縦の座標')).getByText('1'), -100, 10, 74)).toBe(false)
+      expect(zoom()).toBe('倍率 1.2倍')
+      // 表示枠の外（左）を基準にした拡大は、盤面の左端より外へ余白を出せないので、横の表示位置は 0 のまま。
+      expect(board().style.transform).toMatch(/^translate\(0px, -?\d/)
+    })
+
+    it('1倍では帯を含めて縦にページをスクロールでき（pan-y）、拡大中は表示位置の移動に使う（none）', () => {
+      render(<App />)
+      setFrame(111, 111)
+      const area = axis('横の座標').parentElement!
+      expect(area).toContainElement(board())
+      expect(area.style.touchAction).toBe('pan-y')
+      zoomIn()
+      expect(area.style.touchAction).toBe('none')
+      click('全体を見る')
+      expect(area.style.touchAction).toBe('pan-y')
+    })
+
+    it.each([['macOS', true], ['Windows', false]] as const)('%s の順: 帯の上で右クリックしても、ブラウザのメニューも設定も出さず、選択を変えない', (_, early) => {
+      render(<App />)
+      prepare(1, 0)
+      place('味方1', 1, 1)
+      fireEvent.click(cell(1, 1))
+      const label = within(axis('横の座標')).getByText('1')
+      pointer(label, 'pointerDown', 100, 10, { button: 2 })
+      if (early) expect(fireEvent.contextMenu(label, { button: 2 })).toBe(false)
+      pointer(label, 'pointerUp', 100, 10, { button: 2 })
+      if (!early) expect(fireEvent.contextMenu(label, { button: 2 })).toBe(false)
+      expect(popups()).toEqual([])
+      expect(pressed()).toEqual([cell(1, 1)])
+    })
+
+    it('Windows の順: 帯から右ドラッグして駒の上で離し、離した後の contextmenu が駒に届いても開かない', () => {
+      render(<App />)
+      prepare(1, 0)
+      place('味方1', 1, 1)
+      setFrame(111, 111)
+      zoomTo4xTopLeft()
+      const label = within(axis('横の座標')).getByText('1')
+      pointer(label, 'pointerDown', 20, 10, { button: 2 })
+      pointer(label, 'pointerMove', 20, 40, { button: 2 })
+      pointer(cell(1, 1), 'pointerUp', 20, 40, { button: 2 })
+      expect(fireEvent.contextMenu(cell(1, 1), { button: 2 })).toBe(false)
+      expect(popups()).toEqual([])
+    })
+
+    it('角（上端と左端の帯が交わる所）のクリック・右クリックでは何も選ばず、メニューも出さない', () => {
+      render(<App />)
+      fireEvent.click(cell(4, 4))
+      const corner = axis('横の座標').parentElement!.firstElementChild as HTMLElement
+      expect(corner).not.toBe(axis('横の座標'))
+      fireEvent.click(corner)
+      expect(fireEvent.contextMenu(corner, { button: 2 })).toBe(false)
+      expect(pressed()).toEqual([cell(4, 4)])
+    })
   })
 })
