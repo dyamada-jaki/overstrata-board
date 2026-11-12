@@ -1,4 +1,4 @@
-import { clampView, initialView, panBy, zoomAt, zoomLimits } from './boardView.ts'
+import { axisLabels, clampView, initialView, labelMinSize, panBy, zoomAt, zoomLimits } from './boardView.ts'
 
 // spec.md 2.4（#63）: 全体表示を1倍とし、1〜4倍。表示位置は盤面の端より外へ余白を出さない（計画で承認）。
 const frame = { width: 300, height: 300 }
@@ -71,5 +71,62 @@ describe('panBy（表示位置を動かし、盤面の端で止める）', () =>
 
   it('1倍では動かない', () => {
     expect(panBy(initialView, 40, 40, frame)).toEqual(initialView)
+  })
+})
+
+// #67: 表示枠の上端・左端に残す番号の位置（spec.md 2.4「拡大・移動中の座標ラベル」）。
+// マスの並びは盤面の CSS と同じく、内側に 1px の余白、マス同士の間に 1px。長さ 111px・10マスなら1倍のマスは 10px で、
+// マス i は 1倍で [1 + 11i, 11 + 11i]、4倍で [4 + 44i, 44 + 44i] に表示位置（offset）を足した範囲になる。期待値はこの並びから手で計算した。
+describe('axisLabels（見えている列・行の番号と、それを置く範囲）', () => {
+  const list = (labels: ReturnType<typeof axisLabels>) => labels.map(({ number, start, size }) => [number, start, size])
+
+  it('切れたマスの番号を出す最小の見えている幅は 16px', () => {
+    expect(labelMinSize).toBe(16)
+  })
+
+  it('1倍では1〜10をすべて、それぞれのマスの範囲に置く', () => {
+    expect(list(axisLabels(10, 1, 0, 111))).toEqual(
+      Array.from({ length: 10 }, (_, i) => [i + 1, 1 + 11 * i, 10]))
+  })
+
+  it('全体が見えているマスは、16px より狭くても番号を出す（1倍のマス 5px）', () => {
+    expect(list(axisLabels(10, 1, 0, 61))).toEqual(
+      Array.from({ length: 10 }, (_, i) => [i + 1, 1 + 6 * i, 5]))
+  })
+
+  it('4倍・左上: 見えている 1〜3 だけ。枠の端で切れた3は、見えている部分（92〜111）だけを範囲にする', () => {
+    expect(list(axisLabels(10, 4, 0, 111))).toEqual([[1, 4, 40], [2, 48, 40], [3, 92, 19]])
+  })
+
+  it('表示位置の移動に追従する。両端で 16px 未満しか見えない1と4は出さない', () => {
+    expect(list(axisLabels(10, 4, -30, 111))).toEqual([[2, 18, 40], [3, 62, 40]])
+  })
+
+  it('左端で切れたマスは、見えている部分（枠の 0 から）だけを範囲にする', () => {
+    expect(list(axisLabels(10, 4, -55, 111))).toEqual([[2, 0, 33], [3, 37, 40], [4, 81, 30]])
+  })
+
+  it('見えている部分がちょうど 16px なら出し、15px なら出さない（左端・右端）', () => {
+    expect(list(axisLabels(10, 4, -28, 111))).toEqual([[1, 0, 16], [2, 20, 40], [3, 64, 40]])
+    expect(list(axisLabels(10, 4, -29, 111))).toEqual([[2, 19, 40], [3, 63, 40]])
+    expect(list(axisLabels(10, 4, -41, 111))).toEqual([[2, 7, 40], [3, 51, 40], [4, 95, 16]])
+    expect(list(axisLabels(10, 4, -40, 111))).toEqual([[2, 8, 40], [3, 52, 40]])
+  })
+
+  it('4倍・右下の端: 最後の 8〜10 が見え、10 の右に盤面の余白（4倍の 4px）が残る', () => {
+    // 右下の端は offset = 111 × (1 − 4) = −333。マス 8〜10 は [−21, 19]（見えるのは 19px）・[23, 63]・[67, 107]。
+    expect(list(axisLabels(10, 4, -333, 111))).toEqual([[8, 0, 19], [9, 23, 40], [10, 67, 40]])
+  })
+
+  it('マスがちょうど枠の端に接していれば全体が見えている扱いで、16px より狭くても番号を出す（2倍・1倍のマス 5px → 10px）', () => {
+    // 長さ 61px・10マスの2倍。マス i は [2 + 12i, 12 + 12i] に表示位置を足した範囲。
+    // 表示位置 −14: 2 は [0, 10] で左端にちょうど接する。7 は [60, 70] で 1px しか見えない。
+    expect(list(axisLabels(10, 2, -14, 61))).toEqual([[2, 0, 10], [3, 12, 10], [4, 24, 10], [5, 36, 10], [6, 48, 10]])
+    // 表示位置 −11: 6 は [51, 61] で右端にちょうど接する。1 は [−9, 1] で 1px しか見えない。
+    expect(list(axisLabels(10, 2, -11, 61))).toEqual([[2, 3, 10], [3, 15, 10], [4, 27, 10], [5, 39, 10], [6, 51, 10]])
+  })
+
+  it('列数が違っても同じ並びで計算する（3マス・長さ 34px → 1倍のマス 10px）', () => {
+    expect(list(axisLabels(3, 1, 0, 34))).toEqual([[1, 1, 10], [2, 12, 10], [3, 23, 10]])
   })
 })
