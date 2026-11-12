@@ -1,7 +1,7 @@
 # Overstrata 戦闘ボード — エージェント向けガイド
 
 TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）。
-**仕様はすべて [docs/spec.md](docs/spec.md) にある。作業の前に必ず読むこと。**
+仕様の正本は [docs/spec.md](docs/spec.md)。作業に関係する箇所を読んでから始める。
 アプリはルールを強制しない。補助として見せるだけ。
 
 ## 技術スタック
@@ -77,10 +77,7 @@ PO（人間と仕様を話し合い、Issue を書く席。→ [docs/workflow.md
 `.claude/skills/implement-issue/SKILL.md`（Codex 用の `.agents/skills/implement-issue` は、このフォルダへのシンボリックリンク）に従う。Claude Code では `/implement-issue 番号`、Codex では「implement-issue スキルで Issue 番号」。
 
 ## 完了の定義
-- Issue の受け入れ条件をすべて満たす
-- `npm run test` / `npm run typecheck` / `npm run lint` / `npm run build` がすべて通る
-- E2E 導入後は対象となる E2E も通る。未導入時の扱いとレビューの分担は [docs/testing.md](docs/testing.md) を参照する
-- PR 本文に「何をしたか」「どう確認したか」「確認したいこと」を書く
+開発者が「Issue の作業は終わった」と判断する基準は [docs/definition-of-done.md](docs/definition-of-done.md)。PR を作るときに1項目ずつ確かめる。
 
 ## 用語
 | 日本語 | コード上の名前 |
