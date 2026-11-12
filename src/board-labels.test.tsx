@@ -35,6 +35,33 @@ function prepare() {
 }
 
 describe('#67 座標ラベルを表示枠に残す（Appの操作から）', () => {
+  it('resizeを待たず、初回に測った寸法から拡大後の番号を描く（ResizeObserverがない場合も同じ）', () => {
+    // DOMのレイアウト境界だけを補う。測定後のresizeイベントで初回測定の欠落を隠さない。
+    const width = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
+      return this.classList.contains('board-viewport') ? 311 : 0
+    })
+    const height = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockImplementation(function (this: Element) {
+      return this.classList.contains('board-viewport') ? 311 : 0
+    })
+    try {
+      render(<App />)
+      wheel(cell(5, 5), -10000, 155.5, 155.5)
+      expect(numbers()).toEqual(['4', '5', '6', '7'])
+      expect(numbers('縦の座標')).toEqual(['4', '5', '6', '7'])
+    } finally { width.mockRestore(); height.mockRestore() }
+  })
+
+  it('帯・角の上は1倍でページの縦スクロールを残し、拡大後はブラウザの操作を止める', () => {
+    render(<App />)
+    measure()
+    const surface = axis().parentElement!
+    expect(surface.style.touchAction).toBe('pan-y')
+    zoom4()
+    expect(surface.style.touchAction).toBe('none')
+    click('全体を見る')
+    expect(surface.style.touchAction).toBe('pan-y')
+  })
+
   it('ラベルは拡大する盤面の外に1組ずつ置き、1倍では1〜10を表示する', () => {
     render(<App />)
     measure()
@@ -78,6 +105,7 @@ describe('#67 座標ラベルを表示枠に残す（Appの操作から）', () 
     expect(vertical).toHaveAttribute('y1', '14.75')
     expect(vertical).toHaveAttribute('x2', '24')
     expect(vertical).toHaveAttribute('y2', '14.75')
+    expect(vertical.parentElement!.querySelector('path')).toHaveAttribute('d', 'M18 0H24M18 29.5H24')
     // 28.5pxだけさらに動かすと4列目は1pxになり、番号は10pxへ寄るが行き先は0.5px。
     drag(axis(), -28.5, 0)
     expect(within(axis()).getByText('4')).toHaveStyle({ left: '10px' })
