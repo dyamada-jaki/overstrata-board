@@ -466,6 +466,7 @@ test('#67: 帯・角からの表示操作を複数回続けられ、片方の指
     let previous = await box(cell(page, 5, 5))
     for (let step = 1; step <= 3; step += 1) {
       await move(step)
+      await expect.poll(async () => (await box(cell(page, 5, 5))).x).toBeLessThan(previous.x - 10)
       const current = await box(cell(page, 5, 5))
       expect(current.x).toBeLessThan(previous.x - 10)
       await expectCoordinateLabels(page)
