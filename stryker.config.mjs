@@ -21,6 +21,9 @@ export default {
     'src/components/useLongPress.ts',
     'src/components/PieceSettings.tsx',
     'src/components/popupPosition.ts',
+    // #63 盤面の拡大・縮小と表示位置: 1〜4倍の境界、基準点の式、端の収まり、ドラッグのしきい値、click 止め、ピンチ、ホイール（spec.md 2.4）。
+    'src/components/boardView.ts',
+    'src/components/useBoardGestures.ts',
     // #9の過去サンプルの初期配置と装備から移動力への変換（起動時には使わない）。
     'src/data/characters.ts',
   ],

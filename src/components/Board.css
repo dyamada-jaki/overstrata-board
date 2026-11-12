@@ -1,4 +1,10 @@
+/* 拡大・移動した盤面を切り取る表示枠（#63）。clip は hidden と違い、フォーカスの移動などでスクロールされない。 */
+.board-viewport {
+  overflow: clip;
+}
+
 .board {
+  transform-origin: 0 0;
   display: grid;
   grid-template-columns: 1.5rem minmax(0, 1fr);
   grid-template-rows: 1.5rem auto;
