@@ -6,7 +6,7 @@ const board = () => screen.getByRole('group', { name: '戦闘盤面' })
 const axis = (name = '横の座標') => screen.getByRole('group', { name })
 const numbers = (name?: string) => within(axis(name)).getAllByText(/^\d+$/).map((label) => label.textContent)
 const cell = (x: number, y: number) => screen.getByRole('button', { name: new RegExp(`^マス \\(${x}, ${y}\\)`) })
-const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
+const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
 const wheel = (element: Element, deltaY: number, x = 175.5, y = 205.5) =>
   fireEvent.wheel(element, { deltaY, clientX: x, clientY: y })
 function measure() {
