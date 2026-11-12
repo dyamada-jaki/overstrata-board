@@ -1,43 +1,70 @@
+/* 盤面の外側（#67）。左上の角・上の列の番号・左の行の番号・マスの表示枠の 2×2。番号の帯は拡大・移動する盤面の外に置き、
+   倍率によらず大きさを変えない（帯の 1.5rem は #63 までの座標ラベルの列・行と同じ）。 */
+.board-area {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  grid-template-rows: 1.5rem auto;
+}
+
 /* 拡大・移動した盤面を切り取る表示枠（#63）。clip は hidden と違い、フォーカスの移動などでスクロールされない。 */
 .board-viewport {
+  grid-column: 2;
+  grid-row: 2;
   overflow: clip;
 }
 
 .board {
   transform-origin: 0 0;
-  display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr);
-  grid-template-rows: 1.5rem auto;
   width: 100%;
 }
 
 .board-columns,
 .board-rows {
   display: grid;
+  position: relative;
+  overflow: clip;
   color: #475569;
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
 
+/* 表示枠を測る前（描画前）は、マスと同じ等分の並び（内側の余白 1px・間 1px）。 */
 .board-columns {
   grid-column: 2;
+  grid-row: 1;
   padding-inline: 1px;
   column-gap: 1px;
   align-items: center;
 }
 
 .board-rows {
+  grid-column: 1;
   grid-row: 2;
   padding-block: 1px;
   row-gap: 1px;
   align-items: center;
 }
 
+/* 測った後は、番号ごとにマスの見えている部分（left・width / top・height）へ置き、その中央に数字を出す。 */
+.board-axis-measured > span {
+  position: absolute;
+  display: grid;
+  place-items: center;
+}
+
+.board-columns.board-axis-measured > span {
+  top: 0;
+  bottom: 0;
+}
+
+.board-rows.board-axis-measured > span {
+  left: 0;
+  right: 0;
+}
+
 .board-cells {
   display: grid;
-  grid-column: 2;
-  grid-row: 2;
   gap: 1px;
   padding: 1px;
   background: #94a3b8;

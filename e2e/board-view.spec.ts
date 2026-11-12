@@ -478,11 +478,14 @@ test('拡大して左上の端を表示し、番号の帯のすぐ隣のマス�
   await page.evaluate(() => window.scrollTo(0, 0))
   await zoomIn(page, project)
   await drag(page, project, await boardCenter(page), 600, 600)
+  // 未配置の駒を選ぶ（スマホ幅では一覧までページがスクロールするので、盤面が見える位置へ戻してから測る）。
+  await token(page, '味方1').click()
+  await page.evaluate(() => window.scrollTo(0, 0))
   const view = await frame(page)
   // 左上のマス (1, 1) は表示枠の左上に接する。帯との境界から 3px 内側を押す。
   const first = await box(cell(page, 1, 1))
   expect(first.x).toBeGreaterThanOrEqual(view.x - 0.5)
-  await token(page, '味方1').click()
+  expect(first.x).toBeLessThanOrEqual(view.x + 4)
   await pressAt(page, project, { x: view.x + 3, y: view.y + 3 })
   await expect(cell(page, 1, 1)).toHaveAccessibleName(/^マス \(1, 1\) 味方1（/)
 
@@ -500,18 +503,20 @@ test('拡大して左上の端を表示し、番号の帯のすぐ隣のマス�
   await expect(cell(page, 1, 3)).toHaveAccessibleName(/^マス \(1, 3\) 味方1（/)
   await expectLabelsMatch(page, testInfo, '端のマスを押した後')
 
-  // 駒を選んだまま、帯の上（境界の 3px 外）を押しても、選択・駒の位置は変わらない。
+  // 駒を選んだまま、帯の上（番号の中央）を押しても、選択・駒の位置は変わらない。
+  const columnStrip = await box(page.getByRole('group', { name: '横の座標' }))
+  const rowStrip = await box(page.getByRole('group', { name: '縦の座標' }))
   await pressAt(page, project, { x: view.x + 3, y: row3.y + row3.height / 2 })
   await expect(cell(page, 1, 3)).toHaveAttribute('aria-pressed', 'true')
-  await pressAt(page, project, { x: first.x + first.width / 2, y: view.y - 3 })
-  await pressAt(page, project, { x: view.x - 3, y: row3.y + row3.height / 2 })
+  await pressAt(page, project, { x: first.x + first.width / 2, y: columnStrip.y + columnStrip.height / 2 })
+  await pressAt(page, project, { x: rowStrip.x + rowStrip.width / 2, y: row3.y + row3.height / 2 })
   await expect(cell(page, 1, 3)).toHaveAttribute('aria-pressed', 'true')
   await expect(cell(page, 1, 3)).toHaveAccessibleName(/^マス \(1, 3\) 味方1（/)
   await expect(dialogs(page)).toHaveCount(0)
 
   if (!isMobile(project)) {
     // 帯の上の右クリックは設定もブラウザのメニューも出さない。端の駒の右クリック（動かさず離す）は設定を開く。
-    await page.mouse.click(first.x + first.width / 2, view.y - 3, { button: 'right' })
+    await page.mouse.click(first.x + first.width / 2, columnStrip.y + columnStrip.height / 2, { button: 'right' })
     await expect(dialogs(page)).toHaveCount(0)
     const piece = await box(cell(page, 1, 3))
     await page.mouse.click(view.x + 3, piece.y + piece.height / 2, { button: 'right' })
@@ -522,10 +527,10 @@ test('拡大して左上の端を表示し、番号の帯のすぐ隣のマス�
 
   // 帯から始めたドラッグ（上の帯 → 左下へ、左の帯 → 上へ）でも表示位置が動き、番号が揃ったまま。
   const before = await box(cell(page, 5, 5))
-  await drag(page, project, { x: view.x + view.width / 2, y: view.y - 10 }, -60, 0)
+  await drag(page, project, { x: view.x + view.width / 2, y: columnStrip.y + columnStrip.height / 2 }, -60, 0)
   const afterColumns = await box(cell(page, 5, 5))
   expect(afterColumns.x).toBeLessThan(before.x - 30)
-  await drag(page, project, { x: view.x - 10, y: view.y + view.height / 2 }, 0, -60)
+  await drag(page, project, { x: rowStrip.x + rowStrip.width / 2, y: view.y + view.height / 2 }, 0, -60)
   expect((await box(cell(page, 5, 5))).y).toBeLessThan(afterColumns.y - 30)
   await expect(cell(page, 1, 3)).toHaveAccessibleName(/^マス \(1, 3\) 味方1（/)
   await expect(cell(page, 1, 3)).toHaveAttribute('aria-pressed', 'true')

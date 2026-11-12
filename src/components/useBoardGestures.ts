@@ -14,17 +14,19 @@ function toFrame(element: HTMLElement, point: Point) {
   const rect = element.getBoundingClientRect()
   return { x: point.x - rect.left, y: point.y - rect.top }
 }
-/** 表示枠の大きさ（transform の影響を受けない、レイアウト上の大きさ）。 */
-const frameSize = (element: HTMLElement) => ({ width: element.clientWidth, height: element.clientHeight })
+/** 表示枠の大きさ（transform の影響を受けない、レイアウト上の大きさ）。座標の番号の位置（Board）も同じ測り方を使う（#67）。 */
+export const frameSize = (element: HTMLElement) => ({ width: element.clientWidth, height: element.clientHeight })
 
 /**
- * 盤面の表示操作（spec.md 2.4、#63）。表示枠に付ける。
+ * 盤面の表示操作（spec.md 2.4、#63）。返す handler は操作を受ける要素（area）に付ける。
+ * area は表示枠（frame）と座標の番号の帯を含む外側で、帯の上から始めた操作も盤面の表示に使う（#67）。
+ * 指・カーソルの位置と大きさは、これまでどおり表示枠（マスの表示枠）を基準にする。
  * - マウスの左・右ボタン、1本指のタッチ: 押した位置から長押しの許容量（10px）を超えて動いたらドラッグとして表示位置を動かす
  * - 2本指のタッチ: ピンチで拡大・縮小し、中点の移動で表示位置も動かす
  * - ホイール: カーソルの位置を基準に拡大・縮小し、ページはスクロールさせない
  * ドラッグ・ピンチを始めたら駒の長押しを取り消し（cancelPress）、離した後の click を1回だけ止める。
  */
-export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setView: Dispatch<SetStateAction<View>>, cancelPress: () => void) {
+export function useBoardGestures(area: RefObject<HTMLDivElement | null>, frame: RefObject<HTMLDivElement | null>, setView: Dispatch<SetStateAction<View>>, cancelPress: () => void) {
   const pointers = useRef(new Map<number, Point>())
   const gesture = useRef<{ mode: 'press' | 'drag'; origin: Point; last: Point } | { mode: 'pinch'; distance: number; middle: Point } | null>(null)
   const suppressClick = useRef(false)
@@ -33,6 +35,7 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
   const size = () => frameSize(frame.current!)
 
   useEffect(() => {
+    const target = area.current!
     const element = frame.current!
     // React の onWheel は passive で preventDefault できないので、ネイティブの listener で受ける。
     const onWheel = (event: WheelEvent) => {
@@ -43,9 +46,9 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
       const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? wheelLinePx : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? current.height : 1
       setView((view) => zoomAt(view, Math.exp(-event.deltaY * unit * wheelRate), point, current))
     }
-    element.addEventListener('wheel', onWheel, { passive: false })
-    return () => element.removeEventListener('wheel', onWheel)
-  }, [frame, setView])
+    target.addEventListener('wheel', onWheel, { passive: false })
+    return () => target.removeEventListener('wheel', onWheel)
+  }, [area, frame, setView])
 
   // 表示枠の大きさが変わったら（画面の大きさの変更・スマホの回転）、倍率を保ったまま新しい大きさで表示位置を収め直す。
   // ResizeObserver の無い環境では、画面（window）の大きさの変更で代わりに収め直す。
@@ -109,8 +112,8 @@ export function useBoardGestures(frame: RefObject<HTMLDivElement | null>, setVie
         current.mode = 'drag'
         cancelPress()
         suppressClick.current = true
-        // 枠の外へ出ても動かし続けられるよう、ドラッグを始めてから枠で受ける（押した時点では受けず、タップの click を壊さない）。
-        frame.current!.setPointerCapture?.(event.pointerId)
+        // 枠の外へ出ても動かし続けられるよう、ドラッグを始めてから操作を受ける要素で受ける（押した時点では受けず、タップの click を壊さない）。
+        area.current!.setPointerCapture?.(event.pointerId)
       }
       const bounds = size()
       const { last } = current
