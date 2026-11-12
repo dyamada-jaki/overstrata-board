@@ -426,6 +426,20 @@ test('#67: 番号は1倍・中間・4倍と中央/四隅で枠に残り、細い
   await expectCoordinateLabels(page)
   await zoomIn(page, testInfo.project.name)
   await expectCoordinateLabels(page)
+  // 1.1倍の左端では最初の列が細い断片になり、2列目の番号も寄せる必要がある。
+  if (isMobile(testInfo.project.name)) await pinch(page, await boardCenter(page), 75, 33)
+  else {
+    await button(page, '全体を見る').click()
+    const center = await boardCenter(page)
+    await page.mouse.move(center.x, center.y)
+    await page.mouse.wheel(0, -Math.log(1.1) / 0.002)
+  }
+  await expect(zoomText(page)).toHaveText('倍率 1.1倍')
+  await drag(page, testInfo.project.name, await boardCenter(page), -80, 0)
+  await expectCoordinateLabels(page)
+  await testInfo.attach('端の番号と隣の番号を寄せた1.1倍', { body: await page.screenshot(), contentType: 'image/png' })
+  await button(page, '全体を見る').click()
+  await zoomIn(page, testInfo.project.name)
   const at = await boardCenter(page)
   if (isMobile(testInfo.project.name)) await pinch(page, at, 20, 100)
   else { await page.mouse.move(at.x, at.y); await page.mouse.wheel(0, -10000) }
@@ -547,6 +561,10 @@ test('#67: 上/左のラベル境界直下の画面座標で選択・配置・�
   await button(page, '閉じる').click()
   await page.evaluate(() => window.scrollTo(0, 0))
   expect(await box(dest)).toEqual(before)
+  // 選択中の味方1を、最初に押した上/左の境界へ画面座標で戻す。
+  await pressAt(page, testInfo.project.name, first)
+  await expect(page.getByRole('button', { name: new RegExp(`^${first.name.replace(/[()]/g, '\\$&')} 味方1`) })).toBeVisible()
+  await expect(dest).not.toHaveAccessibleName(/味方1/)
   await button(page, '準備をやり直す').click()
   await button(page, 'キャンセル').click()
   await page.evaluate(() => window.scrollTo(0, 0))
