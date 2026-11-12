@@ -526,6 +526,7 @@ test('#67: 帯・角からの表示操作を複数回続けられ、片方の指
 test('#67: 上/左のラベル境界直下の画面座標で選択・配置・移動し、設定の開閉でもずれない', async ({ page }, testInfo) => {
   await page.goto('/')
   await prepare(page, 1, 0)
+  await page.evaluate(() => window.scrollTo(0, 0))
   await zoomIn(page, testInfo.project.name)
   await token(page, '味方1').click()
   await page.evaluate(() => window.scrollTo(0, 0))
