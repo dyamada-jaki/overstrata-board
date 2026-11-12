@@ -16,7 +16,7 @@ TRPG「Overstrata」のプレイ中に使う戦闘ボード（Web アプリ）�
 flowchart LR
   human(["人間"])
   gh[("GitHub<br/>Issue・PR・ラベル")]
-  launcher["起動係<br/>Orca の定期実行<br/>15分おき"]
+  launcher["起動係<br/>Orca の定期実行<br/>5分おき"]
 
   subgraph main["Orca: main の worktree"]
     po["PO<br/>仕様・Issue・受け入れ確認<br/>長く使う"]
